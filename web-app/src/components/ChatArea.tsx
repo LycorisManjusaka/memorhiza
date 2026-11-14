@@ -1185,7 +1185,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       const res = await fetch('/api/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: folderName, settings: { ...existing, summaryIndexHint: next } }),
+        body: JSON.stringify({ name: folderName, patch: { summaryIndexHint: next } }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       if (typeof fetchFolders === 'function') fetchFolders();
@@ -1314,11 +1314,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   const persistUseSummariesToggle = async (checked: boolean) => {
     setUseSummariesForLayer4(checked);
     try {
-      const existing: any = (folders || []).find((f: any) => f.name === folderName)?.settings || {};
       const res = await fetch('/api/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: folderName, settings: { ...existing, useSummariesForLayer4: checked } }),
+        body: JSON.stringify({ name: folderName, patch: { useSummariesForLayer4: checked } }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       if (typeof fetchFolders === 'function') fetchFolders();
@@ -1333,11 +1332,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   const persistConversationToolsToggle = async (checked: boolean) => {
     setEnableConversationTools(checked);
     try {
-      const existing: any = (folders || []).find((f: any) => f.name === folderName)?.settings || {};
       const res = await fetch('/api/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: folderName, settings: { ...existing, enableConversationTools: checked } }),
+        body: JSON.stringify({ name: folderName, patch: { enableConversationTools: checked } }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       if (typeof fetchFolders === 'function') fetchFolders();
@@ -8742,16 +8740,13 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
               <button
                 onClick={async () => {
                   try {
-                    // CRITICAL: spread the existing folder.settings first so
-                    // we don't wipe out fields page.tsx or other code paths
-                    // wrote into it (convoOrder, themeCss, aiVoice, voicePitch,
-                    // systemPromptHeader/Footer, maxConversationLog, etc.).
-                    // The earlier version replaced the whole settings object
-                    // with this short list, silently destroying everything else.
-                    const existing: any =
-                      (folders || []).find((f: any) => f.name === folderName)?.settings || {};
+                    // Sent as a PATCH: only the keys this dialog owns. The
+                    // server lays them over what is on disk, so everything
+                    // else in settings.json (convoOrder, aiVoice, voicePitch,
+                    // systemPromptHeader/Footer, maxConversationLog, …) is
+                    // kept even when this tab's copy of the folder is stale
+                    // or was never loaded. See lib/beingSettingsMerge.ts.
                     const newSettings = {
-                      ...existing,
                       // Identity tab
                       systemPrompt,
                       toolUseEnabled,
@@ -8797,7 +8792,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                     const res = await fetch('/api/folders', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ name: folderName, settings: newSettings }),
+                      body: JSON.stringify({ name: folderName, patch: newSettings }),
                     });
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     // Refresh the folder list in the parent so the next new
@@ -8946,7 +8941,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               name: fName,
-              settings: { ...target.settings, ...patch },
+              patch,
             }),
           });
           if (fetchFolders) fetchFolders();

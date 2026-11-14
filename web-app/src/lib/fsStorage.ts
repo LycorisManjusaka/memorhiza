@@ -3,6 +3,7 @@ import { createReadStream } from 'fs';
 import { createHash } from 'crypto';
 import path from 'path';
 import { atomicWriteFile } from './atomicWrite';
+import { mergeBeingSettings, writeTouchesCustomCss, type BeingSettingsWrite } from './beingSettingsMerge';
 import { putDataUrl } from './attachmentStore';
 import { retitleForRenamedIdentity } from './convoNaming';
 import { summaryKey } from './summaryStorage';
@@ -690,6 +691,44 @@ export async function saveFolder(folderName: string, settings: any) {
   const { customCss, ...rest } = settings || {};
   await writeThemeCss(folderName, customCss);
   await fs.writeFile(beingSettingsFile(folderName), JSON.stringify({ name: folderName, settings: rest }, null, 2));
+}
+
+/**
+ * Write a being's settings with the DISK as the base (see beingSettingsMerge.ts
+ * for why a whole-object replace lost keys). This is what /api/folders uses;
+ * `saveFolder` above stays for callers that really do own the whole object.
+ *
+ * A settings file that exists but cannot be read is NOT treated as empty: the
+ * write is refused. Treating it as `{}` is exactly how one unlucky read turned
+ * into a file holding a single key.
+ */
+export async function writeBeingSettings(folderName: string, write: BeingSettingsWrite): Promise<void> {
+  await ensureDirs();
+  const dir = beingDir(folderName);
+  await fs.mkdir(dir, { recursive: true });
+  const file = beingSettingsFile(folderName);
+  let disk: Record<string, any> = {};
+  let raw: string | null = null;
+  try {
+    raw = await fs.readFile(file, 'utf-8');
+  } catch (e: any) {
+    if (e?.code !== 'ENOENT') throw new Error(`settings.json for "${folderName}" could not be read (${e?.code || e?.message}); nothing was written`);
+  }
+  if (raw !== null) {
+    try {
+      const parsed = JSON.parse(raw);
+      disk = parsed && typeof parsed.settings === 'object' && parsed.settings ? parsed.settings : {};
+    } catch {
+      throw new Error(`settings.json for "${folderName}" is not valid JSON; nothing was written`);
+    }
+  }
+  const merged = mergeBeingSettings(disk, write);
+  // The theme lives in its own file and is overlaid on read, so it is only
+  // touched when this write names it — an unrelated write must not rewrite
+  // (or delete) the CSS from a tab's stale copy of it.
+  const { customCss, ...rest } = merged;
+  if (writeTouchesCustomCss(write)) await writeThemeCss(folderName, customCss);
+  await atomicWriteFile(file, JSON.stringify({ name: folderName, settings: rest }, null, 2));
 }
 
 // ── Identity rename ─────────────────────────────────────────────────────────

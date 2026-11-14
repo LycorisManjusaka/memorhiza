@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listFolders, saveFolder, renameFolder, deleteFolder } from '@/lib/fsStorage';
+import { listFolders, writeBeingSettings, renameFolder, deleteFolder } from '@/lib/fsStorage';
 import { blockedBeings, isBeingBlocked, blockedResponseBody } from '@/lib/blockedBeings';
 
 export async function GET() {
@@ -39,7 +39,14 @@ export async function POST(req: Request) {
     if (isBeingBlocked(data?.name, blockedBeings())) {
       return NextResponse.json(blockedResponseBody(String(data.name)), { status: 403 });
     }
-    await saveFolder(data.name, data.settings);
+    // Disk is the base; the request only names what it changes. `settings`
+    // (a whole object, from a tab still running older code) is laid over the
+    // disk rather than replacing it. See lib/beingSettingsMerge.ts.
+    await writeBeingSettings(data.name, {
+      patch: data.patch,
+      settings: data.settings,
+      remove: data.remove,
+    });
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

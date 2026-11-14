@@ -261,7 +261,7 @@ export default function Sidebar({
     fetch('/api/folders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: activeFolder.name, settings: newSettings }),
+      body: JSON.stringify({ name: activeFolder.name, patch: { convoOrder: newOrder } }),
     }).then(() => fetchFolders()).catch(() => fetchFolders());
   };
 
@@ -354,11 +354,10 @@ export default function Sidebar({
     });
 
     const newOrder = folderConvos.map(c => c.id);
-    const newSettings = { ...activeFolder.settings, convoOrder: newOrder };
     await fetch('/api/folders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: activeFolder.name, settings: newSettings })
+      body: JSON.stringify({ name: activeFolder.name, patch: { convoOrder: newOrder } })
     });
     fetchFolders();
     setFolderMenuOpen(false);
@@ -703,7 +702,7 @@ export default function Sidebar({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: activeFolder.name,
-          settings: { ...activeFolder.settings, convoOrder: newOrder },
+          patch: { convoOrder: newOrder },
         }),
       });
 
@@ -1540,22 +1539,19 @@ export default function Sidebar({
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ folder: activeFolder.name, content: ttsDict }),
                     }).catch(() => {});
-                    // Drop the retired `maxRecommendedContext` on the way out.
-                    // `saveFolder` writes the settings object WHOLE (no deep
-                    // merge), so omitting the key here is what actually removes
-                    // it from beings/<name>/settings.json — and only when the
-                    // person pressed Save on this folder, never as a sweep
-                    // across other beings' data.
-                    const { maxRecommendedContext: _retiredContextCap, ...keptFolderSettings } =
-                      (activeFolder.settings || {}) as Record<string, any>;
-                    void _retiredContextCap;
+                    // Only the keys this dialog owns are sent; the server
+                    // lays them over what is on disk (lib/beingSettingsMerge.ts),
+                    // so a key this tab never fetched cannot be lost here.
+                    // The retired `maxRecommendedContext` is dropped by name —
+                    // and only when the person pressed Save on this folder,
+                    // never as a sweep across other beings' data.
                     await fetch('/api/folders', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
                         name: activeFolder.name,
-                        settings: {
-                          ...keptFolderSettings,
+                        remove: ['maxRecommendedContext'],
+                        patch: {
                           customCss,
                           aiVoice: folderVoice,
                           voicePitch: folderVoicePitch,

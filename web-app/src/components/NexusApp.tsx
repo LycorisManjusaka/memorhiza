@@ -489,7 +489,7 @@ export default function NexusApp({ deepLink = null }: { deepLink?: DeepLink | nu
     fetch('/api/folders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: activeFolder.name, settings: { ...activeFolder.settings, convoOrder: newOrder } }),
+      body: JSON.stringify({ name: activeFolder.name, patch: { convoOrder: newOrder } }),
     }).then(() => fetchFolders()).catch(() => {});
   };
 
@@ -747,7 +747,7 @@ export default function NexusApp({ deepLink = null }: { deepLink?: DeepLink | nu
         await fetch('/api/folders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: folder.name, settings: { ...folder.settings, convoOrder: newOrder } }),
+          body: JSON.stringify({ name: folder.name, patch: { convoOrder: newOrder } }),
         });
         fetchFolders();
       }
@@ -805,7 +805,7 @@ export default function NexusApp({ deepLink = null }: { deepLink?: DeepLink | nu
         fetch('/api/folders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: folder.name, settings: { ...folder.settings, convoOrder: newOrder } }),
+          body: JSON.stringify({ name: folder.name, patch: { convoOrder: newOrder } }),
         }).then(() => fetchFolders()).catch(() => {});
       }
       // Background reconcile
