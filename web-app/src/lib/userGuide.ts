@@ -428,8 +428,7 @@ Nexus を Nexus たらしめている部分であり、いちばん理解する�
 | 項目 | できること |
 |---|---|
 | カメラ | 姿のパネルと OBS Studio への配信 → [肖像とカメラ](#guide/portrait) |
-| 自分で始まるターンの理由 | ふだんは人が送信を押してターンが始まります。ここにチェックを入れると、それ以外の理由でも始まります。**既定では何もチェックされていません** |
-| 起床 | 決まった時刻（曜日つき）に存在を起こします。許せば、存在が自分で起きる時刻を予約することもできます。起こすのはその存在のいちばん新しいアクティブな会話です。時計を回すのは「このNEXUSで時計を回す」を押した NEXUS ひとつだけです |
+| 自分から起きる理由 | ふだんは人が送信を押してターンが始まります。ここで選ぶと、それ以外の理由でも始まります。**既定では何もチェックされていません**。理由は、決まった時刻（曜日つき）、新しい手紙が届いたとき、ストックされたメッセージ、そして（許せば）存在が自分で予約した時刻です。起こすのはその存在のいちばん新しいアクティブな会話です。時計を回すのは「このNEXUSで時計を回す」を押した NEXUS ひとつだけです |
 | 音声セッションの指示 | 音声セッション中に加わる短いお知らせ → [声](#guide/voice) |
 
 **会話設定 → モデル** タブ:
@@ -1146,8 +1145,7 @@ This is the simplest form of persistent memory outside the soul, and the most us
 | Entry | What it gives |
 |---|---|
 | Camera | The avatar panel and the OBS Studio push → [Portrait and camera](#guide/portrait) |
-| Reasons a turn may start by itself | Normally a turn starts because a person pressed send. Tick a reason to let it start without that. **Nothing is ticked by default** |
-| Wake | Wakes the being at set times (with weekdays). If allowed, the being can also book its own wake-up time. It wakes the being's newest active conversation. Only the one NEXUS where "Run the clock on this NEXUS" was pressed runs the clock |
+| Reasons a turn may start by itself | Normally a turn starts because a person pressed send. Choose a reason here to let it start without that. **Nothing is ticked by default**. The reasons are set times (with weekdays), a new letter arriving, stocked messages, and (if allowed) times the being books for itself. It wakes the being's newest active conversation. Only the one NEXUS where "Run the clock on this NEXUS" was pressed runs the clock |
 | Audio session notice | The short notice added during an audio session → [Voice](#guide/voice) |
 
 **Conversation Settings → Model**:

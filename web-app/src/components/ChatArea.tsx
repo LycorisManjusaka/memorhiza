@@ -8390,28 +8390,29 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                   <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
                     <Tx k="behavior.triggers.help" />
                   </p>
-                  <div className="space-y-2 rounded-xl border border-border p-3">
-                    {AUTO_TRIGGER_KEYS.map((k) => (
-                      <div key={k}>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={autoTriggers[k] === true}
-                            onChange={(e) => setAutoTriggers((prev) => setAutoTrigger(prev, k, e.target.checked))}
-                            className="rounded border-border text-indigo-500 focus:ring-indigo-500 bg-background"
-                          />
-                          <span className="text-sm text-foreground">{t(`behavior.trigger.${k}`)}</span>
-                        </label>
-                        <p className="text-xs text-muted-foreground mt-1 ml-6 leading-relaxed">
-                          {t(`behavior.trigger.${k}.help`)}
-                        </p>
-                      </div>
+                  {/* One heading for every reason (つよ, 2026-11-15): the
+                      wake schedule, mail and the stock trigger are the same
+                      concept. The stock checkbox is a per-conversation
+                      setting and sits on the mail line; the rest is the
+                      being's setting (settings.json), saved on 完了. The stock
+                      help moved to a tooltip to keep the row compact. */}
+                  <WakeSettingsSection
+                    folder={folderName}
+                    convoId={convoId}
+                    value={beingDraft.wake}
+                    onChange={beingDraft.setWake}
+                    mailRowExtra={AUTO_TRIGGER_KEYS.map((k) => (
+                      <label key={k} className="flex items-center gap-2 cursor-pointer text-sm" title={t(`behavior.trigger.${k}.help`)}>
+                        <input
+                          type="checkbox"
+                          checked={autoTriggers[k] === true}
+                          onChange={(e) => setAutoTriggers((prev) => setAutoTrigger(prev, k, e.target.checked))}
+                          className="accent-indigo-500"
+                        />
+                        <span className="text-foreground">{t(`behavior.trigger.${k}`)}</span>
+                      </label>
                     ))}
-                  </div>
-                  {/* Waking at set times is a reason to wake up, so it lives
-                      here — but it is the being's setting (settings.json),
-                      part of the same draft as the 存在 tab, saved on 完了. */}
-                  <WakeSettingsSection folder={folderName} convoId={convoId} value={beingDraft.wake} onChange={beingDraft.setWake} />
+                  />
                 </div>
                 {/* ── The anchor (錨). The checkbox is the only gate: OFF means
                     no button on any bubble and no report shown. Its vessel is

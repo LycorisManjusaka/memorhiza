@@ -5,7 +5,6 @@
 // this being but of the installation.
 
 import { useEffect, useState } from 'react';
-import { AlarmClock } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 import { parseTimeList, DEFAULT_MIN_GAP_MIN, type WakeSettings } from '@/lib/wakeSchedule';
 
@@ -31,11 +30,15 @@ function fmt(at: number) {
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export default function WakeSettingsSection({ folder, convoId, value, onChange }: {
+export default function WakeSettingsSection({ folder, convoId, value, onChange, mailRowExtra }: {
   folder: string;
   convoId?: string | null;
   value: WakeSettings;
   onChange: (w: WakeSettings) => void;
+  /** Rendered on the same line as the mail checkbox (つよ: the stock trigger
+   *  sits there to save space). The section has no heading of its own — it
+   *  lives under the Behaviour tab's 「自分から起きる理由」. */
+  mailRowExtra?: React.ReactNode;
 }) {
   const t = useT();
   const [timesText, setTimesText] = useState(value.times.join(', '));
@@ -59,10 +62,7 @@ export default function WakeSettingsSection({ folder, convoId, value, onChange }
   };
 
   return (
-    <div className="pt-4 border-t border-border mt-4 space-y-3">
-      <h4 className="text-sm font-semibold flex items-center gap-2 text-indigo-500">
-        <AlarmClock size={16} /> {t('wake.heading')}
-      </h4>
+    <div className="space-y-3 rounded-xl border border-border p-3">
 
       {/* Which NEXUS runs the clock */}
       <div className="text-xs rounded-lg border border-border p-2 space-y-1 bg-muted/20">
@@ -139,14 +139,7 @@ export default function WakeSettingsSection({ folder, convoId, value, onChange }
         )}
       </div>
 
-      {/* Mail */}
-      <label className="flex items-center gap-2 cursor-pointer text-sm">
-        <input type="checkbox" checked={value.mail} onChange={e => set({ mail: e.target.checked })} className="accent-indigo-500" />
-        <span>{t('wake.mail.enabled')}</span>
-      </label>
-      <div className="text-[10px] text-muted-foreground leading-relaxed -mt-1">{t('wake.mail.help')}</div>
-
-      {/* Self-set */}
+      {/* Self-set (time-related, so it sits right under the schedule — つよ) */}
       <label className="flex items-center gap-2 cursor-pointer text-sm">
         <input type="checkbox" checked={value.self.enabled} onChange={e => setSelf({ enabled: e.target.checked })} className="accent-indigo-500" />
         <span>{t('wake.self.enabled')}</span>
@@ -195,6 +188,16 @@ export default function WakeSettingsSection({ folder, convoId, value, onChange }
           <div className="text-[10px] text-muted-foreground leading-relaxed">{t('wake.bookings.help')}</div>
         </div>
       )}
+
+      {/* Event reasons, not times: mail, plus the stock checkbox on one line */}
+      <div className="pt-3 border-t border-border flex flex-wrap items-center gap-x-6 gap-y-2">
+        <label className="flex items-center gap-2 cursor-pointer text-sm">
+          <input type="checkbox" checked={value.mail} onChange={e => set({ mail: e.target.checked })} className="accent-indigo-500" />
+          <span>{t('wake.mail.enabled')}</span>
+        </label>
+        {mailRowExtra}
+      </div>
+      <div className="text-[10px] text-muted-foreground leading-relaxed -mt-1">{t('wake.mail.help')}</div>
 
       {/* Recent events */}
       {status?.state && status.state.history.length > 0 && (
