@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { PlusCircle, MessageSquare, Settings, Trash2, MoreVertical, Copy, Pencil, UserRoundPlus, Edit2, Palette, Upload, Settings2, Mic, History, ArrowDown, ArrowUp, Eye, EyeOff, HelpCircle, X, Mail, BarChart3, FlaskConical } from 'lucide-react';
+import { PlusCircle, MessageSquare, Settings, Trash2, MoreVertical, Copy, Pencil, UserRoundPlus, Edit2, Palette, Upload, History, ArrowDown, ArrowUp, Eye, EyeOff, HelpCircle, X, Mail, BarChart3, FlaskConical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import VoiceSelector from './VoiceSelector';
 import {
   parseMarkdown,
   diagnoseMarkdown,
@@ -20,10 +19,6 @@ import { nextConversationTitle } from '@/lib/convoNaming';
 import { onSummariesChanged } from '@/lib/summariesChanged';
 import {
   DEFAULT_MAX_CONVERSATION_LOG,
-  LOG_CAP_UNIT,
-  LOG_CAP_MIN_UNITS,
-  LOG_CAP_MAX_UNITS,
-  clampLogCapUnits,
   messageTextTokens,
 } from '@/lib/handoverRestore';
 import { useT, Tx } from '@/lib/i18n';
@@ -31,8 +26,6 @@ import { useDevice } from './DeviceProvider';
 import { confirmIfBusy, markBusyConfirmAnswered } from '@/lib/unloadGuard';
 import { withBuildTag } from '@/lib/buildVersion';
 import { beingVesselFamily } from '@/lib/beingVessel';
-import WakeSettingsSection from './WakeSettingsSection';
-import { parseWakeSettings, type WakeSettings } from '@/lib/wakeSchedule';
 
 interface SidebarProps {
   conversations: any[];
@@ -284,23 +277,10 @@ export default function Sidebar({
   
   const [folderMenuOpen, setFolderMenuOpen] = useState(false);
   
-  const [themeModalOpen, setThemeModalOpen] = useState(false);
-  const [customCss, setCustomCss] = useState('');
-  const [ttsDict, setTtsDict] = useState('');
-  const [ttsDictError, setTtsDictError] = useState<string | null>(null);
-  const [folderVoice, setFolderVoice] = useState({ engine: 0, char_idx: 0, style_idx: 0 });
-  const [folderVoicePitch, setFolderVoicePitch] = useState(0.0);
   // Per-folder context-management settings. Moved here from global Preferences
   // so each AI entity / persona can have its own token budget, auto-trim
   // policy, and identity-layer compression threshold (since longer-lived
   // characters often want to keep more log than throwaway conversations).
-  const [folderMaxConversationLog, setFolderMaxConversationLog] = useState<number>(DEFAULT_MAX_CONVERSATION_LOG);
-  const [folderAutoTrim, setFolderAutoTrim] = useState<boolean>(true);
-  const [folderWake, setFolderWake] = useState<WakeSettings>(() => parseWakeSettings(undefined));
-  const [folderMaxTokensPerLayer, setFolderMaxTokensPerLayer] = useState<number>(8000);
-  const [liveSessionVoice, setLiveSessionVoice] = useState('Aoede');
-  const [liveVoiceMode, setLiveVoiceMode] = useState<'preset' | 'custom'>('preset');
-  const [liveCustomVoice, setLiveCustomVoice] = useState('');
 
   const [backupsModalOpen, setBackupsModalOpen] = useState(false);
   const [backups, setBackups] = useState<any[]>([]);
@@ -943,51 +923,6 @@ export default function Sidebar({
                   >
                     <Edit2 size={14} /> {t('sidebar.menu.rename')}
                   </button>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCustomCss(activeFolder.settings?.customCss || '');
-                      // Load this entity's TTS pronunciation dictionary file.
-                      setTtsDict(''); setTtsDictError(null);
-                      fetch(`/api/tts-dict?folder=${encodeURIComponent(activeFolder.name)}`)
-                        .then(r => r.json()).then(d => setTtsDict(d.content || '')).catch(() => {});
-                      setFolderVoice(activeFolder.settings?.aiVoice || { engine: 0, char_idx: 0, style_idx: 0 });
-                      setFolderVoicePitch(activeFolder.settings?.voicePitch ?? 0.0);
-                      // Load context-management settings with the same
-                      // defaults the old global Preferences screen used —
-                      // folders that pre-date this move just see those
-                      // defaults until the user touches the inputs.
-                      //
-                      // `maxConversationLog` deliberately does NOT fall back to
-                      // the retired `maxRecommendedContext`. That key capped a
-                      // different quantity (system prompt + messages) against a
-                      // different reference (an assumed context window), so its
-                      // stored numbers were chosen for a question nobody is
-                      // asking here. Inheriting them would hand every being a
-                      // cap it was never given — quietly, and looking exactly
-                      // like a value someone picked.
-                      setFolderMaxConversationLog(activeFolder.settings?.maxConversationLog ?? DEFAULT_MAX_CONVERSATION_LOG);
-                      setFolderAutoTrim(activeFolder.settings?.autoTrimCopiedMessages !== false);
-                      setFolderWake(parseWakeSettings(activeFolder.settings?.wake));
-                      setFolderMaxTokensPerLayer(activeFolder.settings?.maxTokensPerLayer ?? 8000);
-                      // Live Session voice — known prebuilt names use preset mode; anything else is custom
-                      const lv = activeFolder.settings?.liveSessionVoice || 'Aoede';
-                      const knownPresets = [
-                        'Aoede','Kore','Leda','Zephyr','Achernar','Autonoe','Callirhoe','Despina','Erinome','Gacrux','Laomedeia','Pulcherrima','Sulafat','Vindemiatrix',
-                        'Puck','Charon','Fenrir','Orus','Achird','Algenib','Algieba','Alnilam','Enceladus','Iapetus','Rasalgethi','Sadachbia','Sadaltager','Schedar','Umbriel','Zubenelgenubi',
-                      ];
-                      if (knownPresets.includes(lv)) {
-                        setLiveVoiceMode('preset'); setLiveSessionVoice(lv); setLiveCustomVoice('');
-                      } else {
-                        setLiveVoiceMode('custom'); setLiveCustomVoice(lv); setLiveSessionVoice('Aoede');
-                      }
-                      setThemeModalOpen(true);
-                      setFolderMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Settings2 size={14} /> {t('sidebar.menu.folderSettings')}
-                  </button>
                   {/* "Auto-Import .md" used to be here. It called the SAME
                       function as "Import Markdown log(s)" below — its handler
                       was literally `handleAutoImport(e)` with one extra line —
@@ -1385,250 +1320,9 @@ export default function Sidebar({
           </div>
         </div>
       )}
-      {/* Folder Theme Modal */}
-      {themeModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="bg-card border border-border shadow-2xl rounded-xl p-6 max-w-lg w-full mx-4 flex flex-col max-h-[80vh]">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <Settings2 size={20} className="text-indigo-500" /> {t('folder.title')}
-            </h3>
-            
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-semibold text-foreground">{t('folder.css.label')}</label>
-                  <label className="cursor-pointer text-xs flex items-center gap-1 text-indigo-500 hover:text-indigo-400">
-                    <Upload size={14} /> {t('folder.css.load')}
-                    <input
-                      type="file"
-                      accept=".css"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = (event) => setCustomCss(event.target?.result as string);
-                        reader.readAsText(file);
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
-                </div>
-                <textarea
-                  value={customCss}
-                  onChange={(e) => setCustomCss(e.target.value)}
-                  placeholder={t('folder.css.placeholder')}
-                  className="w-full h-48 p-3 bg-background border border-border rounded-lg font-mono text-xs focus:ring-2 focus:ring-indigo-500/50 resize-none custom-scrollbar"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  <Tx k="folder.css.help" />
-                </p>
-              </div>
-              
-              <div className="pt-4 border-t border-border mt-4">
-                <h4 className="text-sm font-semibold flex items-center gap-2 text-indigo-500 mb-4 block">
-                  <Mic size={16} /> {t('folder.voice.heading')}
-                </h4>
-                <VoiceSelector
-                  value={folderVoice}
-                  onChange={setFolderVoice}
-                />
-                <div className="mt-3">
-                  <label className="text-xs font-medium text-muted-foreground block mb-1">
-                    {t('folder.voice.pitch')} ({folderVoicePitch >= 0 ? '+' : ''}{folderVoicePitch.toFixed(2)})
-                  </label>
-                  <input
-                    type="range"
-                    min="-0.5"
-                    max="0.5"
-                    step="0.01"
-                    value={folderVoicePitch}
-                    onChange={(e) => setFolderVoicePitch(parseFloat(e.target.value))}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
-                    <span>{t('folder.voice.lower')}</span>
-                    <span>{t('folder.voice.default')}</span>
-                    <span>{t('folder.voice.higher')}</span>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <label className="text-xs font-medium text-muted-foreground block mb-1">
-                    {t('folder.dict.label')}
-                  </label>
-                  <textarea
-                    value={ttsDict}
-                    onChange={(e) => { setTtsDict(e.target.value); if (ttsDictError) setTtsDictError(null); }}
-                    placeholder={t('folder.dict.placeholder')}
-                    className="w-full h-32 p-3 bg-background border border-border rounded-lg font-mono text-xs focus:ring-2 focus:ring-indigo-500/50 resize-none custom-scrollbar"
-                  />
-                  {ttsDictError
-                    ? <p className="text-[10px] text-red-500 mt-1">{ttsDictError}</p>
-                    : <p className="text-[10px] text-muted-foreground mt-1"><Tx k="folder.dict.help" /></p>}
-                </div>
-              </div>
-
-              {/* Context Management — moved here from global Preferences so
-                  each entity can have its own context budget, auto-trim
-                  policy, and identity-layer threshold. */}
-              <div className="pt-4 border-t border-border mt-4">
-                <h4 className="text-sm font-semibold flex items-center gap-2 text-indigo-500 mb-4 block">
-                  <Settings2 size={16} /> {t('folder.context.heading')}
-                </h4>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-baseline justify-between mb-1">
-                      <label className="text-xs font-medium text-muted-foreground">
-                        {t('folder.logcap.label')}
-                      </label>
-                      <span className="text-xs font-mono text-indigo-500">
-                        {(folderMaxConversationLog || 0).toLocaleString()} {t('folder.context.tokens')}
-                      </span>
-                    </div>
-                    {/* Edited in units of 10k tokens: 1 → 10k, 100 → 1M. A number
-                        field replaced the slider because the useful range now spans
-                        two orders of magnitude (the 1M window measured 2026-09-21),
-                        and dragging cannot land on a specific value inside it.
-                        `Math.round` here is DISPLAY only — a stored value that isn't
-                        a multiple of 10k keeps its exact bytes until this field is
-                        actually edited, so merely opening the panel never rewrites it. */}
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={LOG_CAP_MIN_UNITS}
-                        max={LOG_CAP_MAX_UNITS}
-                        step={1}
-                        value={Math.round((folderMaxConversationLog ?? DEFAULT_MAX_CONVERSATION_LOG) / LOG_CAP_UNIT)}
-                        onChange={(e) => setFolderMaxConversationLog(clampLogCapUnits(parseInt(e.target.value, 10)) * LOG_CAP_UNIT)}
-                        className="w-24 p-2 bg-background border border-border rounded-lg text-sm font-mono"
-                      />
-                      <span className="text-[10px] text-muted-foreground">{t('folder.logcap.units')}</span>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground mt-1">
-                      <Tx k="folder.logcap.help" />
-                    </div>
-                  </div>
-                  <label className="flex items-center gap-2 cursor-pointer text-sm">
-                    <input
-                      type="checkbox"
-                      checked={folderAutoTrim}
-                      onChange={(e) => setFolderAutoTrim(e.target.checked)}
-                      className="accent-indigo-500"
-                    />
-                    <span>{t('folder.context.autoTrim')}</span>
-                  </label>
-                  <div className="text-[10px] text-muted-foreground -mt-2 leading-relaxed">
-                    <Tx k="folder.context.autoTrim.help" />
-                  </div>
-                </div>
-              </div>
-
-              {activeFolder && (
-                <WakeSettingsSection folder={activeFolder.name} value={folderWake} onChange={setFolderWake} />
-              )}
-
-              <div className="pt-4 border-t border-border mt-4">
-                <h4 className="text-sm font-semibold flex items-center gap-2 text-indigo-500 mb-4 block">
-                  <Mic size={16} /> {t('folder.live.heading')}
-                </h4>
-                <select
-                  value={liveVoiceMode === 'custom' ? '__custom__' : liveSessionVoice}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === '__custom__') setLiveVoiceMode('custom');
-                    else { setLiveVoiceMode('preset'); setLiveSessionVoice(v); }
-                  }}
-                  className="w-full p-2 bg-background border border-border rounded-lg text-sm"
-                >
-                  <optgroup label={t('folder.live.feminine')}>
-                    {['Aoede','Kore','Leda','Zephyr','Achernar','Autonoe','Callirhoe','Despina','Erinome','Gacrux','Laomedeia','Pulcherrima','Sulafat','Vindemiatrix'].map(v => <option key={v} value={v}>{v}</option>)}
-                  </optgroup>
-                  <optgroup label={t('folder.live.masculine')}>
-                    {['Puck','Charon','Fenrir','Orus','Achird','Algenib','Algieba','Alnilam','Enceladus','Iapetus','Rasalgethi','Sadachbia','Sadaltager','Schedar','Umbriel','Zubenelgenubi'].map(v => <option key={v} value={v}>{v}</option>)}
-                  </optgroup>
-                  <option value="__custom__">{t('folder.live.custom')}</option>
-                </select>
-                {liveVoiceMode === 'custom' && (
-                  <input
-                    type="text"
-                    value={liveCustomVoice}
-                    onChange={(e) => setLiveCustomVoice(e.target.value)}
-                    placeholder={t('folder.live.customPlaceholder')}
-                    className="mt-2 w-full p-2 bg-background border border-border rounded-lg text-sm"
-                  />
-                )}
-                <div className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
-                  {t('folder.live.help')}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border shrink-0">
-              <button 
-                onClick={() => setThemeModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium hover:bg-muted text-foreground rounded-lg transition-colors"
-              >
-                {t('common.cancel')}
-              </button>
-              <button 
-                onClick={async () => {
-                  if (activeFolder) {
-                    // Validate + persist the per-entity TTS pronunciation dict
-                    // first. A malformed dict blocks the save (and keeps the
-                    // modal open) so it can't silently fail.
-                    const dictText = ttsDict.trim();
-                    if (dictText) {
-                      try {
-                        const o = JSON.parse(dictText);
-                        if (!o || typeof o !== 'object' || Array.isArray(o)) throw new Error();
-                      } catch {
-                        setTtsDictError(t('folder.dict.error'));
-                        return;
-                      }
-                    }
-                    setTtsDictError(null);
-                    await fetch('/api/tts-dict', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ folder: activeFolder.name, content: ttsDict }),
-                    }).catch(() => {});
-                    // Only the keys this dialog owns are sent; the server
-                    // lays them over what is on disk (lib/beingSettingsMerge.ts),
-                    // so a key this tab never fetched cannot be lost here.
-                    // The retired `maxRecommendedContext` is dropped by name —
-                    // and only when the person pressed Save on this folder,
-                    // never as a sweep across other beings' data.
-                    await fetch('/api/folders', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        name: activeFolder.name,
-                        remove: ['maxRecommendedContext'],
-                        patch: {
-                          customCss,
-                          aiVoice: folderVoice,
-                          voicePitch: folderVoicePitch,
-                          maxConversationLog: folderMaxConversationLog,
-                          autoTrimCopiedMessages: folderAutoTrim,
-                          wake: folderWake,
-                          maxTokensPerLayer: folderMaxTokensPerLayer,
-                          liveSessionVoice: liveVoiceMode === 'custom' ? liveCustomVoice.trim() : liveSessionVoice,
-                        }
-                      })
-                    });
-                    fetchFolders();
-                  }
-                  setThemeModalOpen(false);
-                }} 
-                className="px-6 py-2 text-sm font-medium bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors shadow-sm"
-              >
-                {t('folder.saveSettings')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* The being-settings dialog that stood here moved into the conversation
+          settings dialog (存在 tab; wake under 挙動) on 2026-11-15 — see
+          BeingSettingsFields.tsx. */}
 
       {/* Backups Modal */}
       {backupsModalOpen && (

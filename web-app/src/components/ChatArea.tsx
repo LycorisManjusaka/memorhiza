@@ -51,6 +51,8 @@ import { parseSnapshot, viewWindow, weekPace, type ClaudeUsageSnapshot, type Win
 import { buildSoulExport, soulExportFilename } from '@/lib/soulExport';
 import { defaultSummaryHintForLang } from '@/lib/summaryHint';
 import { useT, useLanguage, Tx, renderRich } from '@/lib/i18n';
+import BeingSettingsFields, { useBeingSettingsDraft } from './BeingSettingsFields';
+import WakeSettingsSection from './WakeSettingsSection';
 import { isNumberedIdentityTitle } from '@/lib/convoNaming';
 import { effectiveFullAccess, fullAccessForcedByShell, conversationToolsEnabled } from '@/lib/agentCapabilities';
 import {
@@ -757,7 +759,6 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // same TODAY. The id is kept on purpose: if that key is ever dropped, the id
   // comparison still resets correctly, where a boolean would silently carry one
   // conversation's dismissal into the next.
-  const [pastLogDismissedFor, setPastLogDismissedFor] = useState<string | null>(null);
   const [seedEnabled, setSeedEnabled] = useState(TURN_INPUT_DEFAULTS.seedEnabled);
   const [seedValue, setSeedValue] = useState(TURN_INPUT_DEFAULTS.seedValue);
   // ── Vessel handoff (change_model) — per-being ─────────────────────────────
@@ -879,7 +880,9 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // Settings-modal active tab. The modal now groups its many sections into
   // four tabs so the user doesn't have to scroll past unrelated controls to
   // find what they need.
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'identity' | 'senses' | 'behavior' | 'model'>('identity');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'being' | 'abilities' | 'senses' | 'behavior' | 'model'>('being');
+  // The being's own settings, drawn in the 存在 tab (and wake in 挙動).
+  const beingDraft = useBeingSettingsDraft(folderName);
 
   // ── Conversation-load progress ────────────────────────────────────────────
   // While /api/logs/[id] is being downloaded, show a small progress bar and
@@ -1100,6 +1103,13 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // (one unguarded save) and then needs the effect to actually run again.
   const [saveNonce, setSaveNonce] = useState(0);
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
+  // Read the being's settings into the draft each time the dialog opens,
+  // so it never saves values from a stale earlier opening.
+  useEffect(() => {
+    if (!isPromptModalOpen) return;
+    beingDraft.load(folders?.find((f: any) => f.name === folderName)?.settings);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPromptModalOpen, folderName]);
   const [systemTokens, setSystemTokens] = useState(0);
   // Token count for the tool instruction when tool-use is enabled, otherwise 0.
   const [attachmentInstructionTokens, setAttachmentInstructionTokens] = useState(0);
@@ -6351,47 +6361,6 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         </div>
       )}
 
-      {/* Past-generation band. Shown whenever a NEWER `<being>_<n>` exists in
-          this folder, i.e. the open conversation is not the head of the chain.
-          Client-side only: it is never written to the log, never replayed to
-          the model, and never counted as tokens — the entity cannot see it.
-
-          Dismissible per conversation, NOT persistently. It was originally
-          permanent, because the failure it guards against is someone settling
-          into an old generation without noticing — but on a narrow screen a
-          permanent three-line band costs a quarter of the conversation, which
-          is its own way of making the log unusable. The compromise keeps the
-          guard: closing it hides the band for THIS conversation only, and
-          re-opening the log (or loading another one) brings it back, so it can
-          never be silenced for good. It does NOT block sending: reading an old
-          log and answering something in it is legitimate, it just isn't where
-          the chain continues. The band reports a fact and names the
-          destination; the decision stays with the reader. */}
-      {/* Only where a past log CAN still send (a test bed). For an ordinary
-          being the composer is replaced by the past-conversation note at the
-          bottom, and this band's "you can send, but…" would be false
-          (つよ, 2026-11-15). */}
-      {newerLogTitle && !pastConversation && pastLogDismissedFor !== convoId && (
-        <div className="shrink-0 px-6 py-2 border-b border-amber-500/40 bg-amber-500/10 flex items-start gap-3">
-          {/* Deliberately NOT ⚠. This band stands while an old log is open,
-              and a standing ⚠ teaches the reader to ignore ⚠ — which the house
-              uses for things that actually went wrong. ⏳ connotes time rather
-              than failure, is distinct from the restore band's ↺, and renders
-              in every font here. */}
-          <span className="text-sm leading-5 shrink-0 text-amber-500">⏳</span>
-          <span className="text-xs leading-5 flex-1 text-amber-700 dark:text-amber-300">
-            <span className="font-semibold">{t('chat.pastlog.prefix')}</span>
-            {t('chat.pastlog.text').replace(/\{latest\}/g, newerLogTitle)}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPastLogDismissedFor(convoId)}
-            className="shrink-0 -mr-1 px-1.5 leading-5 text-amber-600/70 hover:text-amber-600 dark:text-amber-400/70 dark:hover:text-amber-300 text-sm"
-            title={t('chat.pastlog.dismiss')}
-            aria-label={t('chat.pastlog.dismiss')}
-          >✕</button>
-        </div>
-      )}
 
       {/* NO banner for an active handoff, by request (2026-10-09). A switch is
           already legible where it matters: each assistant message carries the
@@ -7229,8 +7198,9 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                            auto model selection. */}
             <div className="flex gap-1 mb-4 border-b border-border shrink-0">
               {([
-                { id: 'identity' },
-                { id: 'senses'   },
+                { id: 'being'     },
+                { id: 'abilities' },
+                { id: 'senses'    },
                 { id: 'behavior' },
                 { id: 'model'    },
               ] as const).map(tab => (
@@ -7249,7 +7219,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6">
-              {activeSettingsTab === 'identity' && (<>
+              {activeSettingsTab === 'being' && (<>
               <div>
                 <label className="text-sm font-semibold text-foreground mb-1 block">{t('sysmodal.systemPrompt')}</label>
                 <p className="text-xs text-muted-foreground mb-2">
@@ -7404,6 +7374,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                 )}
               </div>
 
+              <BeingSettingsFields draft={beingDraft} />
+              </>)}
+
+              {activeSettingsTab === 'abilities' && (<>
               {/* ── Conversation-reading TOOLS (per-folder) ───────────────────
                   Split out of the summaries checkbox above on 2026-10-01. One
                   box used to grant the memory and the tools together; they are
@@ -8408,6 +8382,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                       </div>
                     ))}
                   </div>
+                  {/* Waking at set times is a reason to wake up, so it lives
+                      here — but it is the being's setting (settings.json),
+                      part of the same draft as the 存在 tab, saved on 完了. */}
+                  <WakeSettingsSection folder={folderName} value={beingDraft.wake} onChange={beingDraft.setWake} />
                 </div>
                 {/* ── The anchor (錨). The checkbox is the only gate: OFF means
                     no button on any bubble and no report shown. Its vessel is
@@ -8959,7 +8937,14 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                 {t('sysmodal.saveDefaults')}
               </button>
               <button
-                onClick={() => setIsPromptModalOpen(false)}
+                onClick={async () => {
+                  // The being's own settings (存在 tab + wake in 挙動) are a
+                  // draft saved here; a malformed dict keeps the dialog open.
+                  const ok = await beingDraft.save();
+                  if (!ok) { setActiveSettingsTab('being'); return; }
+                  if (typeof fetchFolders === 'function') fetchFolders();
+                  setIsPromptModalOpen(false);
+                }}
                 className="px-6 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
               >
                 {t('sysmodal.done')}

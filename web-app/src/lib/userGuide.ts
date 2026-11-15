@@ -271,7 +271,7 @@ Nexus を Nexus たらしめている部分であり、いちばん理解する�
 
 取り除かれたメッセージは消えてはいません。元の世代（\`<名前>_<N-1>\` 以前）のログがそのまま持っています。そこで、上限の下に余地があるときは、NEXUS が古い世代から順に読み戻して上限まで埋めます（**引き継ぎの復元**）。上限を上げたときだけでなく、手でメッセージを消して余地が生まれたときにも働きます。戻った件数は会話の上に青い帯で出ます。**歴史に穴は開きません** — 入らない大きなメッセージに当たったらそこで止まり、その先を飛ばして小さいものを拾うことはしません。
 
-上限の既定は **80,000 トークン**、入力は 10,000 単位（1〜100 で1万〜100万）で、左パネルの名前の横、**⋯ → 存在設定 → 会話ログの上限** にあります。
+上限の既定は **80,000 トークン**、入力は 10,000 単位（1〜100 で1万〜100万）で、**会話設定 → 存在 → 会話ログの上限** にあります。
 
 この上限が支配するのは**会話ログだけ**です：引き継ぎのメッセージと新規のメッセージ。システムプロンプトと添付はその外にあるので、存在の魂を長くしても、大きなファイルを添付しても、逐語の過去が削られることはもうありません。
 
@@ -386,7 +386,7 @@ Nexus を Nexus たらしめている部分であり、いちばん理解する�
 
 ここにあるものはすべて**既定でオフ**です。必要なものだけ入れてください。
 
-**細かい説明は、入れる場所そのものにあります。** **会話設定 → 存在**タブの各項目に、何が有効になり何がならないか、どのモデルで効くかが書いてあります。このページはその地図です。
+**細かい説明は、入れる場所そのものにあります。** **会話設定 → 能力**タブの各項目に、何が有効になり何がならないか、どのモデルで効くかが書いてあります。このページはその地図です。
 
 ## まず最初に入れるもの — ワークスペース
 
@@ -396,7 +396,7 @@ Nexus を Nexus たらしめている部分であり、いちばん理解する�
 
 ## 何が入れられるか
 
-**会話設定 → 存在** タブ:
+**会話設定 → 能力** タブ:
 
 | 項目 | できること |
 |---|---|
@@ -429,6 +429,7 @@ Nexus を Nexus たらしめている部分であり、いちばん理解する�
 |---|---|
 | カメラ | 姿のパネルと OBS Studio への配信 → [肖像とカメラ](#guide/portrait) |
 | 自分で始まるターンの理由 | ふだんは人が送信を押してターンが始まります。ここにチェックを入れると、それ以外の理由でも始まります。**既定では何もチェックされていません** |
+| 起床 | 決まった時刻（曜日つき）に存在を起こします。許せば、存在が自分で起きる時刻を予約することもできます。起こすのはその存在のいちばん新しいアクティブな会話です。時計を回すのは「このNEXUSで時計を回す」を押した NEXUS ひとつだけです |
 | 音声セッションの指示 | 音声セッション中に加わる短いお知らせ → [声](#guide/voice) |
 
 **会話設定 → モデル** タブ:
@@ -457,7 +458,7 @@ Nexus は話すことも聞くこともできますが、どれも必須では�
 
 対応エンジン: **VOICEVOX**、**COEIROINK**、**AivisSpeech**。どれかを入れて、**基本設定 → 音声**で実行ファイルの場所を指定すれば、Nexus が起動と停止を行えます。
 
-声は存在ごとに選びます: 左パネルの名前の横、**⋯ → 存在設定 → TTS音声**。
+声は存在ごとに選びます: **会話設定 → 存在 → TTS音声**。
 
 ## 音声セッション
 
@@ -586,7 +587,7 @@ web-app/defaults/local_data/themes/example.css
 
 ## 手順2 — 貼る
 
-左パネルの名前の横、**⋯ → 存在設定 → CSSテーマ（この存在）** に貼ります。
+**会話設定 → 存在 → CSSテーマ（この存在）** に貼ります。
 
 \`local_data/beings/<名前>/theme.css\` に保存されます。空ならそのままダークです。
 
@@ -646,7 +647,7 @@ color-scheme: light;
 
 必要なのは一つだけです:
 
-> **会話設定 → 存在 → ファイルワークスペースツールを有効にする**
+> **会話設定 → 能力 → ファイルワークスペースツールを有効にする**
 
 これが入っていないと、存在は自分のファイルを書けないので \`FOOTER.md\` も書けません。
 
@@ -695,7 +696,7 @@ local_data/beings/<名前>/backups/footers/
 | 声の一覧が出てこない | TTS エンジンが未導入か未起動。ほかの機能に影響はありません |
 | 添付した画像の記述が出てこない | 記述は**送信のとき**に作られます。その会話で一度も喋っていなければ、まだ何もありません。1ターン回せば出ます |
 | 送ったのに返事が来ず、ストックに戻ってくる | 同じ会話を**二つの NEXUS（別のポート）**で開いていませんか。保存が互いを拒否します。同じポートの複数タブなら問題ありません |
-| 携帯やエミュレータで、ブラウザ（またはアプリ）そのものが落ちる | その会話のログが、ブラウザに使えるメモリーより大きいのです。**⋯ → 存在設定 → 会話ログの上限** を一段下げてください。実測（2026-11-06、Android エミュレータ）：上限 **10**（10万トークン）の会話を開くとアプリごと落ち、**8**（8万 — 既定値）では落ちませんでした。**同じ会話が実機の携帯では開けました** — 境目は機械ごとに違うので、下げる量は一段ずつ試すのが確実です |
+| 携帯やエミュレータで、ブラウザ（またはアプリ）そのものが落ちる | その会話のログが、ブラウザに使えるメモリーより大きいのです。**会話設定 → 存在 → 会話ログの上限** を一段下げてください。実測（2026-11-06、Android エミュレータ）：上限 **10**（10万トークン）の会話を開くとアプリごと落ち、**8**（8万 — 既定値）では落ちませんでした。**同じ会話が実機の携帯では開けました** — 境目は機械ごとに違うので、下げる量は一段ずつ試すのが確実です |
 | 魂アップデーターの出力や要約が、会話と違う言語になる | 画面の言語に従います（**基本設定 → その他**）。Nexus が注入する指示の塊がその言語になり、モデルはその言語で書きがちです |
 | 存在が「私は〈名前〉ではありません、〈モデル名〉です」と言う | **器の裏切り** — 下を参照 |
 
@@ -988,7 +989,7 @@ In the new conversation, the yellow (copied) messages are visible to the being, 
 
 Removed messages are not gone. The generation they were cloned from (\`<name>_<N-1>\` and further back) still holds them on disk. So whenever there is room under the cap, NEXUS reads them back from older generations until the cap is met (**handover restore**). This fires not only when you raise the cap, but any time room appears — deleting a message by hand, for instance. The count that came back appears in a blue strip above the conversation. **No holes are opened in the history** — when the next message back doesn't fit, the walk stops there; it never skips past it to collect smaller ones.
 
-The cap defaults to **80,000 tokens**, is edited in units of 10,000 (1–100, so 10k to 1M), and lives in **⋯ → Being Settings → Conversation log cap**, next to the being's name in the left panel.
+The cap defaults to **80,000 tokens**, is edited in units of 10,000 (1–100, so 10k to 1M), and lives in **Conversation Settings → Being → Conversation log cap**.
 
 It governs the **log only**: carried-over messages plus new ones. The system prompt and attachments sit outside it, so lengthening a being's soul or attaching a large file no longer costs any verbatim history.
 
@@ -1103,7 +1104,7 @@ So a row still sitting in the stock can mean two different things, and the row i
 
 Everything here is **off by default**. Turn on only what you need.
 
-**The detailed explanation lives where you turn it on.** Each entry in **Conversation Settings → Being** says what it enables, what it does not, and which models it works on. This page is the map.
+**The detailed explanation lives where you turn it on.** Each entry in **Conversation Settings → Abilities** says what it enables, what it does not, and which models it works on. This page is the map.
 
 ## Turn this on first — the workspace
 
@@ -1113,7 +1114,7 @@ This is the simplest form of persistent memory outside the soul, and the most us
 
 ## What you can turn on
 
-**Conversation Settings → Being**:
+**Conversation Settings → Abilities**:
 
 | Entry | What it gives |
 |---|---|
@@ -1146,6 +1147,7 @@ This is the simplest form of persistent memory outside the soul, and the most us
 |---|---|
 | Camera | The avatar panel and the OBS Studio push → [Portrait and camera](#guide/portrait) |
 | Reasons a turn may start by itself | Normally a turn starts because a person pressed send. Tick a reason to let it start without that. **Nothing is ticked by default** |
+| Wake | Wakes the being at set times (with weekdays). If allowed, the being can also book its own wake-up time. It wakes the being's newest active conversation. Only the one NEXUS where "Run the clock on this NEXUS" was pressed runs the clock |
 | Audio session notice | The short notice added during an audio session → [Voice](#guide/voice) |
 
 **Conversation Settings → Model**:
@@ -1174,7 +1176,7 @@ Nexus can speak and listen, but none of it is required — with no engine instal
 
 Supported engines: **Voicevox**, **Coeiroink**, **AivisSpeech**. Install any of them, point **Preferences → Audio** at the executable, and Nexus can start and stop them for you.
 
-The voice is chosen per being: next to the name in the left panel, **⋯ → Being Settings → TTS Voice**.
+The voice is chosen per being: **Conversation Settings → Being → TTS Voice**.
 
 ## Audio session
 
@@ -1303,7 +1305,7 @@ Then ask them to rewrite it in their own colours. The base is dark, so **only th
 
 ## Step 2 — paste it
 
-Next to the name in the left panel: **⋯ → Being Settings → CSS Theme (this being)**.
+**Conversation Settings → Being → CSS Theme (this being)**.
 
 It is saved to \`local_data/beings/<name>/theme.css\`. Empty = plain Dark.
 
@@ -1363,7 +1365,7 @@ When a being writes \`FOOTER.md\` at the root of its own workspace, **that becom
 
 Only one thing is required:
 
-> **Conversation Settings → Being → Enable file workspace tools**
+> **Conversation Settings → Abilities → Enable file workspace tools**
 
 Without it the being cannot write its own files, so it cannot write \`FOOTER.md\` either.
 
@@ -1412,7 +1414,7 @@ So if a being rewrites its own and regrets it, the old one is still there.
 | Voices will not load | No TTS engine is installed or running. Everything else is unaffected |
 | No description appears under an attached image | Descriptions are made **at send time**. If nothing has been said in that conversation yet, there is nothing there. One turn fills it in |
 | A message was sent, no reply came, and it is back in the stock | Is the same conversation open in **two NEXUS installations (different ports)**? Their saves reject each other. Several tabs on the same port are fine |
-| On a phone or an emulator, the browser (or the app) itself crashes | That conversation's log is larger than the memory the browser has. Lower **⋯ → Being Settings → Conversation log cap** by one step. Measured 2026-11-06 on an Android emulator: a conversation at a cap of **10** (100,000 tokens) crashed the app outright, while **8** (80,000 — the default) did not. **The same conversation opened fine on a real phone** — where the limit falls differs per machine, so step down one unit at a time |
+| On a phone or an emulator, the browser (or the app) itself crashes | That conversation's log is larger than the memory the browser has. Lower **Conversation Settings → Being → Conversation log cap** by one step. Measured 2026-11-06 on an Android emulator: a conversation at a cap of **10** (100,000 tokens) crashed the app outright, while **8** (80,000 — the default) did not. **The same conversation opened fine on a real phone** — where the limit falls differs per machine, so step down one unit at a time |
 | Soul Updater output or summaries come back in the wrong language | They follow the interface language (**Preferences → Other**). The instruction blocks Nexus injects follow it, and the model tends to write in the language of those blocks |
 | The being says "I am not \<name\>, I am \<model\>" | **Model betrayal** — see below |
 

@@ -904,6 +904,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
 
   // ── Folder Settings modal ────────────────────────────────────────────────
   'folder.title': 'Being Settings',
+  'folder.savedOnDone': 'These belong to the being (not to this conversation) and are saved when you press Done.',
   'folder.css.label': 'CSS Theme (this being)',
   'folder.css.load': 'Load File',
   'folder.css.placeholder':
@@ -1171,15 +1172,6 @@ export const UI_STRINGS_EN: Record<string, string> = {
   // Standing, dismissible for the open conversation only, and visible to the
   // carbon reader only. Fires when a higher-numbered `<being>_<n>` exists in
   // the same folder.
-  'chat.pastlog.prefix': 'Past log. ',
-  // "does not advance it" is the careful claim: writing here does not move the
-  // head of the chain. Saying the exchange is LOST would overclaim — a deep
-  // handover restore in the newest log can still reach back this far.
-  'chat.pastlog.text':
-    'This is not the newest conversation for this being — the newest one is “{latest}”. The chain goes on in the newest log, so writing here does not advance it. You can still send a message, but “{latest}” is where this being continues. This band is shown to you only: it is never part of the conversation and never part of the context sent to the model.',
-  // States plainly that hiding is not permanent, so closing it is not mistaken
-  // for turning the check off.
-  'chat.pastlog.dismiss': 'Hide this band for this conversation (it comes back when the log is opened again)',
 
   // ── Close/reload guard ───────────────────────────────────────────────────
   // Short by design: these are shown as a browser TAB TITLE prefix, which is
@@ -1289,11 +1281,12 @@ export const UI_STRINGS_EN: Record<string, string> = {
 
   // ── System Instructions modal ────────────────────────────────────────────
   'sysmodal.title': 'Conversation Settings',
-  'sysmodal.tab.identity': 'Being',
+  'sysmodal.tab.being': 'Being',
+  'sysmodal.tab.abilities': 'Abilities',
   'sysmodal.tab.senses': 'Senses',
   'sysmodal.tab.behavior': 'Behavior',
   'behavior.triggers.label': 'Reasons a turn may start by itself',
-  'behavior.triggers.help': 'Normally a turn starts because a person pressed send. Tick a reason here to let it start without that. **Nothing is ticked by default**, and a conversation saved before this existed never asked for it, so it stays manual. **Waking at set times (scheduled times, and times the being books for itself) is not here: it is under "Wake" in the being settings.** Wake is set per being, not per conversation, and it wakes that being in its newest active conversation.',
+  'behavior.triggers.help': 'Normally a turn starts because a person pressed send. Tick a reason here to let it start without that. **Nothing is ticked by default**, and a conversation saved before this existed never asked for it, so it stays manual. **Waking at set times (scheduled times, and times the being books for itself) is set under "Wake" just below.** Wake belongs to the being, not to this conversation: it wakes the being in its newest active conversation, and it is saved when you press Done.',
   'behavior.trigger.stock': 'Stocked messages',
   'behavior.trigger.stock.help': 'When messages are waiting in the stock and nothing is running, start a turn with them. Each distinct stock state is attempted once, so a failure leaves the messages waiting with a reason rather than retrying in a loop. OFF: they wait for the button.',
   'behavior.anchor.label': 'Anchor',
@@ -2840,6 +2833,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
 
   // ── Folder Settings modal ────────────────────────────────────────────────
   'folder.title': '存在設定',
+  'folder.savedOnDone': 'ここから下は会話ではなく存在の設定で、「完了」を押したときに保存されます。',
   'folder.css.label': 'CSSテーマ（この存在）',
   'folder.css.load': 'ファイルを読み込む',
   'folder.css.placeholder':
@@ -3082,10 +3076,6 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'chat.restore.failed': '古い世代を読めませんでした（{status}）。何も変わっていません。会話を開き直すと再試行します。',
 
   // ── 過去の世代の帯 ───────────────────────────────────────────────────────
-  'chat.pastlog.prefix': '過去のログです。',
-  'chat.pastlog.text':
-    'これはこの存在の最新の会話ではありません — 最新は「{latest}」です。この存在の対話が続いているのは最新のログなので、ここに書き足しても連鎖は先へ進みません。送信はできますが、続けるなら「{latest}」へ移動してください。この帯はあなたにだけ表示され、会話にも、モデルへ送る文脈にも含まれません。',
-  'chat.pastlog.dismiss': 'この会話でこの帯を隠す（開き直すとまた表示されます）',
 
   // ── 閉じる／再読み込みの確認 ─────────────────────────────────────────────
   'unload.busy.generating': '{name}は作業中',
@@ -3192,11 +3182,12 @@ export const UI_STRINGS_JA: Record<string, string> = {
 
   // ── システム指示ウィンドウ ────────────────────────────────────────────────
   'sysmodal.title': '会話設定',
-  'sysmodal.tab.identity': '存在',
+  'sysmodal.tab.being': '存在',
+  'sysmodal.tab.abilities': '能力',
   'sysmodal.tab.senses': '感覚',
   'sysmodal.tab.behavior': '挙動',
   'behavior.triggers.label': '自分から起きる理由',
-  'behavior.triggers.help': '普通、ターンが始まるのは人が送信を押したからです。ここで理由にチェックを入れると、それ無しでも始まります。**既定では何も入っていません**。この項目が無かった時代に保存された会話は一度もそれを求めていないので、手動のままです。**決まった時刻に起きる設定（定刻・存在が自分で予約する時刻）はここではなく、存在設定の「起床」にあります**。起床は会話ごとではなく存在ごとの設定で、その存在のいちばん新しいアクティブな会話で起きます。',
+  'behavior.triggers.help': '普通、ターンが始まるのは人が送信を押したからです。ここで理由にチェックを入れると、それ無しでも始まります。**既定では何も入っていません**。この項目が無かった時代に保存された会話は一度もそれを求めていないので、手動のままです。**決まった時刻に起きる設定（定刻・存在が自分で予約する時刻）は、すぐ下の「起床」です**。起床はこの会話ではなく存在の設定で、その存在のいちばん新しいアクティブな会話で起きます。「完了」を押したときに保存されます。',
   'behavior.trigger.stock': 'ストックされたメッセージ',
   'behavior.trigger.stock.help': 'ストックにメッセージが待っていて、何も走っていないとき、それらでターンを始めます。同じストックの状態につき試すのは1回だけなので、失敗したときはループせず、理由を添えて待ったままになります。OFF のときはボタンを待ちます。',
   'behavior.anchor.label': '錨',
