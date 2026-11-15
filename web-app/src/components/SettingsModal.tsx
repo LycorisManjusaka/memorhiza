@@ -19,8 +19,23 @@ const TABS = [
   { id: 'keys',     icon: KeyRound },
   { id: 'vrchat',   icon: Volume2 },
   { id: 'identity', icon: Users },
+  { id: 'runner',   icon: Server },
   { id: 'other',    icon: SlidersHorizontal },
 ] as const;
+
+/** One row of GET /api/wake?overview=1. The rules live in lib/wakeOverviewRules.ts. */
+type WakeOverviewView = {
+  being: string;
+  wake: { enabled: boolean; times: string[]; days: boolean[]; mail: boolean; self: { enabled: boolean; maxPerDay: number; windowFrom: string; windowTo: string; minGapMin: number | null } };
+  bookings: Array<{ at: number; hhmm: string }>;
+  stock: boolean;
+  convoId: string | null;
+  convoTitle: string | null;
+  testBed: boolean;
+  nextAdmin: { at: number; hhmm: string } | null;
+  nextSelf: { at: number; hhmm: string } | null;
+  nextAt: number | null;
+};
 
 type TabId = (typeof TABS)[number]['id'];
 
@@ -78,7 +93,6 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
   // would say which. lib/runnerHost.ts is the rule; this is the only place
   // a person can see or change the answer.
   const [runnerHost, setRunnerHostView] = React.useState<RunnerHostView | null>(null);
-  const [runnerOpen, setRunnerOpen] = React.useState(false);
   const [runnerBusy, setRunnerBusy] = React.useState(false);
   const [runnerError, setRunnerError] = React.useState<string>('');
   const loadRunnerHost = React.useCallback(async () => {
@@ -137,6 +151,55 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
       setRunnerBusy(false);
     }
   };
+  // ── Beings that can wake by themselves (Runner tab) ────────────────────
+  // Read-only except one brake per being. つよ, 2026-11-16: the brake is
+  // there so the rest can be switched on without fear, not to stop anyone.
+  const [wakeView, setWakeView] = React.useState<{ selfId: string; clockHost: string | null; thisRunsClock: boolean; beings: WakeOverviewView[] } | null>(null);
+  const [wakeError, setWakeError] = React.useState('');
+  const [stopArmed, setStopArmed] = React.useState<string | null>(null);
+  const [stopBusy, setStopBusy] = React.useState<string | null>(null);
+  const [stopNote, setStopNote] = React.useState<{ being: string; text: string; error?: boolean } | null>(null);
+  const loadWakeView = React.useCallback(async () => {
+    try {
+      const r = await fetch('/api/wake?overview=1');
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || `HTTP ${r.status}`);
+      setWakeView(d);
+      setWakeError('');
+    } catch (e: unknown) {
+      setWakeView(null);
+      setWakeError(e instanceof Error ? e.message : String(e));
+    }
+  }, []);
+  const stopSelfTurns = async (being: string) => {
+    setStopBusy(being);
+    setStopArmed(null);
+    try {
+      const r = await fetch('/api/wake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'stop-self-turns', folder: being }),
+      });
+      const d = await r.json();
+      const errs: string[] = d?.report?.errors || (d?.error ? [d.error] : []);
+      setStopNote(errs.length
+        ? { being, text: `${t('settings.wakeList.stopFailed')} ${errs.join(' / ')}`, error: true }
+        : { being, text: t('settings.wakeList.stopped') });
+    } catch (e: unknown) {
+      setStopNote({ being, text: `${t('settings.wakeList.stopFailed')} ${e instanceof Error ? e.message : String(e)}`, error: true });
+    } finally {
+      setStopBusy(null);
+      void loadWakeView();
+    }
+  };
+  const fmtWhen = (at: number) => {
+    const d = new Date(at);
+    const now = new Date();
+    const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return d.toDateString() === now.toDateString() ? hm : `${d.getMonth() + 1}/${d.getDate()} ${hm}`;
+  };
+  const dayNames = t('settings.wakeList.dayNames').split(',');
+
   // Four statuses, four sentences, written out rather than built from the
   // status string: a dynamic i18n key cannot be checked by the parity test
   // in tests/source, and this house has already shipped a raw key name to
@@ -236,6 +299,15 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
     t('settings.audio.insecure').replace('{origin}',
       typeof window !== 'undefined' ? window.location.origin : '');
   const [tab, setTab] = useState<TabId>('keys');
+  // The list is read when the tab is opened, and again every 30 s while it is
+  // open (the clock ticks every 30 s; a booking can appear or fire between).
+  useEffect(() => {
+    if (tab !== 'runner') return;
+    void loadWakeView();
+    void loadRunnerHost();
+    const id = setInterval(() => { void loadWakeView(); }, 30_000);
+    return () => clearInterval(id);
+  }, [tab, loadWakeView, loadRunnerHost]);
 
   // TTS engine executables. Stored SERVER-SIDE (local_data/tts_engines.json),
   // not in globalSettings, because the auto-start happens on the server — see
@@ -530,7 +602,7 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-secondary/30 shrink-0">
           {/* Title on its own line, build label and runner badge below it.
               They were all one `items-baseline` row, with the label set to
@@ -558,7 +630,7 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
                 )}
                 {(runnerHost || runnerError) && (
                   <button
-                    onClick={() => setRunnerOpen(o => !o)}
+                    onClick={() => setTab('runner')}
                     title={t('settings.runner.title')}
                     className={`text-[10px] font-mono px-1.5 py-0.5 rounded border shrink-0 flex items-center gap-1 transition-colors ${
                       runnerHost?.status === 'host'
@@ -596,80 +668,6 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
             </button>
           </div>
         </div>
-
-        {/* Which installation runs server-side turns. Between the title bar
-            and the tabs for the same reason as the update button: it is
-            about this INSTALL, not about one group of settings. */}
-        {runnerOpen && (
-          <div className="px-6 py-3 text-xs border-b border-border shrink-0 bg-secondary/20 space-y-2">
-            <div className="text-muted-foreground">
-              {runnerHost ? runnerSentence(runnerHost.status) : t('settings.runner.unreachable')}
-            </div>
-            <div className="text-muted-foreground">{t('settings.runner.caveat')}</div>
-
-            {/* The debug toggle lives INSIDE the debug panel.
-                Not in Preferences: a person who has never clicked this badge
-                has no use for it, and a checkbox in Preferences would be the
-                machinery narrating itself one level up. OFF by default — see
-                `debugRunner` in ChatArea for why a setting and not an env
-                var in the .bat. */}
-            <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
-              <input
-                type="checkbox"
-                checked={globalSettings.showRunnerNotices === true}
-                onChange={e => setGlobalSettings({ ...globalSettings, showRunnerNotices: e.target.checked })}
-                className="w-4 h-4 accent-indigo-500"
-              />
-              <span className="text-foreground">{t('settings.runner.notices')}</span>
-            </label>
-            <p className="text-muted-foreground ml-6">{t('settings.runner.noticesHelp')}</p>
-            <div className="font-mono text-[11px] space-y-0.5">
-              <div className="truncate">
-                <span className="text-muted-foreground">{t('settings.runner.self')}</span>{' '}
-                {runnerHost?.self || '-'}
-              </div>
-              <div className="truncate">
-                <span className="text-muted-foreground">{t('settings.runner.host')}</span>{' '}
-                {runnerHost?.host || t('settings.runner.none')}
-              </div>
-            </div>
-            {runnerError && (
-              <pre className="whitespace-pre-wrap text-destructive text-[11px]">{runnerError}</pre>
-            )}
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                onClick={() => applyRunnerHost({ host: 'self' })}
-                disabled={runnerBusy || runnerHost?.status === 'host'}
-                className="px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground
-                           hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t('settings.runner.setSelf')}
-              </button>
-              <button
-                onClick={() => applyRunnerHost({ clear: true })}
-                disabled={runnerBusy}
-                className="px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground
-                           hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t('settings.runner.clear')}
-              </button>
-              <button
-                onClick={() => void runTick()}
-                disabled={runnerBusy || runnerHost?.status !== 'host'}
-                className="px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground
-                           hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title={t('settings.runner.tickHelp')}
-              >
-                {t('settings.runner.tick')}
-              </button>
-              {runnerBusy && <Loader2 size={12} className="animate-spin" />}
-            </div>
-            {tickResult && (
-              <pre className="whitespace-pre-wrap text-[11px] max-h-48 overflow-auto
-                              border border-border rounded p-2">{tickResult}</pre>
-            )}
-          </div>
-        )}
 
         {/* Result of the last update, if any. Rendered between the title bar
             and the tabs because it belongs to neither tab, and dismissible
@@ -1106,6 +1104,172 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
               <Users size={16} /> {t('useridentity.heading')}
             </h3>
             <UserIdentityEditor />
+          </div>
+          )}
+
+          {tab === 'runner' && (
+          <div className="space-y-5">
+            {/* Which installation runs server-side turns. It used to be a fold
+                under the title bar, opened from the badge; つよ (2026-11-16)
+                asked for a tab — it is about this install, and the wake list
+                below belongs to the same question. The badge still opens it. */}
+            <h3 className="text-sm font-semibold flex items-center gap-2 text-indigo-500">
+              <Server size={16} /> {t('settings.runner.heading')}
+            </h3>
+            <div className="text-xs space-y-2">
+            <div className="text-muted-foreground">
+              {runnerHost ? runnerSentence(runnerHost.status) : t('settings.runner.unreachable')}
+            </div>
+            <div className="text-muted-foreground">{t('settings.runner.caveat')}</div>
+
+            {/* The debug toggle lives INSIDE the debug panel.
+                Not in Preferences: a person who has never clicked this badge
+                has no use for it, and a checkbox in Preferences would be the
+                machinery narrating itself one level up. OFF by default — see
+                `debugRunner` in ChatArea for why a setting and not an env
+                var in the .bat. */}
+            <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+              <input
+                type="checkbox"
+                checked={globalSettings.showRunnerNotices === true}
+                onChange={e => setGlobalSettings({ ...globalSettings, showRunnerNotices: e.target.checked })}
+                className="w-4 h-4 accent-indigo-500"
+              />
+              <span className="text-foreground">{t('settings.runner.notices')}</span>
+            </label>
+            <p className="text-muted-foreground ml-6">{t('settings.runner.noticesHelp')}</p>
+            <div className="font-mono text-[11px] space-y-0.5">
+              <div className="truncate">
+                <span className="text-muted-foreground">{t('settings.runner.self')}</span>{' '}
+                {runnerHost?.self || '-'}
+              </div>
+              <div className="truncate">
+                <span className="text-muted-foreground">{t('settings.runner.host')}</span>{' '}
+                {runnerHost?.host || t('settings.runner.none')}
+              </div>
+            </div>
+            {runnerError && (
+              <pre className="whitespace-pre-wrap text-destructive text-[11px]">{runnerError}</pre>
+            )}
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={() => applyRunnerHost({ host: 'self' })}
+                disabled={runnerBusy || runnerHost?.status === 'host'}
+                className="px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground
+                           hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t('settings.runner.setSelf')}
+              </button>
+              <button
+                onClick={() => applyRunnerHost({ clear: true })}
+                disabled={runnerBusy}
+                className="px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground
+                           hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t('settings.runner.clear')}
+              </button>
+              <button
+                onClick={() => void runTick()}
+                disabled={runnerBusy || runnerHost?.status !== 'host'}
+                className="px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground
+                           hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title={t('settings.runner.tickHelp')}
+              >
+                {t('settings.runner.tick')}
+              </button>
+              {runnerBusy && <Loader2 size={12} className="animate-spin" />}
+            </div>
+            {tickResult && (
+              <pre className="whitespace-pre-wrap text-[11px] max-h-48 overflow-auto
+                              border border-border rounded p-2">{tickResult}</pre>
+            )}
+          </div>
+            <div className="border-t border-border pt-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-indigo-500 flex-1">{t('settings.wakeList.heading')}</h3>
+                <button
+                  onClick={() => void loadWakeView()}
+                  className="px-2 py-0.5 rounded border border-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted"
+                >
+                  {t('settings.wakeList.refresh')}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">{t('settings.wakeList.help')}</p>
+              {wakeView && (
+                <div className="text-xs font-mono">
+                  <span className="text-muted-foreground">{t('settings.wakeList.clock')}</span>{' '}
+                  {wakeView.clockHost
+                    ? <>{wakeView.clockHost}{wakeView.thisRunsClock ? ` (${t('settings.wakeList.clockHere')})` : ''}</>
+                    : t('settings.runner.none')}
+                </div>
+              )}
+              {wakeError && <pre className="whitespace-pre-wrap text-destructive text-[11px]">{wakeError}</pre>}
+              {wakeView && wakeView.beings.length === 0 && (
+                <div className="text-xs text-muted-foreground italic">{t('settings.wakeList.empty')}</div>
+              )}
+              {wakeView && wakeView.beings.map(b => {
+                const days = b.wake.days.every(Boolean)
+                  ? t('settings.wakeList.everyDay')
+                  : b.wake.days.map((on, i) => on ? dayNames[i] : null).filter(Boolean).join(' ');
+                const yes = t('settings.wakeList.on'), no = t('settings.wakeList.off');
+                return (
+                  <div key={b.being} className="border border-border rounded-lg p-3 bg-muted/10 text-xs space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-sm text-foreground">{b.being}</span>
+                      {b.testBed && <span className="text-[10px] px-1.5 rounded border border-border text-muted-foreground">{t('settings.wakeList.testBed')}</span>}
+                      <span className="ml-auto font-mono text-indigo-400">
+                        {b.nextAt !== null ? `${t('settings.wakeList.next')} ${fmtWhen(b.nextAt)}` : t('settings.wakeList.noTime')}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-muted-foreground">
+                      <span>{t('settings.wakeList.timed')}</span>
+                      <span className="text-foreground">
+                        {b.wake.enabled && b.wake.times.length ? `${b.wake.times.join(', ')} · ${days}` : no}
+                      </span>
+                      <span>{t('settings.wakeList.self')}</span>
+                      <span className="text-foreground">
+                        {b.wake.self.enabled
+                          ? `${yes} (${t('settings.wakeList.perDay').replace('{n}', String(b.wake.self.maxPerDay))}${b.wake.self.windowFrom && b.wake.self.windowTo ? ` · ${b.wake.self.windowFrom}–${b.wake.self.windowTo}` : ''})`
+                          : no}
+                        {b.bookings.length > 0 && ` · ${t('settings.wakeList.booked')} ${b.bookings.map(x => fmtWhen(x.at)).join(', ')}`}
+                      </span>
+                      <span>{t('settings.wakeList.mail')}</span>
+                      <span className="text-foreground">{b.wake.mail ? yes : no}</span>
+                      <span>{t('settings.wakeList.stock')}</span>
+                      <span className="text-foreground">{b.stock ? yes : no}</span>
+                      <span>{t('settings.wakeList.convo')}</span>
+                      <span className="text-foreground truncate">{b.convoTitle || b.convoId || t('settings.wakeList.noConvo')}</span>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      {/* Two steps, like every destructive button here: the
+                          first press arms it, the second does it. */}
+                      <button
+                        onClick={() => stopArmed === b.being ? void stopSelfTurns(b.being) : setStopArmed(b.being)}
+                        disabled={stopBusy === b.being}
+                        className={`px-2 py-1 rounded border transition-colors disabled:opacity-50 ${
+                          stopArmed === b.being
+                            ? 'border-destructive bg-destructive/10 text-destructive'
+                            : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        {stopArmed === b.being ? t('settings.wakeList.stopConfirm') : t('settings.wakeList.stop')}
+                      </button>
+                      {stopArmed === b.being && (
+                        <button onClick={() => setStopArmed(null)} className="px-2 py-1 rounded text-muted-foreground hover:text-foreground">
+                          {t('settings.wakeList.cancel')}
+                        </button>
+                      )}
+                      {stopBusy === b.being && <Loader2 size={12} className="animate-spin" />}
+                    </div>
+                  </div>
+                );
+              })}
+              {stopNote && (
+                <div className={`text-xs ${stopNote.error ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {stopNote.being}: {stopNote.text}
+                </div>
+              )}
+            </div>
           </div>
           )}
 

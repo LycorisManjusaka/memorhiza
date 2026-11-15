@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { installationId, normaliseInstallPath } from '@/lib/runnerHost';
 import {
-  readClockHost, setClockHost, clearClockHost, readWakeState, ensureWakeClock, wakeClockStartedAt,
+  readClockHost, setClockHost, clearClockHost, readWakeState, ensureWakeClock, wakeClockStartedAt, runsClockOrClaims,
 } from '@/lib/wakeClock';
 import { listFolders } from '@/lib/fsStorage';
 import { parseWakeSettings, nextAdminSlot } from '@/lib/wakeSchedule';
@@ -9,6 +9,8 @@ import { parseWakeSettings, nextAdminSlot } from '@/lib/wakeSchedule';
 // The wake clock's screen side. Rules: lib/wakeSchedule.ts; plumbing: lib/wakeClock.ts.
 //
 // GET  ?folder=<being>   → which NEXUS runs the clock, this one's id, and the being's state
+// GET  ?overview=1       → every being that can wake by itself, soonest first (Preferences → Runner)
+// POST { action: 'stop-self-turns', folder } → every self-wake path of that being off at once
 // POST { action: 'set-clock' }    → THIS installation runs the clock (overwrites)
 // POST { action: 'clear-clock' }  → nobody runs it
 // POST { action: 'clear-bookings', folder } → drop the being's pending self-bookings
@@ -18,9 +20,22 @@ import { parseWakeSettings, nextAdminSlot } from '@/lib/wakeSchedule';
 export async function GET(req: Request) {
   try {
     ensureWakeClock();
-    const folder = new URL(req.url).searchParams.get('folder') || '';
+    const params = new URL(req.url).searchParams;
+    const folder = params.get('folder') || '';
     const selfId = await installationId();
+    // Same empty-seat rule the clock itself uses, so the screen never says
+    // "nobody runs the clock" one tick before this NEXUS takes it.
+    await runsClockOrClaims(selfId);
     const clock = await readClockHost();
+    if (params.get('overview') === '1') {
+      const { wakeOverview } = await import('@/lib/wakeOverview');
+      return NextResponse.json({
+        selfId,
+        clockHost: clock?.host ?? null,
+        thisRunsClock: !!clock && normaliseInstallPath(clock.host) === normaliseInstallPath(selfId),
+        beings: await wakeOverview(),
+      });
+    }
     const out: Record<string, unknown> = {
       selfId,
       clockHost: clock?.host ?? null,
@@ -52,6 +67,13 @@ export async function POST(req: Request) {
     }
     if (action === 'clear-clock') {
       return NextResponse.json({ ok: true, removed: await clearClockHost() });
+    }
+    if (action === 'stop-self-turns') {
+      const folder = typeof body.folder === 'string' ? body.folder : '';
+      if (!folder) return NextResponse.json({ error: 'folder required' }, { status: 400 });
+      const { stopSelfTurns } = await import('@/lib/wakeOverview');
+      const report = await stopSelfTurns(folder);
+      return NextResponse.json({ ok: report.errors.length === 0, report }, { status: report.errors.length ? 207 : 200 });
     }
     if (action === 'clear-bookings') {
       const folder = typeof body.folder === 'string' ? body.folder : '';

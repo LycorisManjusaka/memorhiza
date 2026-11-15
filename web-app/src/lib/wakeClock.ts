@@ -9,8 +9,9 @@
 //
 //   1. `wake/clock.json` names exactly ONE installation (by tree realpath,
 //      the same identity runnerHost.ts uses). It is one file in the shared
-//      store, so it cannot name two. Absent = no clock anywhere — the shipped
-//      default, like runner.json. A person names it from the screen.
+//      store, so it cannot name two. Absent = the first installation whose
+//      clock ticks claims it (create-only), unless runner.json names another
+//      one — see claimClockHostIfUnset. A person can still name it from the screen.
 //   2. Every slot is claimed with a create-only file
 //      (`wake/fired/<being>/<YYYY-MM-DD_HHMM_src>.json`, flag 'wx'). Even if
 //      two installations somehow both believed they ran the clock, the OS
@@ -26,7 +27,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { DATA_DIR } from '@/lib/beingPaths';
 import { atomicWriteFile } from '@/lib/atomicWrite';
-import { installationId, normaliseInstallPath } from '@/lib/runnerHost';
+import { installationId, normaliseInstallPath, runnerHostStatus } from '@/lib/runnerHost';
 import { enqueue, pending, queuedConversations } from '@/lib/turnQueue';
 import { listFolders, listLogs, loadLog, loadUserSettings } from '@/lib/fsStorage';
 import { livingConversation } from '@/lib/livingConversation';
@@ -77,6 +78,42 @@ export async function clearClockHost(dataDir = DATA_DIR): Promise<boolean> {
 export async function thisInstallationRunsClock(selfId: string, dataDir = DATA_DIR): Promise<boolean> {
   const rec = await readClockHost(dataDir);
   return !!rec && normaliseInstallPath(rec.host) === normaliseInstallPath(selfId);
+}
+
+/**
+ * Take the clock IF AND ONLY IF nobody holds it (つよ, 2026-11-16: the same
+ * default the runner has). A new user with one NEXUS should not have to find
+ * "run the clock here" before their first wake works.
+ *
+ * Create-only (`wx`), like claimRunnerHostIfUnset: it never steals a clock
+ * another installation holds, and two claiming in the same instant get one
+ * winner. A file that exists but cannot be read also refuses the write — that
+ * is a person's choice gone wrong, not an empty seat.
+ *
+ * One more rule than the runner's: if runner.json names ANOTHER installation,
+ * do not claim. On a shared store (3000 + 3001) the one that boots first would
+ * otherwise take the clock, and the being it wakes would be answered by a
+ * runner somewhere else. The runner's home claims it instead.
+ */
+export async function claimClockHostIfUnset(selfId: string, dataDir = DATA_DIR): Promise<'claimed' | 'taken' | 'deferred' | 'failed'> {
+  const runner = await runnerHostStatus(selfId, dataDir);
+  if (runner === 'not-host' || runner === 'unreadable') return 'deferred';
+  const rec = { host: normaliseInstallPath(selfId), setAt: new Date().toISOString(), note: 'claimed automatically (no clock was set)' };
+  try {
+    await fs.mkdir(wakeDir(dataDir), { recursive: true });
+    await fs.writeFile(path.join(wakeDir(dataDir), CLOCK_FILE), JSON.stringify(rec, null, 2), { flag: 'wx' });
+    return 'claimed';
+  } catch (e: any) {
+    return e?.code === 'EEXIST' ? 'taken' : 'failed';
+  }
+}
+
+/** Runs the clock here, claiming the empty seat first if there is one. */
+export async function runsClockOrClaims(selfId: string, dataDir = DATA_DIR): Promise<boolean> {
+  if (await thisInstallationRunsClock(selfId, dataDir)) return true;
+  if ((await claimClockHostIfUnset(selfId, dataDir)) !== 'claimed') return false;
+  // Re-read: the file on disk is the only authority (see runnerHost.ts).
+  return thisInstallationRunsClock(selfId, dataDir);
 }
 
 // ── Per-being state ─────────────────────────────────────────────────────────
@@ -367,7 +404,7 @@ async function mailSlot(being: string, w: WakeSettings, s: WakeState, now: numbe
 
 export async function clockCycle(now = Date.now(), notBefore = 0): Promise<void> {
   const selfId = await installationId();
-  if (!(await thisInstallationRunsClock(selfId))) return;
+  if (!(await runsClockOrClaims(selfId))) return;
   const userSettings = (await loadUserSettings()) || {};
   const lang = wakeLang((userSettings as Record<string, unknown>).language);
   const folders = await listFolders() as Array<{ name: string; settings?: Record<string, unknown> }>;
