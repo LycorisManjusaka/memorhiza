@@ -327,7 +327,7 @@ import { buildOpenAiToolReplay, buildAnthropicToolReplay } from '@/lib/toolHisto
 import { runSubagent } from '@/lib/subagent';
 import { runLetterTool, LETTER_TOOL_NAMES, announceLetters } from '@/lib/letters';
 import { ensureLmStudioLaunched, getLocalModelsMeta, loadLocalModel } from '@/lib/localModels';
-import { isMockModelId, mockNameFromId, planMockRound, mockChunks } from '@/lib/mockModel';
+import { isMockModelId, mockNameFromId, planMockRound, mockChunks, lastToolResultText, fillLastResult, mockRoundsDoneFor } from '@/lib/mockModel';
 import { loadMockScenario } from '@/lib/mockModelStore';
 import { localReasoningEffort, maxContinuationsFor, shouldReportLoadFailure } from '@/lib/localTurnPolicy';
 import {
@@ -9111,12 +9111,13 @@ export async function POST(req: Request) {
 
       // ── The soulless machine (lib/mockModel.ts) ──────────────────────────────
       // Same signature and return shape as runLocalOnce, so the outer tool loop
-      // executes its tool calls for real. It ignores `msgs` entirely. The round
+      // executes its tool calls for real. It reads nothing from `msgs` except the last tool result ({lastResult}). The round
       // counter lives here (per turn), not in `msgs`: a mid-turn interjection
       // appends a user message, and counting "since the last user message"
       // would restart the script forever.
       let mockRoundsDone = 0;
       const runMockOnce = async (
+        msgs: any[],
         controller: ReadableStreamDefaultController,
         opts?: { noTools?: boolean }
       ) => {
@@ -9144,10 +9145,12 @@ export async function POST(req: Request) {
         }
         if (turnAbort.signal.aborted) return { ...empty, finishReason: null };
         const toolNames = (localTools || []).map((t: any) => t?.function?.name).filter(Boolean);
-        const plan = planMockRound(scenario, mockRoundsDone, toolNames, !!opts?.noTools);
-        await stream(plan.thought + '\n', 'thought');
+        const lastSeen = lastToolResultText(msgs);
+        const plan = planMockRound(scenario, mockRoundsDoneFor(scenario, mockRoundsDone, lastSeen), toolNames, !!opts?.noTools);
+        const lastResult = plan.kind === 'final' ? lastSeen : '';
+        await stream(fillLastResult(plan.thought, lastResult) + '\n', 'thought');
         if (plan.kind === 'final') {
-          await stream(plan.answer, 'text');
+          await stream(fillLastResult(plan.answer, lastResult), 'text');
           return { ...empty, visibleText, reasoningText, finishReason: turnAbort.signal.aborted ? null : 'stop' };
         }
         mockRoundsDone++;
@@ -9174,7 +9177,7 @@ export async function POST(req: Request) {
         usage: any;
         webSources: { url: string; title?: string }[];
       }> => {
-        if (isLocal && isMockModelId(localModel)) return runMockOnce(controller, opts);
+        if (isLocal && isMockModelId(localModel)) return runMockOnce(msgs, controller, opts);
         const requestBody: any = {
           model: localModel,
           messages: msgs,

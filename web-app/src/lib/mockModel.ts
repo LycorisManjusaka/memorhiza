@@ -38,6 +38,10 @@ export type MockScenario = {
   toolRounds: number;
   /** The Bash command each round runs. `{n}` and `{total}` are filled in. */
   toolCommand: string;
+  /** Seconds each Bash call may run before it is killed (Bash's own cap is 600). 0 = Bash's default (60). */
+  toolTimeoutSec: number;
+  /** If the last tool result contains this text, skip the remaining rounds and answer. '' = never. */
+  stopWhen: string;
   /** Seconds the stand-in waits itself when Bash is not available. */
   fallbackWaitSec: number;
   /** Characters per streamed chunk, and the pause between chunks. */
@@ -53,6 +57,8 @@ export const MOCK_DEFAULTS: MockScenario = {
   connectDelaySec: 3,
   toolRounds: 10,
   toolCommand: 'sleep 10',
+  toolTimeoutSec: 0,
+  stopWhen: '',
   fallbackWaitSec: 10,
   chunkChars: 6,
   chunkDelayMs: 60,
@@ -87,6 +93,8 @@ export function parseMockScenario(raw: unknown): MockScenario {
     connectDelaySec: num(o.connectDelaySec, MOCK_DEFAULTS.connectDelaySec, 0, 600),
     toolRounds: Math.round(num(o.toolRounds, MOCK_DEFAULTS.toolRounds, 0, 200)),
     toolCommand: str(o.toolCommand, MOCK_DEFAULTS.toolCommand),
+    toolTimeoutSec: Math.round(num(o.toolTimeoutSec, MOCK_DEFAULTS.toolTimeoutSec, 0, 600)),
+    stopWhen: typeof o.stopWhen === 'string' ? o.stopWhen : MOCK_DEFAULTS.stopWhen,
     fallbackWaitSec: num(o.fallbackWaitSec, MOCK_DEFAULTS.fallbackWaitSec, 0, 600),
     chunkChars: Math.round(num(o.chunkChars, MOCK_DEFAULTS.chunkChars, 1, 10000)),
     chunkDelayMs: num(o.chunkDelayMs, MOCK_DEFAULTS.chunkDelayMs, 0, 10000),
@@ -131,7 +139,7 @@ export function planMockRound(
     : s.thoughtBetween[(done - 1) % s.thoughtBetween.length];
   if (canBash) {
     const cmd = s.toolCommand.replace(/\{n\}/g, String(n)).replace(/\{total\}/g, String(s.toolRounds));
-    return { kind: 'tool', thought, tool: { name: 'Bash', args: { command: `${cmd} # mock round ${n}/${s.toolRounds}` } }, selfWaitSec: 0 };
+    return { kind: 'tool', thought, tool: { name: 'Bash', args: { command: `${cmd} # mock round ${n}/${s.toolRounds}`, ...(s.toolTimeoutSec > 0 ? { timeout_ms: s.toolTimeoutSec * 1000 } : {}) } }, selfWaitSec: 0 };
   }
   return { kind: 'tool', thought, tool: { name: 'Glob', args: { pattern: `mock-round-${n}-of-${s.toolRounds}/*` } }, selfWaitSec: s.fallbackWaitSec };
 }
@@ -142,4 +150,30 @@ export function mockChunks(text: string, size: number): string[] {
   const out: string[] = [];
   for (let i = 0; i < chars.length; i += size) out.push(chars.slice(i, i + size).join(''));
   return out;
+}
+
+/**
+ * The only thing the stand-in ever "reads": the text of the last tool result,
+ * so a script can report what its own command printed (`{lastResult}` in
+ * thoughtLast / answer). It still never reads anything a person wrote.
+ */
+export function lastToolResultText(msgs: any[]): string {
+  for (let i = (msgs?.length ?? 0) - 1; i >= 0; i--) {
+    const m = msgs[i];
+    if (m?.role !== 'tool') continue;
+    const c = m.content;
+    if (typeof c === 'string') return c;
+    if (Array.isArray(c)) return c.map((p: any) => (typeof p === 'string' ? p : p?.text ?? '')).join('');
+    return '';
+  }
+  return '';
+}
+
+/** How many rounds count as done: all of them once the last result contains `stopWhen`. */
+export function mockRoundsDoneFor(s: MockScenario, done: number, lastResult: string): number {
+  return done > 0 && s.stopWhen && lastResult.includes(s.stopWhen) ? Math.max(done, s.toolRounds) : done;
+}
+
+export function fillLastResult(text: string, last: string): string {
+  return text.replace(/\{lastResult\}/g, () => last || '(no tool result)');
 }
