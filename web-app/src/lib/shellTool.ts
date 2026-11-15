@@ -73,6 +73,8 @@ function resolveBash(): string | null {
     'C:\\Program Files\\Git\\bin\\bash.exe',
     'C:\\Program Files\\Git\\usr\\bin\\bash.exe',
     'C:\\Program Files (x86)\\Git\\bin\\bash.exe',
+    // Git's installer offers a per-user install ("only for me") that lands here.
+    ...(process.env.LOCALAPPDATA ? [`${process.env.LOCALAPPDATA}\\Programs\\Git\\bin\\bash.exe`] : []),
   ]) if (existsSync(p)) return p;
   return null; // no bash → cmd.exe fallback
 }
