@@ -5007,6 +5007,16 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           staleViewRef.current = true;
           // Not actually taken — let the next poll try again.
           mirroredVersionRef.current = '';
+        } else {
+          // The stock panel too. REPORTED 2026-11-15 (つよ): two stocked
+          // messages were delivered by a clock wake, the bubbles mirrored in,
+          // and the panel kept saying "ストックに 2 通" until a reload. A
+          // server-started turn on the soulless machine ends in about a
+          // second, so this tab never ATTACHED to it (the attach's own exit
+          // refreshes the stock) — it only saw the result here, on the
+          // mirror. Whatever wrote the log may have consumed queue items, so
+          // the panel is re-read every time the messages are.
+          void refreshStock();
         }
         if (cancelled || loading) return;
       }
