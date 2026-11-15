@@ -44,7 +44,14 @@ export interface DrainedInjection {
   media: InjectedMedia[];
 }
 
-interface Queued { texts: string[]; media: InjectedMedia[]; ts: number }
+// `quietTexts` / `quietMedia` mark entries the SENDER will resend itself if they
+// are not delivered (VRChat captures — the tab sends them again as a normal
+// message once the turn and its speech are over). Delivery treats them exactly
+// like any other entry; only the "never reached the being" report leaves them
+// out, because that report would announce a loss that the tab is about to undo,
+// and the same photo would then appear twice on screen: once quoted as lost,
+// once as the message that replaced it. Parallel to texts/media by index.
+interface Queued { texts: string[]; media: InjectedMedia[]; ts: number; quietTexts?: boolean[]; quietMedia?: boolean[] }
 const _g = globalThis as any;
 if (!_g.__nx_inject_pending) _g.__nx_inject_pending = new Map<string, Queued>();
 const pending: Map<string, Queued> = _g.__nx_inject_pending;
@@ -90,15 +97,20 @@ function pruneStale() {
  * which now means "no text AND no media", because an attachment with no
  * covering sentence is a complete message ("look at this").
  */
-export function pushInjection(turnId: string, text: string, media?: InjectedMedia[]): boolean {
+export function pushInjection(turnId: string, text: string, media?: InjectedMedia[], opts?: { quiet?: boolean }): boolean {
   if (!turnId) return false;
   const body = typeof text === 'string' ? text.trim() : '';
   const files = Array.isArray(media) ? media.filter((m) => m && typeof m.ref === 'string' && m.ref) : [];
   if (!body && files.length === 0) return false;
   pruneStale();
-  const entry = pending.get(turnId) || { texts: [], media: [], ts: Date.now() };
-  if (body) entry.texts.push(body);
-  if (files.length) entry.media.push(...files);
+  const quiet = opts?.quiet === true;
+  const entry: Queued = pending.get(turnId) || { texts: [], media: [], ts: Date.now() };
+  const qt = entry.quietTexts ?? entry.texts.map(() => false);
+  const qm = entry.quietMedia ?? entry.media.map(() => false);
+  if (body) { entry.texts.push(body); qt.push(quiet); }
+  if (files.length) { entry.media.push(...files); qm.push(...files.map(() => quiet)); }
+  entry.quietTexts = qt;
+  entry.quietMedia = qm;
   entry.ts = Date.now();
   pending.set(turnId, entry);
   return true;
@@ -198,8 +210,15 @@ export function takeUndelivered(turnId: string): DrainedInjection {
   const still = pending.get(turnId);
   undelivered.delete(turnId);
   pending.delete(turnId);
-  const texts = [...(moved?.texts ?? []), ...(still?.texts ?? [])];
-  const media = [...(moved?.media ?? []), ...(still?.media ?? [])];
+  // Quiet entries are dropped from the report: their sender resends them.
+  const loud = (q: Queued | undefined): DrainedInjection => ({
+    texts: (q?.texts ?? []).filter((_, i) => !q?.quietTexts?.[i]),
+    media: (q?.media ?? []).filter((_, i) => !q?.quietMedia?.[i]),
+  });
+  const a = loud(moved);
+  const b = loud(still);
+  const texts = [...a.texts, ...b.texts];
+  const media = [...a.media, ...b.media];
   if (texts.length === 0 && media.length === 0) return empty;
   return { texts, media };
 }

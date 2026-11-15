@@ -176,6 +176,33 @@ test('media survives the move, not just text', () => {
   assert.equal(left.media[0].ref, 'r9');
 });
 
+// VRChat captures go in as QUIET interjections: the tab resends whatever was
+// not delivered as a normal message, so the report must not also quote it.
+test('quiet entries are delivered like any other', () => {
+  const id = 'u_quiet_drain';
+  pushInjection(id, 'photo text', [{ ref: 'rq', name: 'a.jpg', mimeType: 'image/jpeg', size: 1, kind: 'image' }], { quiet: true });
+  const d = drainInjections(id);
+  assert.deepEqual(d.texts, ['photo text']);
+  assert.equal(d.media.length, 1);
+});
+
+test('quiet entries are left out of the undelivered report, loud ones stay', () => {
+  const id = 'u_quiet_mixed';
+  pushInjection(id, 'typed by hand');
+  pushInjection(id, 'photo text', [{ ref: 'rq2', name: 'b.jpg', mimeType: 'image/jpeg', size: 1, kind: 'image' }], { quiet: true });
+  pushInjection(id, 'typed again', [{ ref: 'rl', name: 'c.png', mimeType: 'image/png', size: 1, kind: 'image' }]);
+  clearInjections(id);
+  const left = takeUndelivered(id);
+  assert.deepEqual(left.texts, ['typed by hand', 'typed again']);
+  assert.deepEqual(left.media.map(m => m.ref), ['rl']);
+});
+
+test('a turn whose only leftovers are quiet reports nothing', () => {
+  const id = 'u_quiet_only';
+  pushInjection(id, 'photo text', [{ ref: 'rq3', name: 'd.jpg', mimeType: 'image/jpeg', size: 1, kind: 'image' }], { quiet: true });
+  assert.equal(undeliveredNotice(takeUndelivered(id), true), null);
+});
+
 test('an unknown turn reports nothing', () => {
   assert.deepEqual(takeUndelivered('u_never_existed').texts, []);
   assert.deepEqual(takeUndelivered('').texts, []);

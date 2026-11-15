@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { claimCapture } from '@/lib/vrchatCaptureClaims';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,7 @@ const DEDUP_MS = 10000;   // ignore repeat triggers for the same path this long
 
 export async function GET(req: NextRequest) {
   const watchPath = req.nextUrl.searchParams.get('path');
+  const convo = req.nextUrl.searchParams.get('convo') || '';
   if (!watchPath || !fs.existsSync(watchPath)) {
     console.warn(`[vrchat/watch] path not found or missing: ${watchPath}`);
     return new Response('Path not found', { status: 400 });
@@ -59,6 +61,10 @@ export async function GET(req: NextRequest) {
       try {
         const stats = fs.statSync(fullPath);
         if (stats.size === 0) { console.log(`[vrchat/watch] (${source}) size 0, skipping: ${fullPath}`); return; }
+        // Claimed AFTER the settle and the size check, so a connection that
+        // skipped a half-written file does not take the claim from one that
+        // reads it complete.
+        if (!claimCapture(convo, fullPath)) { console.log(`[vrchat/watch] (${source}) another tab on this conversation took it: ${fullPath}`); return; }
         const ext = path.extname(fullPath).toLowerCase();
         const base64Data = fs.readFileSync(fullPath, { encoding: 'base64' });
         const mimeType = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';

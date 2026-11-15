@@ -1419,6 +1419,14 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     });
   }, []);
   const [vrchatQueue, setVrchatQueue] = useState<{ text: string, attachment: any }[]>([]);
+  // VRChat captures sent INTO a running turn as an interjection, not yet known
+  // to have reached the being. `posted` = the server accepted it into the
+  // turn's queue. A delivery event clears only posted entries (a capture whose
+  // POST is still in flight may miss the drain it would be cleared by); at turn
+  // end, whatever is left is resent as a normal message. Every ambiguous case
+  // errs toward the photo arriving twice rather than not at all.
+  const vrchatInFlightRef = useRef<{ text: string, attachment: any, posted: boolean }[]>([]);
+  const sendInterjectionRef = useRef<((text: string, attachments?: any[], opts?: { quiet?: boolean }) => Promise<boolean>) | null>(null);
 
   // Camera signal: computed at render time and handed straight to the
   // <CameraPanel> rendered locally below (no more lifting this up to
@@ -3655,7 +3663,12 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           setPendingAsk(prev => (prev && prev.askId === askId ? null : prev)),
         subagentStarted: (task) => setActiveSubagent({ task }),
         subagentFinished: () => setActiveSubagent(null),
-        injectionDelivered: (message) => setInterjectStatus(message),
+        injectionDelivered: (message) => {
+          setInterjectStatus(message);
+          // A drain takes everything queued for the turn, so every capture the
+          // server had accepted is now with the being.
+          vrchatInFlightRef.current = vrchatInFlightRef.current.filter(i => !i.posted);
+        },
         toolActivity: (activity) => {
           if (activity) {
             setLiveToolActivity(activity.activity);
@@ -4375,20 +4388,42 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   }, [handleSend]);
 
   // VRChat Queue Processing
+  //
+  // Two ways out, chosen by whether a turn is running (ふわふわ, 2026-11-15):
+  //   · a turn is in flight → the captures (and the speech gathered with them)
+  //     go in as an INTERJECTION, delivered at the being's next tool call;
+  //   · no turn, and no speech playing → a normal message. This is also where
+  //     an interjection that never landed (the turn made no tool call after it)
+  //     comes back: it is resent here, in front of anything newer.
+  // Before 2026-11-15 only the second existed, so a photo taken while the being
+  // was thinking waited for the thought, the reply AND the speech to finish.
   useEffect(() => {
-    if (vrchatQueue.length > 0 && !loading && !isAudioPlaying) {
-      const items = [...vrchatQueue];
+    if (loading) {
+      if (vrchatQueue.length === 0 || !injectTurnId || !sendInterjectionRef.current) return;
+      const items = vrchatQueue.map(i => ({ ...i, posted: false }));
       setVrchatQueue([]);
-
-      // Merge queued items into a single message
+      vrchatInFlightRef.current = [...vrchatInFlightRef.current, ...items];
       const mergedText = items.map(i => i.text).join('\n').trim();
-      const allAttachments = items.map(i => i.attachment);
-
-      if (handleSendRef.current) {
-        handleSendRef.current(mergedText, allAttachments);
-      }
+      void sendInterjectionRef.current(mergedText, items.map(i => i.attachment), { quiet: true }).then(ok => {
+        if (ok) for (const it of items) it.posted = true;
+      });
+      return;
     }
-  }, [vrchatQueue, loading, isAudioPlaying]);
+    if (isAudioPlaying) return;
+    const leftover = vrchatInFlightRef.current;
+    if (vrchatQueue.length === 0 && leftover.length === 0) return;
+    vrchatInFlightRef.current = [];
+    const items = [...leftover.map(({ text, attachment }) => ({ text, attachment })), ...vrchatQueue];
+    setVrchatQueue([]);
+
+    // Merge queued items into a single message
+    const mergedText = items.map(i => i.text).join('\n').trim();
+    const allAttachments = items.map(i => i.attachment);
+
+    if (handleSendRef.current) {
+      handleSendRef.current(mergedText, allAttachments);
+    }
+  }, [vrchatQueue, loading, isAudioPlaying, injectTurnId]);
 
   // VRChat EventSource Connection
   useEffect(() => {
@@ -4396,7 +4431,9 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     if (!vrchatMode || !activePath) return;
 
     const encodedPath = encodeURIComponent(activePath);
-    const es = new EventSource(`/api/vrchat/watch?path=${encodedPath}`);
+    // `convo`: two tabs on this conversation must not both send the same photo
+    // (lib/vrchatCaptureClaims.ts).
+    const es = new EventSource(`/api/vrchat/watch?path=${encodedPath}&convo=${encodeURIComponent(convoId || '')}`);
 
     es.onmessage = async (event) => {
       try {
@@ -4523,7 +4560,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     return () => {
       es.close();
     };
-  }, [vrchatMode, globalSettings?.vrchatPath, localAiName]);
+  }, [vrchatMode, globalSettings?.vrchatPath, localAiName, convoId]);
 
   // VRChat live transcript → input box.
   // Polls the (non-destructive) merged kohai/ear transcript and OVERWRITES the
@@ -4977,7 +5014,9 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // Send a mid-turn interjection to the running turn. Fire-and-forget POST to
   // /api/chat/inject; the backend queues it and the tool loop folds it in at
   // its next model-call boundary.
-  const sendInterjection = async (text: string, attachments?: any[]) => {
+  // Returns whether the server accepted it into the turn's queue. `quiet`:
+  // the caller resends it itself if it is not delivered (VRChat captures).
+  const sendInterjection = async (text: string, attachments?: any[], opts?: { quiet?: boolean }): Promise<boolean> => {
     const trimmed = text.trim();
     // Attachments ride along. They are slimmed to what the server needs: the
     // browser already stored each payload under a content hash at attach time,
@@ -4995,19 +5034,24 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       ...(a?.dataUrl ? { dataUrl: a.dataUrl } : {}),
       ...(a?.textData ? { textData: a.textData } : {}),
     }));
-    if ((!trimmed && files.length === 0) || !injectTurnId) return;
+    if ((!trimmed && files.length === 0) || !injectTurnId) return false;
     setInterjectStatus(t('chat.interject.sent'));
     try {
       const r = await fetch('/api/chat/inject', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turnId: injectTurnId, text: trimmed, attachments: files }),
+        body: JSON.stringify({ turnId: injectTurnId, text: trimmed, attachments: files, ...(opts?.quiet ? { quiet: true } : {}) }),
       });
       if (!r.ok) setInterjectStatus(t('chat.interject.queueFailedEnded'));
+      return r.ok;
     } catch {
       setInterjectStatus(t('chat.interject.queueFailed'));
+      return false;
     }
   };
+  // Ref mirror so the VRChat queue effect (declared above this function) can
+  // call the current closure — it reads injectTurnId, which changes per turn.
+  sendInterjectionRef.current = sendInterjection;
 
   // ── Rerun / Continue: COMMANDS on the queue, not browser turns ────────────
   //

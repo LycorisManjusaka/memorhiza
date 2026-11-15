@@ -39,7 +39,9 @@ function kindOf(mime: string): 'image' | 'audio' | 'video' | null {
 
 export async function POST(req: Request) {
   try {
-    const { turnId, text, attachments } = await req.json();
+    // `quiet`: the sender will resend this itself if it is not delivered
+    // (VRChat captures), so leave it out of the undelivered report.
+    const { turnId, text, attachments, quiet } = await req.json();
     if (!turnId || typeof turnId !== 'string') {
       return NextResponse.json({ error: 'turnId is required' }, { status: 400 });
     }
@@ -100,7 +102,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'text or attachments are required' }, { status: 400 });
     }
 
-    const ok = pushInjection(turnId, finalText, media);
+    const ok = pushInjection(turnId, finalText, media, { quiet: quiet === true });
     return NextResponse.json({ ok, queuedMedia: media.length });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'failed to queue interjection' }, { status: 500 });
