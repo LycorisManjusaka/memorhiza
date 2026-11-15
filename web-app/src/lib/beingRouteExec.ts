@@ -133,7 +133,7 @@ export async function planBeingRoutes(a: {
     const text = replaceAttachedMedia(b.body, attached);
     // The speaker label is part of the TEXT, as it is for a message a person
     // sends (the tab writes `[name]\n` itself; a single stocked item is passed
-    // through unlabelled). Without it the other being reads the words as its
+    // through unlabelled). Without it the other being reads the words as their
     // partner's — MEASURED 2026-11-15 on the first live run.
     sends.push({ being, convoId, text: `[${a.sender}]\n${text}`, attachments });
     records.push({

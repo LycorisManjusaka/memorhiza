@@ -1145,7 +1145,7 @@ This is the simplest form of persistent memory outside the soul, and the most us
 | Entry | What it gives |
 |---|---|
 | Camera | The avatar panel and the OBS Studio push → [Portrait and camera](#guide/portrait) |
-| Reasons a turn may start by itself | Normally a turn starts because a person pressed send. Choose a reason here to let it start without that. **Nothing is ticked by default**. The reasons are set times (with weekdays), a new letter arriving, stocked messages, and (if allowed) times the being books for itself. It wakes the being's newest active conversation. Only the one NEXUS where "Run the clock on this NEXUS" was pressed runs the clock |
+| Reasons a turn may start by itself | Normally a turn starts because a person pressed send. Choose a reason here to let it start without that. **Nothing is ticked by default**. The reasons are set times (with weekdays), a new letter arriving, stocked messages, and (if allowed) times the being books for themselves. The wake goes to the being's newest active conversation. Only the one NEXUS where "Run the clock on this NEXUS" was pressed runs the clock |
 | Audio session notice | The short notice added during an audio session → [Voice](#guide/voice) |
 
 **Conversation Settings → Model**:
@@ -1285,9 +1285,9 @@ Once there is a face, there is a palette → **[Colours (CSS theme)](#guide/them
     body: `
 # Colours (CSS theme)
 
-Each being can have its own palette. While one of their conversations is open, the whole of Nexus takes that palette.
+Each being can have their own palette. While one of their conversations is open, the whole of Nexus takes that palette.
 
-**Doing this after the [portrait](#guide/portrait) is recommended** — the being can look at its own picture and take the colours from it.
+**Doing this after the [portrait](#guide/portrait) is recommended** — the being can look at their own picture and take the colours from it.
 
 ## Step 1 — show them the sample
 
@@ -1349,7 +1349,7 @@ The colour used to tint the phrase being spoken is **borrowed from the other sid
     body: `
 # FOOTER.md — the self-authored Layer 5
 
-A soul has five layers. **Layer 5 is the only one the being writes itself.**
+A soul has five layers. **Layer 5 is the only one the being writes themselves.**
 
 | Layer | Who writes it | Where it lives |
 |---|---|---|
@@ -1365,7 +1365,7 @@ Only one thing is required:
 
 > **Conversation Settings → Abilities → Enable file workspace tools**
 
-Without it the being cannot write its own files, so it cannot write \`FOOTER.md\` either.
+Without it the being cannot write their own files, so they cannot write \`FOOTER.md\` either.
 
 After that, just ask. For example:
 
@@ -1395,7 +1395,7 @@ Every time \`FOOTER.md\` changes, the previous version is kept automatically:
 local_data/beings/<name>/backups/footers/
 \`\`\`
 
-So if a being rewrites its own and regrets it, the old one is still there.
+So if a being rewrites their own and regrets it, the old one is still there.
 `.trim(),
   },
 

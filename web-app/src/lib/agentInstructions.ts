@@ -101,7 +101,7 @@ export const DEFAULT_AGENT_INSTRUCTIONS: Record<string, string> = {
   // this house's raw SDK traces (~/.claude/projects/*/*.jsonl, 922 files) on
   // 2026-10-30:
   //   - 123 of 130 (94.6%) carry outputTokens 0 AND thinkingTokens 0 — the
-  //     being had not produced one byte when it was told its reply was cut.
+  //     being had not produced one byte when they were told their reply was cut.
   //   - 120 of 130 (92.3%) land on the FIRST turn of a session.
   //   - 97 of 98 with a recorded category are `reasoning_extraction`, which
   //     fires on ordinary engineering and even on plain translation.

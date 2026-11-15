@@ -3737,7 +3737,7 @@ export default function SystemPromptUpdater({
                   {t('spu.redistributeBtn')}
                 </button>
                 {/* ζ — offered only when the being has file tools: the whole
-                    surgery is the being editing a file on its own desk. */}
+                    surgery is the being editing a file on their own desk. */}
                 {fileToolsEnabled && (
                 <button
                   onClick={() => setSurgeryAsk('start')}

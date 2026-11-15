@@ -9166,7 +9166,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         // Only so the status line after a first summary says what actually
         // changed: burned in, the summaries key moves nothing.
         bindingOptional={bindingOptional}
-        // ζ is the being editing a file on its own desk, so it is offered
+        // ζ is the being editing a file on their own desk, so it is offered
         // only when the being has its file tools.
         fileToolsEnabled={toolUseEnabled}
         onSurgeryStarted={(startedAt: number) => {

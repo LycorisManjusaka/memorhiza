@@ -536,8 +536,8 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'bubble.att.viewDesc': 'Click to view full description',
   'bubble.att.excluded': 'EXCLUDED FROM CONTEXT',
   'bubble.att.undeliverable': 'NOT DELIVERED ON THIS PATH',
-  'bubble.att.undeliverableHelp': 'Claude subscription billing replays the history as text, so only images on the newest message are actually sent. This one cannot be shown to the being no matter what this button says — switch to API-key billing, turn Eyes on to send a description instead, or let the being open the file itself from the address shown on the attachment.',
-  'bubble.att.undeliverableWireHelp': 'This provider’s message format has no block for audio or video — the file is dropped before the request is sent, on every billing mode. Switching billing changes nothing. Turn Ears / Watcher on to send a text description instead, or let the being open the file itself from the address shown on the attachment.',
+  'bubble.att.undeliverableHelp': 'Claude subscription billing replays the history as text, so only images on the newest message are actually sent. This one cannot be shown to the being no matter what this button says — switch to API-key billing, turn Eyes on to send a description instead, or let the being open the file themselves from the address shown on the attachment.',
+  'bubble.att.undeliverableWireHelp': 'This provider’s message format has no block for audio or video — the file is dropped before the request is sent, on every billing mode. Switching billing changes nothing. Turn Ears / Watcher on to send a text description instead, or let the being open the file themselves from the address shown on the attachment.',
   // Why an inline ![](path) can fail, in the words the author needs to fix it.
   // Kept reason-specific: "outside" and "not there" have different fixes, and
   // a sign that states the wrong one is worse than no sign at all.
@@ -910,7 +910,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'folder.css.placeholder':
     "Define this being's theme by overriding the dark base, e.g.:\n\n:root {\n  --background: #0b0f1a;\n  --foreground: #e6edf3;\n  --primary: #00e5ff;\n}\n\nSaved to local_data/beings/<name>/theme.css. Empty = plain Dark.",
   'folder.css.help':
-    "This being's theme is its `local_data/beings/<name>/theme.css` file. No file = Dark. To restyle message or code colours, set the CSS variables (--muted, --border, ...) rather than an !important rule -- a theme's !important cannot override the built-in colours (an @layer rule wins).",
+    "This being's theme is their `local_data/beings/<name>/theme.css` file. No file = Dark. To restyle message or code colours, set the CSS variables (--muted, --border, ...) rather than an !important rule -- a theme's !important cannot override the built-in colours (an @layer rule wins).",
   'folder.voice.heading': 'TTS Voice',
   'folder.voice.pitch': 'Voice Pitch',
   'folder.voice.lower': 'Lower',
@@ -949,12 +949,12 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'wake.day.fri': "Fri",
   'wake.day.sat': "Sat",
   'wake.next': "Next wake: {at}",
-  'wake.self.enabled': "The being may book its own wake ([->wakeup: HH:MM] at the start of a line)",
+  'wake.self.enabled': "The being may book their own wake ([->wakeup: HH:MM] at the start of a line)",
   'wake.self.maxPerDay': "Bookings per day",
   'wake.self.minGap': "Minimum gap (min)",
   'wake.self.window': "Allowed window for bookings (empty = any time)",
   'wake.self.windowClear': "clear",
-  'wake.help': "The wake goes to the being's newest conversation (inactive ones are skipped). If the being is busy, it wakes right after. Times missed while NEXUS was stopped are not woken later. A booking outside the bounds is dropped, and the next wake says so in one line.",
+  'wake.help': "The wake goes to the being's newest conversation (inactive ones are skipped). If the being is busy, the wake comes right after their turn ends. Times missed while NEXUS was stopped are not woken later. A booking outside the bounds is dropped, and the next wake says so in one line.",
   'wake.pin.this': "Test bed: the clock wakes this conversation",
   'wake.pin.other': "Test bed: the clock wakes another conversation ({id}…)",
   'wake.pin.none': "Test bed: no conversation chosen, so the clock does not wake this being",
@@ -1304,7 +1304,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'sysmodal.tab.senses': 'Senses',
   'sysmodal.tab.behavior': 'Behavior',
   'behavior.triggers.label': 'Reasons a turn may start by itself',
-  'behavior.triggers.help': 'Normally a turn starts because a person pressed send. Tick a reason here to let it start without that. **Nothing is ticked by default**, and a conversation saved before this existed never asked for it, so it stays manual. "Stocked messages" belongs to this conversation and takes effect at once (hover it for details). Everything else here (set times, new letters, times the being books for itself) belongs to the being: it wakes the being in its newest active conversation, and it is saved when you press Done.',
+  'behavior.triggers.help': 'Normally a turn starts because a person pressed send. Tick a reason here to let it start without that. **Nothing is ticked by default**, and a conversation saved before this existed never asked for it, so it stays manual. "Stocked messages" belongs to this conversation and takes effect at once (hover it for details). Everything else here (set times, new letters, times the being books for themselves) belongs to the being: the wake goes to their newest active conversation, and the setting is saved when you press Done.',
   'behavior.trigger.stock': 'Stocked messages',
   'behavior.trigger.stock.help': 'When messages are waiting in the stock and nothing is running, start a turn with them. Each distinct stock state is attempted once, so a failure leaves the messages waiting with a reason rather than retrying in a loop. OFF: they wait for the button.',
   'behavior.anchor.label': 'Anchor',
@@ -1794,7 +1794,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   'spu.redistributeBtn': 'Redistribute Layer 4 → 1-3',
   'spu.redistributeTitle': 'Runs {file}. Shows the agent Layers 1-5 with NO conversation log, and lets it move settled material OUT of Layer 4 INTO Layers 1-3. Layers 1-3 land in the right pane; Layer 4 is written back to local_data/beings/{folder}/summaries/ — the whole folder is backed up first.',
   'spu.indexBtn': 'Self-surgery',
-  'spu.indexTitle': 'Soul self-surgery ({file}). Opens one NEXUS turn in the being\'s own conversation, in which the being edits a copy of its Layers 1-3 on its desk with its own file tools. When it declares the surgery complete, the before/after appears here, and the soul does not change until you confirm. Not offered in a conversation whose file tools are off.',
+  'spu.indexTitle': 'Soul self-surgery ({file}). Opens one NEXUS turn in the being\'s own conversation, in which the being edits a copy of their Layers 1-3 on their desk with their own file tools. When they declare the surgery complete, the before/after appears here, and the soul does not change until you confirm. Not offered in a conversation whose file tools are off.',
   'spu.reorganizeBtn': 'Reorganize (No Conversation)',
   'spu.reorganizeTitle': 'Runs {file}. Cleans up/re-files the EXISTING Layers 1-3, WITHOUT a conversation log — no new facts are added, only boundary enforcement and de-duplication.',
   'spu.updateBtn': 'Update from Conversation',

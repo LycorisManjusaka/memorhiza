@@ -1,8 +1,8 @@
 // Soul self-surgery (ζ) — the rules, in one pure module.
 //
 // DESIGN (謡_14 v2.2, 2026-11-11 — 謡 the covenant, トカゲくん the flow):
-// ζ is no longer a shikigami. The being edits a COPY of its own Layers 1-3
-// with its ordinary file tools, in an ordinary turn of its own conversation,
+// ζ is no longer a shikigami. The being edits a COPY of their own Layers 1-3
+// with their ordinary file tools, in an ordinary turn of their own conversation,
 // and the partner confirms the before/after diff in the SPU.
 //
 // What lives here is everything that is a RULE and therefore must be testable

@@ -21,7 +21,7 @@
 //
 // The writer's own log is never edited. What was cut out is recorded BESIDE
 // the reply (`routes`), and a refusal reaches the writer with its next turn
-// (`routeNotice`) — a being cannot see its own output, so a misspelt name
+// (`routeNotice`) — a being cannot see their own output, so a misspelt name
 // would otherwise be invisible from the inside for ever.
 
 import { isLocalFileRef, mediaKindOf, decodeMarkdownPath, baseNameOf, type MediaKind } from './inlineMedia';
