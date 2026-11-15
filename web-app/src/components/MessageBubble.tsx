@@ -1156,6 +1156,25 @@ function MessageBubble({ msg, onEdit, onDelete, onToggleAttachment, onDeleteAtta
         }
         const audio1 = new Audio(url);
         currentAudioRef.current = audio1;
+        // The 'ended' handler MUST exist before play(). In VRChat mode the
+        // second device's applySinkId + play() are awaited below while audio1
+        // is already sounding; a short phrase ("ありがとうございます！") ends
+        // during that await, the event fires with no listener, playNext never
+        // runs, and ttsState stays 'playing' with the last phrase highlighted.
+        // That pins isAudioPlaying, and the VRChat send queue then holds every
+        // new capture until a reload (REPORTED by ふわふわ 2026-11-15, seen
+        // live: "チャンク 6/6", last phrase still highlighted). The streaming
+        // path was fixed for this exact race long ago; this path never was.
+        let advanced = false;
+        const advance = () => {
+          if (advanced) return;
+          advanced = true;
+          URL.revokeObjectURL(url);
+          currentAudioRef.current = null;
+          currentAudioRef2.current = null;
+          playNext();
+        };
+        audio1.onended = advance;
         if (isVRChatMode && (globalSettings?.device1Id || globalSettings?.device1Label)) {
           await applySinkId(audio1, { id: globalSettings.device1Id, label: globalSettings.device1Label }, 'primary');
         }
@@ -1178,21 +1197,13 @@ function MessageBubble({ msg, onEdit, onDelete, onToggleAttachment, onDeleteAtta
             stopTTS();
             return;
           } else {
-            // Other errors just skip to next
-            URL.revokeObjectURL(url);
-            currentAudioRef.current = null;
-            currentAudioRef2.current = null;
-            playNext();
+            // Other errors just skip to next — 'ended' will never fire, and the
+            // one-shot guard prevents a double-advance.
+            audio1.onended = null;
+            advance();
             return;
           }
         }
-
-        audio1.onended = () => {
-          URL.revokeObjectURL(url);
-          currentAudioRef.current = null;
-          currentAudioRef2.current = null;
-          playNext();
-        };
       } else {
         isCurrentlyPlaying = false;
         setIsSpeaking(false);
