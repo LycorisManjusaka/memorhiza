@@ -33,7 +33,9 @@ test('already present by id, or no announced user: unchanged', () => {
 
 test('wiring: the kicking tab no longer drops the plan before looking at its user', () => {
   const src = fs.readFileSync(path.join(process.cwd(), 'src/components/ChatArea.tsx'), 'utf8');
-  // Since 2026-11-15 every announced user message is placed (usersBefore, then user).
-  assert.match(src, /if \(!attach\) \{[\s\S]{0,400}\[\.\.\.plan\.usersBefore, plan\.user\][\s\S]{0,120}placeAnnouncedUser\(acc, u, watchId, hasOptimistic\)/);
+  // Since 2026-11-16: the earlier users are placed even when this tab has an
+  // optimistic bubble (it stands for the LAST one only), before that bubble;
+  // only `plan.user` is suppressed by it. 謡's [->name] was invisible otherwise.
+  assert.match(src, /if \(!attach\) \{[\s\S]{0,900}plan\.usersBefore[\s\S]{0,120}placeAnnouncedUser\(acc, u, anchor, false\)[\s\S]{0,120}placeAnnouncedUser\(next, plan\.user, watchId, hasOptimistic\)/);
   assert.doesNotMatch(src, /if \(!attach\) return;\s*\n\s*\/\/ FIRST plan only/);
 });

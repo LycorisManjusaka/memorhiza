@@ -27,7 +27,7 @@ import path from 'path';
 import { DATA_DIR } from '@/lib/beingPaths';
 import { atomicWriteFile } from '@/lib/atomicWrite';
 import { installationId, normaliseInstallPath } from '@/lib/runnerHost';
-import { enqueue, pending } from '@/lib/turnQueue';
+import { enqueue, pending, queuedConversations } from '@/lib/turnQueue';
 import { listFolders, listLogs, loadLog, loadUserSettings } from '@/lib/fsStorage';
 import { livingConversation } from '@/lib/livingConversation';
 import { readAllAgentFiles, extractAgentSystemPrompt } from '@/lib/systemPromptStorage';
@@ -278,7 +278,7 @@ async function fireSlot(being: string, w: WakeSettings, slot: DueSlot, selfId: s
 
 const inFlight = new Set<string>();
 
-async function kick(being: string, convoId: string) {
+async function kick(being: string, convoId: string, auto = false) {
   const key = `${being}\u0000${convoId}`;
   if (inFlight.has(key)) return;
   inFlight.add(key);
@@ -290,7 +290,7 @@ async function kick(being: string, convoId: string) {
     await POST(new Request(`${origin}/api/runner/tick`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ being, convoId }),
+      body: JSON.stringify(auto ? { being, convoId, auto: true } : { being, convoId }),
     }));
   } catch (e) {
     console.warn(`[wake] tick for ${being}/${convoId} failed:`, e);
@@ -310,6 +310,27 @@ async function waitingWakeConversations(being: string, selfId: string): Promise<
     if (items.some(it => it.kind === 'system'
       && (it.payload as { purpose?: unknown })?.purpose === WAKE_PURPOSE
       && normaliseInstallPath(it.host || '') === normaliseInstallPath(selfId))) out.push(l.id);
+  }
+  return out;
+}
+
+/**
+ * Conversations holding an UN-ADDRESSED waiting `user_message` — in practice a
+ * `[->name]` block from another being (2026-11-16). Such an item has no screen
+ * behind it, so the store-level host runs it; when the WRITER's turn ran on
+ * the other install, nothing on this one was told. The clock is the one loop
+ * here that runs with no tab, so it sweeps them. Kicked as an `auto` pass:
+ * the being's own "stocked messages" checkbox still decides whether to wake.
+ */
+async function waitingRoutedConversations(being: string): Promise<string[]> {
+  // The queue folders, not listLogs: this runs for EVERY being every cycle,
+  // and only a conversation with something queued can be an answer.
+  const out: string[] = [];
+  for (const q of await queuedConversations(being)) {
+    if (q.leased || q.count === 0) continue;
+    let items;
+    try { items = await pending(being, q.convoId); } catch { continue; }
+    if (items.some(it => it.kind === 'user_message' && !(it.host || '').trim())) out.push(q.convoId);
   }
   return out;
 }
@@ -351,6 +372,11 @@ export async function clockCycle(now = Date.now(), notBefore = 0): Promise<void>
   const folders = await listFolders() as Array<{ name: string; settings?: Record<string, unknown> }>;
   for (const f of folders) {
     if (beingIsBlockedHere(f.name)) continue;
+    // Before the "no wake settings" skip below: a `[->name]` message is for
+    // every being, wake settings or not.
+    try {
+      for (const convoId of await waitingRoutedConversations(f.name)) void kick(f.name, convoId, true);
+    } catch {}
     const w = parseWakeSettings(f.settings?.wake);
     const s = await readWakeState(f.name);
     if (!w.enabled && !w.self.enabled && !w.mail && s.bookings.length === 0) { mailSeen().delete(f.name); continue; }

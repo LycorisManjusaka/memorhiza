@@ -22,7 +22,6 @@ import { putBytes, mimeForRef } from '@/lib/attachmentStore';
 import { SNIFF_BYTES, TEXT_MAX_BYTES, looksLikeText } from '@/lib/textSniff';
 import { resolveDeskFile } from '@/lib/deskFile';
 import { latestActiveConversation } from '@/lib/wakeClock';
-import { beingIsBlockedHere } from '@/lib/blockedBeings';
 import {
   parseRouteBlocks, isHereWord, findLocalMedia, replaceAttachedMedia, buildRouteNotice,
   type RouteRecord, type RouteLang, type LocalMediaRef,
@@ -94,15 +93,20 @@ async function attachDeskFile(sender: string, ref: LocalMediaRef): Promise<Recor
 
 /**
  * Plan the routes in one finished reply. Null when the reply addresses nobody.
- * `selfId` addresses the stocked item to the installation that ran the writer's
- * turn, as a wake does — except for a being this installation may not run,
- * whose item is left to whichever installation hosts it.
+ *
+ * The stocked item carries NO installation address (CORRECTED 2026-11-16).
+ * The first version addressed it to the install that ran the WRITER's turn.
+ * MEASURED the same night: 謡 spoke on 3000 while the runner and the wake
+ * clock were 3001, so 睡's stock read "for a different installation" and
+ * nothing here would ever run it. That rule contradicted QueueItem.host's
+ * own: only a message a person TYPED is addressed, because only it has a
+ * screen behind it; a letter or a timer goes to the store-level host. A
+ * `[->name]` block has no screen either — the store-level host places it.
  */
 export async function planBeingRoutes(a: {
   sender: string;
   text: string;
   lang: RouteLang;
-  selfId: string;
 }): Promise<RoutePlan | null> {
   const blocks = parseRouteBlocks(a.text);
   if (!blocks.length) return null;
@@ -152,7 +156,6 @@ export async function planBeingRoutes(a: {
             kind: 'user_message',
             from: a.sender,
             payload: { text: s.text, attachments: s.attachments },
-            ...(beingIsBlockedHere(s.being) ? {} : { host: a.selfId }),
             uiLang: a.lang,
           });
           done.push({ being: s.being, convoId: s.convoId });

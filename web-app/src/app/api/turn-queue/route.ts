@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import {
   enqueue, claim, release, abandon, composeBatch, readLease, splitByLease,
   breakLease, isCommandKind, isEmptyTurnText, pendingWithErrors, itemIsForThisInstallation,
-  removePendingItem, editPendingItem,
+  removePendingItem, editPendingItem, readdressPendingItem,
 } from '@/lib/turnQueue';
 import { installationId, runnerHostStatus } from '@/lib/runnerHost';
 import { liveTurnStatus } from '@/lib/turnBus';
@@ -240,7 +240,9 @@ export async function POST(req: Request) {
   // exists so 3000 cannot start Cairn's turn, and deleting a queued message is
   // the opposite of starting one. Refusing them would mean an item stranded in
   // a blocked being's queue has no exit at all, which is the wedge again.
-  if ((action === 'enqueue' || action === 'claim') && beingIsBlockedHere(being)) {
+  // `adopt` too: moving an item to an install that refuses to run this being
+  // would strand it in a new place instead of the old one.
+  if ((action === 'enqueue' || action === 'claim' || action === 'adopt') && beingIsBlockedHere(being)) {
     return NextResponse.json(blockedResponseBody(being), { status: 403 });
   }
 
@@ -390,6 +392,15 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'text is required' }, { status: 400 });
       }
       return NextResponse.json(await editPendingItem(being, convoId, id, body.text));
+    }
+
+    // Move a waiting item to THIS installation (2026-11-16). The address is
+    // always the caller's own install — never a value from the body — so the
+    // button means exactly "deliver it here" and cannot aim anywhere else.
+    if (action === 'adopt') {
+      const id = typeof body.id === 'string' ? body.id.trim() : '';
+      if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
+      return NextResponse.json(await readdressPendingItem(being, convoId, id, await installationId()));
     }
 
     // Force a lease open when its holder is gone.

@@ -955,6 +955,37 @@ export async function editPendingItem(
 }
 
 /**
+ * Re-address ONE waiting item to `host` (2026-11-16, つよ).
+ *
+ * WHY: a `[->name]` item is addressed to the installation that ran the
+ * SENDER's turn (lib/beingRouteExec). 謡 spoke on one install while 睡 was
+ * open on the other, so 睡's stock showed "addressed to a different
+ * installation" with no way to move it — the item could be deleted but not
+ * delivered. This is the move.
+ *
+ * Same refusals as edit/remove (claimed / claimed-unknown / not-found), same
+ * filename (the name is the FIFO order), payload untouched. Only the address
+ * changes. An empty `host` is refused rather than written: absent means "the
+ * store-level host", which is a different place from the one the person
+ * pressed the button on.
+ */
+export async function readdressPendingItem(
+  being: string,
+  convoId: string,
+  id: string,
+  host: string,
+  opts?: Opts
+): Promise<PendingEditResult> {
+  const target = host.trim();
+  if (!target) return { ok: false, reason: 'empty' };
+  const found = await findWaitingItem(being, convoId, id, opts);
+  if (!found.ok) return found;
+  const next: QueueItem = { ...found.item, host: target };
+  await atomicWriteFile(path.join(queueDir(being, convoId, opts), found.name), JSON.stringify(next));
+  return { ok: true };
+}
+
+/**
  * Every conversation of this being that has anything queued or a live lease.
  * This is what a poller iterates; it deliberately returns the conversation
  * IDS only, so the caller decides what (if anything) to load.

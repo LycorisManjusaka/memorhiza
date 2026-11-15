@@ -3751,10 +3751,20 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           // message, a NEXUS-opened turn): see lib/announcedUser.ts.
           if (!attach) {
             const hasOptimistic = optimisticIdsRef.current.length > 0;
-            // Several stocked messages each became their own user message:
-            // placed in order, each directly before the placeholder.
-            setMessages(prev => [...plan.usersBefore, plan.user].reduce<any[]>(
-              (acc, u) => placeAnnouncedUser(acc, u, watchId, hasOptimistic), prev as any[]) as any);
+            // Several stocked messages each became their own user message.
+            // The optimistic bubble stands for the LAST one only (what this
+            // tab typed). The earlier ones — another being's `[->name]`, an
+            // older stocked line — are on no screen yet. REPORTED 2026-11-16
+            // (つよ): 謡's message reached the being and was invisible until a
+            // reload, because `hasOptimistic` suppressed the whole list. They
+            // go directly before this tab's own bubble, in order.
+            const anchor = hasOptimistic ? optimisticIdsRef.current[0] : watchId;
+            setMessages(prev => {
+              let next = (plan.usersBefore as unknown[]).reduce<any[]>(
+                (acc, u) => placeAnnouncedUser(acc, u, anchor, false), prev as any[]);
+              next = placeAnnouncedUser(next, plan.user, watchId, hasOptimistic);
+              return next as any;
+            });
             return;
           }
           // FIRST plan only. A handoff opens a second pass under a new id; a
@@ -4005,7 +4015,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
    * sentence in this row already lives.
    */
   const stockItemAction = useCallback(async (
-    action: 'remove' | 'edit',
+    action: 'remove' | 'edit' | 'adopt',
     id: string,
     text?: string
   ): Promise<boolean> => {
@@ -7160,6 +7170,18 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                                   : t('chat.stock.noBody'))}
                             </div>
                             <div className="flex items-center gap-2">
+                              {/* Move an item addressed to the other install
+                                  to THIS one (2026-11-16, つよ). The server
+                                  always writes its own id, so this button
+                                  cannot aim anywhere but here. */}
+                              {elsewhere ? (
+                                <button
+                                  onClick={() => { void stockItemAction('adopt', it.id); }}
+                                  className="px-2 py-1 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90"
+                                >
+                                  {t('chat.stock.adoptHere')}
+                                </button>
+                              ) : null}
                               {/* Editing is for `user_message` only — a command
                                   carries a pointer and has no body to fix. The
                                   server refuses it by kind; hiding the button

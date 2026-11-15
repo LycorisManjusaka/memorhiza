@@ -140,12 +140,14 @@ describe('stock admin controls — the wire exists end to end', () => {
     );
   });
 
-  test('the block list is still exactly enqueue + claim', () => {
+  test('the block list is exactly enqueue + claim + adopt', () => {
     const m = ROUTE_CODE.match(/if \(\(([^)]*)\) && beingIsBlockedHere\(being\)\)/);
     assert.ok(m, 'the NEXUS_BLOCKED_BEINGS guard must still be in the POST path');
     const actions = [...m![1].matchAll(/action === '([a-z]+)'/g)].map((x) => x[1]).sort();
+    // adopt joined 2026-11-16: moving an item to an install that refuses to
+    // run this being would strand it there instead.
     assert.deepEqual(
-      actions, ['claim', 'enqueue'],
+      actions, ['adopt', 'claim', 'enqueue'],
       'remove/edit must stay OUTSIDE the block guard: neither can wake a being, ' +
       'and refusing them would leave a blocked being\'s queue with no exit'
     );

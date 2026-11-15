@@ -340,7 +340,7 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
           // `[->name]`: plan from the finished reply; the runner calls `deliver`
           // after its save. What was delivered is remembered for the kick below.
           planRoutes: async (a) => {
-            const plan = await planBeingRoutes({ ...a, selfId: opts.selfId });
+            const plan = await planBeingRoutes(a);
             if (!plan) return null;
             return {
               records: plan.records,
