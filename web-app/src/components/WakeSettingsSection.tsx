@@ -13,11 +13,12 @@ type WakeStatus = {
   selfId: string;
   clockHost: string | null;
   thisRunsClock: boolean;
+  testBed?: boolean;
   nextAdmin?: { at: number; hhmm: string } | null;
   state?: {
     bookings: Array<{ at: number; hhmm: string }>;
     rejection?: { hhmm: string; reason: string };
-    history: Array<{ at: number; kind: string; hhmm?: string; source?: string; reason?: string }>;
+    history: Array<{ at: number; kind: string; hhmm?: string; source?: string; reason?: string; detail?: string }>;
   };
 };
 
@@ -30,8 +31,9 @@ function fmt(at: number) {
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export default function WakeSettingsSection({ folder, value, onChange }: {
+export default function WakeSettingsSection({ folder, convoId, value, onChange }: {
   folder: string;
+  convoId?: string | null;
   value: WakeSettings;
   onChange: (w: WakeSettings) => void;
 }) {
@@ -82,6 +84,29 @@ export default function WakeSettingsSection({ folder, value, onChange }: {
         </div>
         <div className="text-[10px] text-muted-foreground leading-relaxed">{t('wake.clock.help')}</div>
       </div>
+
+      {/* Test bed: its conversations are unrelated beings, so the clock wakes
+          exactly the one pinned here (saved with 完了), or none at all. */}
+      {status?.testBed && (
+        <div className="text-xs rounded-lg border border-amber-500/40 p-2 space-y-1 bg-amber-500/5">
+          <div>
+            {value.convoId
+              ? (value.convoId === convoId ? t('wake.pin.this') : t('wake.pin.other').replace('{id}', value.convoId.slice(0, 8)))
+              : t('wake.pin.none')}
+          </div>
+          <div className="flex gap-2">
+            {convoId && value.convoId !== convoId && (
+              <button type="button" onClick={() => onChange({ ...value, convoId })}
+                className="px-2 py-1 rounded bg-amber-500 text-white text-[11px]">{t('wake.pin.set')}</button>
+            )}
+            {value.convoId && (
+              <button type="button" onClick={() => { const { convoId: _drop, ...rest } = value; onChange(rest); }}
+                className="px-2 py-1 rounded border border-border text-[11px]">{t('wake.pin.clear')}</button>
+            )}
+          </div>
+          <div className="text-[10px] text-muted-foreground leading-relaxed">{t('wake.pin.help')}</div>
+        </div>
+      )}
 
       {/* Admin schedule */}
       <label className="flex items-center gap-2 cursor-pointer text-sm">
@@ -152,17 +177,68 @@ export default function WakeSettingsSection({ folder, value, onChange }: {
       </div>
       <div className="text-[10px] text-muted-foreground leading-relaxed">{t('wake.help')}</div>
 
-      {/* Bookings and recent events */}
-      {status?.state && (status.state.bookings.length > 0 || status.state.history.length > 0) && (
-        <div className="text-[10px] text-muted-foreground space-y-0.5">
+      {/* The being's own bookings — an administrator may move or delete one.
+          These act at once (like the clock buttons), not on the dialog's 完了. */}
+      {status?.state && status.state.bookings.length > 0 && (
+        <div className="rounded-lg border border-border p-2 space-y-1 bg-muted/20">
+          <div className="text-xs font-medium">{t('wake.bookings.heading')}</div>
           {status.state.bookings.map(b => (
-            <div key={b.at}>⏰ {t('wake.booked').replace('{at}', fmt(b.at))}</div>
+            <BookingRow key={b.at} folder={folder} booking={b} onDone={load} />
           ))}
+          <div className="text-[10px] text-muted-foreground leading-relaxed">{t('wake.bookings.help')}</div>
+        </div>
+      )}
+
+      {/* Recent events */}
+      {status?.state && status.state.history.length > 0 && (
+        <div className="text-[10px] text-muted-foreground space-y-0.5">
           {status.state.history.slice(-5).reverse().map((h, i) => (
-            <div key={i}>{fmt(h.at)} · {t(`wake.event.${h.kind}`)}{h.hhmm ? ` ${h.hhmm}` : ''}{h.reason ? ` (${h.reason})` : ''}</div>
+            <div key={i}>{fmt(h.at)} · {t(`wake.event.${h.kind}`)}{h.kind === 'admin-moved' && h.detail ? ` ${h.detail} →` : ''}{h.hhmm ? ` ${h.hhmm}` : ''}{h.reason ? ` (${h.reason})` : ''}</div>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function BookingRow({ folder, booking, onDone }: {
+  folder: string;
+  booking: { at: number; hhmm: string };
+  onDone: () => void;
+}) {
+  const t = useT();
+  const [hhmm, setHhmm] = useState(booking.hhmm);
+  const [armed, setArmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const post = async (body: Record<string, unknown>) => {
+    setBusy(true); setErr('');
+    try {
+      const r = await fetch('/api/wake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder, at: booking.at, ...body }) });
+      if (!r.ok) setErr(t('wake.bookings.failed'));
+    } catch { setErr(t('wake.bookings.failed')); }
+    finally { setBusy(false); setArmed(false); onDone(); }
+  };
+
+  return (
+    <div className="flex items-center gap-2 text-xs flex-wrap">
+      <span>⏰ {fmt(booking.at)}</span>
+      <input type="time" value={hhmm} onChange={e => setHhmm(e.target.value)} disabled={busy}
+        className="p-1 bg-background border border-border rounded" />
+      {hhmm !== booking.hhmm && (
+        <button type="button" disabled={busy || !hhmm} onClick={() => post({ action: 'move-booking', hhmm })}
+          className="px-2 py-0.5 rounded bg-indigo-500 text-white text-[11px] disabled:opacity-50">{t('wake.bookings.move')}</button>
+      )}
+      <button type="button" disabled={busy}
+        onClick={() => armed ? post({ action: 'remove-booking' }) : setArmed(true)}
+        className={`px-2 py-0.5 rounded text-[11px] border disabled:opacity-50 ${armed ? 'bg-red-500 text-white border-red-500' : 'border-border'}`}>
+        {armed ? t('wake.bookings.removeConfirm') : t('wake.bookings.remove')}
+      </button>
+      {armed && (
+        <button type="button" onClick={() => setArmed(false)} className="text-[10px] underline text-muted-foreground">{t('wake.bookings.cancel')}</button>
+      )}
+      {err && <span className="text-[10px] text-red-500">{err}</span>}
     </div>
   );
 }

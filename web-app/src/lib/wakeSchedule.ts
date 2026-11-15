@@ -35,6 +35,13 @@ export interface WakeSettings {
   /** Index 0 = Sunday … 6 = Saturday (Date#getDay). */
   days: boolean[];
   self: SelfWakeSettings;
+  /**
+   * Test beds only: the one conversation the clock wakes. A test bed's
+   * conversations are separate beings with no "latest", so without a pin the
+   * clock would wake whichever was touched last. Ordinary beings ignore this
+   * (they always wake their living conversation).
+   */
+  convoId?: string;
 }
 
 export const DEFAULT_MIN_GAP_MIN = 15;
@@ -97,6 +104,7 @@ export function parseWakeSettings(raw: unknown): WakeSettings {
       windowTo: normaliseHHMM(s.windowTo) ?? '',
       minGapMin: gap,
     },
+    ...(typeof r.convoId === 'string' && r.convoId ? { convoId: r.convoId } : {}),
   };
 }
 
@@ -173,6 +181,27 @@ export function dueSelfSlots(bookings: SelfBooking[], now: number, notBefore: nu
 /** Bookings that can never fire again (their grace window has passed). */
 export function pruneBookings(bookings: SelfBooking[], now: number): SelfBooking[] {
   return bookings.filter(b => now - b.at <= FIRE_GRACE_MS);
+}
+
+/**
+ * An administrator moves one of the being's own bookings to another time.
+ * This is the person overruling, so the being's limits (window, daily cap,
+ * gap) are NOT applied — only the time must be a real HH:MM. Same rule as a
+ * booking: today if still ahead, else tomorrow. Returns null when the time is
+ * invalid or the booking is gone (already fired / pruned).
+ */
+export function rescheduleBooking(
+  bookings: SelfBooking[], at: number, hhmm: string, now: number,
+): { bookings: SelfBooking[]; booking: SelfBooking } | null {
+  const t = hhmm.trim();
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) return null;
+  const old = bookings.find(b => b.at === at);
+  if (!old) return null;
+  const nowD = new Date(now);
+  let target = atLocal(nowD, t);
+  if (target.getTime() <= now) target = atLocal(new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() + 1), t);
+  const booking: SelfBooking = { at: target.getTime(), hhmm: t, bookedAt: old.bookedAt };
+  return { bookings: [...bookings.filter(b => b.at !== at), booking].sort((a, b) => a.at - b.at), booking };
 }
 
 // ── Self-set wake: parse and validate ───────────────────────────────────────

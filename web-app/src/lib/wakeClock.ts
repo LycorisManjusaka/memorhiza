@@ -36,7 +36,7 @@ import { conversationToolsEnabled } from '@/lib/agentCapabilities';
 import {
   parseWakeSettings, dueAdminSlots, dueSelfSlots, pruneBookings, validateBooking, parseWakeupDirective,
   wakeShortText, buildCapabilityList, buildSelfWakeLine, describeRejection, fillWakeTemplate,
-  FALLBACK_WAKE_TEMPLATE, WAKE_PURPOSE, wakeLang, localDateKey,
+  FALLBACK_WAKE_TEMPLATE, WAKE_PURPOSE, wakeLang, localDateKey, rescheduleBooking,
   type SelfBooking, type WakeRejectReason, type DueSlot, type WakeLang, type WakeSettings,
 } from '@/lib/wakeSchedule';
 
@@ -82,7 +82,7 @@ export async function thisInstallationRunsClock(selfId: string, dataDir = DATA_D
 
 export interface WakeEvent {
   at: number;
-  kind: 'fired' | 'booked' | 'rejected' | 'no-conversation' | 'error';
+  kind: 'fired' | 'booked' | 'rejected' | 'no-conversation' | 'error' | 'admin-removed' | 'admin-moved';
   hhmm?: string;
   source?: 'admin' | 'self';
   convoId?: string;
@@ -181,14 +181,20 @@ export async function latestActiveConversation(being: string): Promise<string | 
   type Row = { id: string; folderName: string; title?: string; active?: boolean; corrupted?: boolean };
   const mine = (await listLogs() as Row[]).filter(l => l.folderName === being);
   let testBed = false;
+  let pinned: string | undefined;
   try {
-    const folders = await listFolders() as Array<{ name: string; settings?: { testBed?: unknown } }>;
-    testBed = folders.find(f => f.name === being)?.settings?.testBed === true;
+    const folders = await listFolders() as Array<{ name: string; settings?: { testBed?: unknown; wake?: unknown } }>;
+    const f = folders.find(x => x.name === being);
+    testBed = f?.settings?.testBed === true;
+    pinned = parseWakeSettings(f?.settings?.wake).convoId;
   } catch {}
-  const hit = testBed
-    ? mine.find(l => l.active !== false && !l.corrupted)
-    : livingConversation(mine, being);
-  return hit?.id ?? null;
+  if (testBed) {
+    // Only the pinned conversation, and only while it still exists and is active.
+    // No pin → no wake: "the one touched last" wandered between unrelated beings.
+    const hit = pinned ? mine.find(l => l.id === pinned && l.active !== false && !l.corrupted) : undefined;
+    return hit?.id ?? null;
+  }
+  return livingConversation(mine, being)?.id ?? null;
 }
 
 async function readTemplate(lang: WakeLang): Promise<string> {
@@ -336,13 +342,19 @@ type ClockGlobal = { __nexusWakeClock?: { timer: ReturnType<typeof setInterval>;
  */
 export function ensureWakeClock(): void {
   const g = globalThis as ClockGlobal;
+  // Every load of this module republishes its clockCycle. The timer below is
+  // created once per process and outlives hot reloads; if it held the cycle
+  // from its own closure it would keep running the OLD rules until a restart
+  // (seen 2026-11-15: a fix to the test-bed target did not reach the clock).
+  (g as { __nexusWakeCycle?: typeof clockCycle }).__nexusWakeCycle = clockCycle;
   if (g.__nexusWakeClock) return;
   const startedAt = Date.now();
   let running = false;
   const timer = setInterval(() => {
     if (running) return;
     running = true;
-    clockCycle(Date.now(), startedAt).catch(e => console.warn('[wake] cycle failed:', e)).finally(() => { running = false; });
+    const cycle = (g as { __nexusWakeCycle?: typeof clockCycle }).__nexusWakeCycle || clockCycle;
+    cycle(Date.now(), startedAt).catch(e => console.warn('[wake] cycle failed:', e)).finally(() => { running = false; });
   }, TICK_MS);
   (timer as { unref?: () => void }).unref?.();
   g.__nexusWakeClock = { timer, startedAt };
@@ -350,6 +362,33 @@ export function ensureWakeClock(): void {
 
 export function wakeClockStartedAt(): number | null {
   return (globalThis as ClockGlobal).__nexusWakeClock?.startedAt ?? null;
+}
+
+/** An administrator deletes one self-booking. False = it was already gone. */
+export async function removeBooking(being: string, at: number, now = Date.now(), dataDir = DATA_DIR): Promise<boolean> {
+  return withLock(being, async () => {
+    const s = await readWakeState(being, dataDir);
+    const hit = s.bookings.find(b => b.at === at);
+    if (!hit) return false;
+    s.bookings = s.bookings.filter(b => b.at !== at);
+    s.history.push({ at: now, kind: 'admin-removed', hhmm: hit.hhmm, source: 'self' });
+    await writeWakeState(being, s, dataDir);
+    return true;
+  });
+}
+
+/** An administrator moves one self-booking (limits not applied — see rescheduleBooking). */
+export async function moveBooking(being: string, at: number, hhmm: string, now = Date.now(), dataDir = DATA_DIR): Promise<SelfBooking | null> {
+  return withLock(being, async () => {
+    const s = await readWakeState(being, dataDir);
+    const r = rescheduleBooking(s.bookings, at, hhmm, now);
+    if (!r) return null;
+    const oldHhmm = s.bookings.find(b => b.at === at)?.hhmm;
+    s.bookings = r.bookings;
+    s.history.push({ at: now, kind: 'admin-moved', hhmm: r.booking.hhmm, source: 'self', detail: oldHhmm });
+    await writeWakeState(being, s, dataDir);
+    return r.booking;
+  });
 }
 
 export async function clearBookings(being: string, dataDir = DATA_DIR): Promise<void> {

@@ -8385,7 +8385,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                   {/* Waking at set times is a reason to wake up, so it lives
                       here — but it is the being's setting (settings.json),
                       part of the same draft as the 存在 tab, saved on 完了. */}
-                  <WakeSettingsSection folder={folderName} value={beingDraft.wake} onChange={beingDraft.setWake} />
+                  <WakeSettingsSection folder={folderName} convoId={convoId} value={beingDraft.wake} onChange={beingDraft.setWake} />
                 </div>
                 {/* ── The anchor (錨). The checkbox is the only gate: OFF means
                     no button on any bubble and no report shown. Its vessel is

@@ -108,3 +108,10 @@ test('next admin slot skips days that are off', () => {
   const w = parseWakeSettings({ enabled: true, times: ['04:00'], days: [false, false, true, false, false, false, false] });
   assert.equal(nextAdminSlot(w, at(16, 5, 0))?.at, at(17, 4, 0));
 });
+
+test('a test bed\'s pinned conversation survives parsing; empty or non-string is dropped', () => {
+  assert.equal(parseWakeSettings({ convoId: 'abc' }).convoId, 'abc');
+  assert.equal('convoId' in parseWakeSettings({ convoId: '' }), false);
+  assert.equal('convoId' in parseWakeSettings({ convoId: 5 }), false);
+  assert.equal('convoId' in parseWakeSettings(undefined), false);
+});
