@@ -37,10 +37,39 @@ export async function atomicWriteFile(filePath: string, data: string) {
   const tmp = path.join(dir, `.${base}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   try {
     await fs.writeFile(tmp, data);
-    await fs.rename(tmp, filePath);
+    await renameWithRetry(tmp, filePath);
   } catch (e) {
     // Clean up tmp on failure so we don't leak .tmp-* files
     try { await fs.unlink(tmp); } catch {}
     throw e;
+  }
+}
+
+// On Windows, replacing a file fails with EPERM / EACCES / EBUSY while ANY
+// other process holds it open without delete-sharing — a parallel reader,
+// the antivirus scanner, the search indexer. That window is short, but it
+// grows with the file: a 10 MB conversation log is open for longer on every
+// read. Observed 2026-11-15: a finished turn's final save died on exactly
+// this, the turn's reply was lost and the queue item came back. The rename
+// stays atomic; we only wait the window out instead of giving up on the
+// first collision. ~6 s total before the real error is re-thrown.
+const RETRYABLE = new Set(['EPERM', 'EACCES', 'EBUSY']);
+const RETRY_DELAYS_MS = [25, 50, 100, 200, 300, 500, 750, 1000, 1500, 1500];
+
+export async function renameWithRetry(
+  from: string,
+  to: string,
+  rename: (a: string, b: string) => Promise<void> = fs.rename,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+) {
+  for (let i = 0; ; i++) {
+    try {
+      await rename(from, to);
+      return;
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException)?.code;
+      if (!code || !RETRYABLE.has(code) || i >= RETRY_DELAYS_MS.length) throw e;
+      await sleep(RETRY_DELAYS_MS[i]);
+    }
   }
 }
