@@ -4468,9 +4468,14 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           // grew the VRChat entity folders to gigabytes in the first place.
           // Falls back to inline on upload failure so a capture is never lost.
           let capturedRef: string | null = null;
+          // Recorded so the attachment tag reports real bytes. Without it the
+          // tag printed size="0" for every capture, which read as "the photo
+          // was picked up half-written" (it never was — MEASURED 2026-11-15).
+          let capturedSize: number | undefined;
           try {
             const blob = dataUrlToBlob(dataUrl);
             if (blob) {
+              capturedSize = blob.size;
               const stored = await uploadAttachment(blob, mime);
               if (stored) capturedRef = stored.ref;
             }
@@ -4482,6 +4487,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
             type: mime,
             isImage: true,
             ...(capturedRef ? { ref: capturedRef } : { dataUrl }),
+            ...(capturedSize ? { size: capturedSize } : {}),
             tokens
           };
           // Resolve the text ATOMICALLY: consume kohai/ear (read + truncate in

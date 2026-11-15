@@ -72,6 +72,27 @@ export async function GET(req: NextRequest) {
     }, SETTLE_MS);
   };
 
+  // ── Baseline: every file that already exists is NEVER a new capture ───────
+  // Recorded BEFORE fs.watch starts, and consulted by BOTH detectors.
+  //
+  // ⚠ MEASURED 2026-11-15 (REPORTED by ふわふわ: 16 photos from Nov 1–2 were
+  // sent on their own, in folder order, none of them rewritten on disk): on
+  // Windows, merely READING a file fires an fs.watch 'change' event (NTFS
+  // updates the last-access time; libuv watches for it). A full readFileSync
+  // of a two-week-old screenshot produced `change 2026-11\VRChat_…png`; a
+  // stat did not. So anything that reads the folder — Explorer thumbnails,
+  // an image viewer, a backup/sync, the indexer — made this route emit OLD
+  // photos as new captures. Until now only the poll checked the baseline;
+  // fs.watch emitted every event. NTFS refreshes last-access at most about
+  // hourly, which is why it looked random.
+  const seenRel = new Set<string>();
+  const listTree = (): string[] => {
+    try { return (fs.readdirSync(watchPath, { recursive: true } as any) as string[]).map(String); }
+    catch (e) { console.error('[vrchat/watch] poll readdir failed:', e); return []; }
+  };
+  for (const rel of listTree()) seenRel.add(rel);
+  console.log(`[vrchat/watch] baseline recorded (${seenRel.size} existing entries)`);
+
   // ── 1. fs.watch (low-latency, unreliable) ──────────────────────────────────
   let watcher: fs.FSWatcher | null = null;
   try {
@@ -80,6 +101,10 @@ export async function GET(req: NextRequest) {
       const fn = String(filename);
       const ext = path.extname(fn).toLowerCase();
       if (!IMAGE_EXTS.includes(ext)) return;
+      // Existing (or already handled) file: an access/attribute event, not a
+      // new screenshot. Same rule as the poll below.
+      if (seenRel.has(fn)) return;
+      seenRel.add(fn);
       const fullPath = path.join(watchPath, fn);
       console.log(`[vrchat/watch] (watch) event=${eventType} file=${fn}`);
       emitCapture(fullPath, 'watch');
@@ -90,15 +115,7 @@ export async function GET(req: NextRequest) {
   }
 
   // ── 2. Directory-poll backstop (reliable) ──────────────────────────────────
-  // Record the existing tree so pre-existing screenshots are NOT emitted on
-  // connect; only files that appear afterwards are treated as new.
-  const seenRel = new Set<string>();
-  const listTree = (): string[] => {
-    try { return (fs.readdirSync(watchPath, { recursive: true } as any) as string[]).map(String); }
-    catch (e) { console.error('[vrchat/watch] poll readdir failed:', e); return []; }
-  };
-  for (const rel of listTree()) seenRel.add(rel);
-  console.log(`[vrchat/watch] poll baseline recorded (${seenRel.size} existing entries)`);
+  // Uses the same baseline: only files that appear after connect are new.
 
   const pollTimer = setInterval(() => {
     if (isClosed) return;

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMockScenario, planMockRound, mockChunks, isMockModelId, mockNameFromId, MOCK_DEFAULTS } from '../src/lib/mockModel.ts';
+import { parseMockScenario, planMockRound, mockChunks, isMockModelId, mockNameFromId, MOCK_DEFAULTS } from '../src/lib/mockModel';
 
 test('a broken or empty scenario plays the defaults instead of failing', () => {
   assert.deepEqual(parseMockScenario(null), MOCK_DEFAULTS);
