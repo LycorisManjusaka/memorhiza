@@ -395,7 +395,7 @@ function modelOnFamilySwitch(
   return defaultModelForFamily(newAiName);
 }
 
-export default function ChatArea({ convoId, folderName, aiName, userName, defaultSystemPrompt, defaultAttachmentInstruction, defaultModelParams, defaultSpecificModel, defaultCustomAiName, defaultDateTimeVisibility, defaultVrchatMode, defaultVrchatRule, defaultLiveSessionVoice, onUpdateTitle, plannedTitle, globalSettings, claudeOAuthAvailable, bindingOptional, folders, onCloneWithSystemPrompt, fetchFolders, scrollToMessageId, onScrolledToMessage, newerLogTitle, soulGeneration }: any) {
+export default function ChatArea({ convoId, folderName, aiName, userName, defaultSystemPrompt, defaultAttachmentInstruction, defaultModelParams, defaultSpecificModel, defaultCustomAiName, defaultDateTimeVisibility, defaultVrchatMode, defaultVrchatRule, defaultLiveSessionVoice, onUpdateTitle, plannedTitle, globalSettings, claudeOAuthAvailable, bindingOptional, folders, onCloneWithSystemPrompt, fetchFolders, scrollToMessageId, onScrolledToMessage, newerLogTitle, soulGeneration, pastConversation, onOpenConvo }: any) {
   const t = useT();
   // Stamped onto every queued message so a server-generated notice about it
   // comes back in the language this screen is reading (see lib/noticeLanguage.ts).
@@ -3248,15 +3248,22 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       });
       const d = await res.json().catch(() => null);
       if (!res.ok || !d?.ok) {
-        setStockNote({ text: t('chat.stock.failed'), kind: 'problem' });
-        return;
+        setStockNote({
+          text: d?.code === 'past-conversation'
+            ? t('chat.past.refused').split('{title}').join(String(d.livingTitle || ''))
+            : t('chat.stock.failed'),
+          kind: 'problem',
+        });
+        return false;
       }
       // 'info': this fires when enqueue SUCCEEDED, and a normal send kicks
       // the runner in the same handler microseconds later. Nothing is wrong,
       // so outside debug nothing is said.
       setStockNote({ text: t('chat.stock.added').replace('{n}', String(d.position)), kind: 'info' });
+      return true;
     } catch {
       setStockNote({ text: t('chat.stock.failed'), kind: 'problem' });
+      return false;
     } finally {
       refreshStock();
     }
@@ -3283,7 +3290,12 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       });
       const d = await res.json().catch(() => null);
       if (!res.ok || !d?.ok) {
-        setStockNote({ text: String(d?.error || t('chat.stock.failed')), kind: 'problem' });
+        setStockNote({
+          text: d?.code === 'past-conversation'
+            ? t('chat.past.refused').split('{title}').join(String(d.livingTitle || ''))
+            : String(d?.error || t('chat.stock.failed')),
+          kind: 'problem',
+        });
         return false;
       }
       return true;
@@ -4381,7 +4393,17 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     // immediately instead of at save (lib/firstOriginal.optimisticMarkerIndex).
     setOptimisticIds(optimisticIdsRef.current);
     setHandoffOverride(null);
-    await enqueueToStock(text, attachments, opts?.from || '');
+    const queued = await enqueueToStock(text, attachments, opts?.from || '');
+    if (!queued) {
+      // Nothing reached the queue (e.g. refused as a past conversation), so no
+      // turn will start: take the optimistic bubble back and stop waiting,
+      // rather than leaving a sent-looking message that no one will answer.
+      optimisticIdsRef.current = optimisticIdsRef.current.filter(id => id !== newMessage.id);
+      setOptimisticIds(optimisticIdsRef.current);
+      setMessages(prev => prev.filter(m => m.id !== newMessage.id));
+      setLoading(false);
+      return;
+    }
     await runOnRunner();
   };
 
@@ -6345,7 +6367,11 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           log and answering something in it is legitimate, it just isn't where
           the chain continues. The band reports a fact and names the
           destination; the decision stays with the reader. */}
-      {newerLogTitle && pastLogDismissedFor !== convoId && (
+      {/* Only where a past log CAN still send (a test bed). For an ordinary
+          being the composer is replaced by the past-conversation note at the
+          bottom, and this band's "you can send, but…" would be false
+          (つよ, 2026-11-15). */}
+      {newerLogTitle && !pastConversation && pastLogDismissedFor !== convoId && (
         <div className="shrink-0 px-6 py-2 border-b border-amber-500/40 bg-amber-500/10 flex items-start gap-3">
           {/* Deliberately NOT ⚠. This band stands while an old log is open,
               and a standing ⚠ teaches the reader to ignore ⚠ — which the house
@@ -6686,7 +6712,27 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           It's half-transparent at rest and goes fully visible on hover or
           when the flag is active — minimizing visual noise without losing
           discoverability. */}
-      <div className="shrink-0 relative">
+      {/* A past conversation does not speak (lib/livingConversation,
+          pastConversationRefusal). The composer is HIDDEN rather than removed,
+          so a draft typed before this row became history is not thrown away,
+          and nothing below has to be re-wired. The queue route refuses the
+          same send on its own, for an old tab that never rendered this. */}
+      {pastConversation && (
+        <div className="shrink-0 border-t border-border bg-muted/40 px-4 py-3 flex flex-wrap items-center justify-center gap-3 text-sm">
+          <span className="text-muted-foreground">
+            {t('chat.past.note').split('{title}').join(pastConversation.livingTitle)}
+          </span>
+          {onOpenConvo && (
+            <button
+              onClick={() => onOpenConvo(pastConversation.livingId)}
+              className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90"
+            >
+              {t('chat.past.open').split('{title}').join(pastConversation.livingTitle)}
+            </button>
+          )}
+        </div>
+      )}
+      <div className={`shrink-0 relative${pastConversation ? ' hidden' : ''}`}>
         {/* On a phone the two floating controls used to hang over the top edge
             of the composer panel, and the TTS bar landed exactly on the attach
             button — it was not merely ugly, the paperclip could not be tapped

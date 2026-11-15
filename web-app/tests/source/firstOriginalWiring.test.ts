@@ -71,7 +71,9 @@ describe('source — the copied/original boundary is wired to one number', () =>
     // mirror write is a render that silently keeps the previous boundary.
     const refWrites = (src.match(/optimisticIdsRef\.current\s*=/g) || []).length;
     const mirrorWrites = (src.match(/setOptimisticIds\(/g) || []).length;
-    assert.equal(refWrites, 2, `expected 2 ref writes (send, clear), found ${refWrites}`);
+    // 3 since 2026-11-15: send, clear, and taking the bubble back when the
+    // queue refused the send (a past conversation does not speak).
+    assert.equal(refWrites, 3, `expected 3 ref writes (send, clear, refused), found ${refWrites}`);
     assert.equal(
       mirrorWrites, refWrites,
       `ref written in ${refWrites} places, mirror in ${mirrorWrites}`,

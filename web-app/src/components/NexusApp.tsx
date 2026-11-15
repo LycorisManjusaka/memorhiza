@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { orderFolderConversations, buildDeepLink, folderOrderOf } from '@/lib/deepLink';
 import type { DeepLink } from '@/lib/deepLink';
 import { nextConversationTitle, newerNumberedSibling, pickLatestConversation } from '@/lib/convoNaming';
-import { livingChangeOnRename } from '@/lib/livingConversation';
+import { livingChangeOnRename, pastConversationRefusal } from '@/lib/livingConversation';
 import { initialFolderSelection } from '@/lib/rootLanding';
 import { resolveSoulGeneration, newerSiblingTitleInOrder, titleForGeneration } from '@/lib/soulGeneration';
 import { confirmIfBusy } from '@/lib/unloadGuard';
@@ -1049,6 +1049,16 @@ export default function NexusApp({ deepLink = null }: { deepLink?: DeepLink | nu
             })}
             fetchFolders={fetchFolders}
             onCloneWithSystemPrompt={cloneChatWithSystemPrompt}
+            // A past conversation does not speak (lib/livingConversation,
+            // pastConversationRefusal). The same rule the queue route refuses
+            // with, read here so the input can say so before anything is sent.
+            pastConversation={pastConversationRefusal(
+              conversations.filter(c => c.folderName === activeFolder.name),
+              activeFolder.name,
+              String(currentConvoId),
+              activeFolder.settings?.testBed === true,
+            )}
+            onOpenConvo={guardedSelectConvo}
           />
         ) : !activeFolder && folders.length > 0 ? (
           // Bare root URL on an install that already has inhabitants — nothing

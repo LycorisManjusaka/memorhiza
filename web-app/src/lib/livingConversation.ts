@@ -127,3 +127,42 @@ export function livingConversation<
 >(convos: T[], beingName: string): T | null {
   return orderByTitle(convos, beingName).find((c) => c.active !== false && !c.corrupted) ?? null;
 }
+
+/**
+ * May a turn START in `convoId`? Returns null when it may, or the living
+ * conversation it should have gone to instead.
+ *
+ * A being lives in one conversation (つよ, 2026-11-15): every other row in its
+ * list is history, and a history row does not speak. That is what lets the
+ * living conversation's settings BE the being's settings — "次の会話へ" clones
+ * the whole log, so they carry forward, and a past log's settings stay behind
+ * as a record of what was in effect then. Before this, a send into a past log
+ * ran that log's frozen settings (an old vessel, an old soul) and nothing on
+ * the screen said so.
+ *
+ * Only turn-STARTING things ask this (send, rerun, continue, stock). Reading a
+ * past log, restoring its handover, running the anchor button or the soul
+ * updater over it all stay open — those are how a past log is prepared for the
+ * next generation.
+ *
+ * Allowed, on purpose:
+ *   · a test-bed being (each conversation is its own world there);
+ *   · a conversation that is not in the list yet (a brand-new one, held in
+ *     memory until its first send — it is the newest by construction);
+ *   · a being with no living conversation at all (nothing to send to instead,
+ *     and refusing would leave no way to talk).
+ */
+export function pastConversationRefusal<
+  T extends { id: string; title?: string | null; active?: boolean; corrupted?: boolean },
+>(
+  convos: T[],
+  beingName: string,
+  convoId: string,
+  testBed: boolean,
+): { livingId: string; livingTitle: string } | null {
+  if (testBed) return null;
+  if (!convos.some((c) => String(c.id) === String(convoId))) return null;
+  const living = livingConversation(convos, beingName);
+  if (!living || String(living.id) === String(convoId)) return null;
+  return { livingId: String(living.id), livingTitle: living.title || '' };
+}

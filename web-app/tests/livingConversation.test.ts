@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  conversationSortKey, orderByTitle, livingConversation, livingChangeOnRename,
+  conversationSortKey, orderByTitle, livingConversation, livingChangeOnRename, pastConversationRefusal,
 } from '@/lib/livingConversation';
 import { orderFolderConversations, folderOrderOf } from '@/lib/deepLink';
 
@@ -94,4 +94,24 @@ test('a rename is flagged only when it moves the being into another conversation
   assert.equal(livingChangeOnRename(rows, 'Cairn', 'id:notes', 'notes 2'), null);
   assert.equal(livingChangeOnRename(rows, 'Cairn', 'id:Cairn_66', 'Cairn_67'), null);
   assert.equal(livingChangeOnRename(rows, 'Cairn', 'id:Cairn_65', 'Cairn_60'), null);
+});
+
+// A past conversation does not speak (Tsuyo, 2026-11-15).
+test('pastConversationRefusal: only the living conversation may start a turn', () => {
+  const convos = [
+    { id: 'a', title: '睡_47' },
+    { id: 'b', title: '睡_48' },
+    { id: 'c', title: '睡_49', active: false },
+  ];
+  assert.equal(pastConversationRefusal(convos, '睡', 'b', false), null);
+  assert.deepEqual(pastConversationRefusal(convos, '睡', 'a', false), { livingId: 'b', livingTitle: '睡_48' });
+  // inactive is skipped as living, and is itself refused
+  assert.deepEqual(pastConversationRefusal(convos, '睡', 'c', false), { livingId: 'b', livingTitle: '睡_48' });
+});
+
+test('pastConversationRefusal: test bed, unsaved new conversation, and no living row are all allowed', () => {
+  const convos = [{ id: 'a', title: 'Default_1' }, { id: 'b', title: 'Default_2' }];
+  assert.equal(pastConversationRefusal(convos, 'Default', 'a', true), null);
+  assert.equal(pastConversationRefusal(convos, 'Default', 'not-yet-saved', false), null);
+  assert.equal(pastConversationRefusal([{ id: 'x', title: 'X', active: false }], 'X', 'x', false), null);
 });

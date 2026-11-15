@@ -7,6 +7,7 @@ import {
 import { installationId, runnerHostStatus } from '@/lib/runnerHost';
 import { liveTurnStatus } from '@/lib/turnBus';
 import { beingIsBlockedHere, blockedResponseBody } from '@/lib/blockedBeings';
+import { pastConversationRefusalFor } from '@/lib/pastConversationGate';
 
 // The stock a being's turns are fed from (phase 4a, 2026-10-27).
 //
@@ -241,6 +242,19 @@ export async function POST(req: Request) {
   // a blocked being's queue has no exit at all, which is the wedge again.
   if ((action === 'enqueue' || action === 'claim') && beingIsBlockedHere(being)) {
     return NextResponse.json(blockedResponseBody(being), { status: 403 });
+  }
+
+  // A past conversation does not speak (lib/pastConversationGate). Only
+  // `enqueue`: an item already queued before this rule existed can still be
+  // claimed, removed or released, so nothing is left wedged.
+  if (action === 'enqueue') {
+    const past = await pastConversationRefusalFor(being, convoId);
+    if (past) {
+      return NextResponse.json(
+        { error: 'past-conversation', code: 'past-conversation', ...past },
+        { status: 409 },
+      );
+    }
   }
 
   try {
