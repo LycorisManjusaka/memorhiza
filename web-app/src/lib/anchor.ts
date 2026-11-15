@@ -31,6 +31,17 @@ export interface AnchorSettings {
   model: string;
   /** Claude only. */
   authMode: 'api-key' | 'oauth';
+  /**
+   * 「錨の判定に従って動く」. ON by default (つよ, 2026-11-15). Off means the
+   * anchor still runs and reports, and nothing acts on what it said.
+   */
+  act: boolean;
+  /**
+   * When the anchor runs by itself: every turn, or only turns NEXUS opened.
+   * 'all' by default (つよ) — check E only exists for turns with a partner,
+   * and 11-02's illness happened in exactly such a turn.
+   */
+  scope: 'all' | 'auto';
 }
 
 /** 'deepseek-flash' is the live id of DeepSeek V4.1 Flash — see lib/deepseekModels.ts. */
@@ -39,6 +50,8 @@ export const ANCHOR_DEFAULTS: AnchorSettings = {
   family: 'DeepSeek',
   model: 'deepseek-flash',
   authMode: 'api-key',
+  act: true,
+  scope: 'all',
 };
 
 /**
@@ -58,6 +71,10 @@ export function parseAnchorSettings(raw: unknown): AnchorSettings {
     // from LM Studio); every other family without a model is the default pair.
     model: hasOwnModel ? String(r.model).trim() : (family === ANCHOR_DEFAULTS.family ? ANCHOR_DEFAULTS.model : ''),
     authMode: r.authMode === 'oauth' ? 'oauth' : 'api-key',
+    // Absent means the defaults — a log saved before these fields existed is
+    // a log whose owner never chose otherwise.
+    act: r.act !== false,
+    scope: r.scope === 'auto' ? 'auto' : 'all',
   };
 }
 

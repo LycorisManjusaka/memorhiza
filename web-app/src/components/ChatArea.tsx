@@ -6505,6 +6505,29 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                 onAnchor={anchorSettings.enabled && msg.role !== 'user' ? onAnchorStable : undefined}
                 anchorBusy={anchorBusyId === msg.id}
               />
+              {/* What the anchor handed (or will hand) the being, in its own
+                  voice. Shown whenever it exists — not gated on the anchor
+                  switch, because it is part of what the being was told, and
+                  this house keeps that visible to everyone (つよ: 中は平等).
+                  Folded: the body of the turn stays the turn. */}
+              {(() => {
+                const act = msg.role !== 'user' ? (msg as any).anchorAct : null;
+                const retry = msg.role === 'user' ? (msg as any).anchorRetryNotice : null;
+                const text = act && typeof act.text === 'string' ? act.text : (typeof retry === 'string' ? retry : '');
+                if (!text.trim()) return null;
+                const label = act?.kind === 'drop'
+                  ? t('anchor.act.drop')
+                  : act ? t('anchor.act.notify') : t('anchor.act.retry');
+                return (
+                  <details className={`mt-2 max-w-2xl rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 ${msg.role === 'user' ? 'ml-auto mr-2' : 'ml-2'}`}>
+                    <summary className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 cursor-pointer select-none">
+                      <Anchor size={12} />
+                      <span>{label}</span>
+                    </summary>
+                    <div className="mt-1 text-xs text-foreground whitespace-pre-wrap">{text}</div>
+                  </details>
+                );
+              })()}
               {/* The anchor's report for this reply. BELOW the message, its own
                   block, never part of it. Shown only while the anchor is on.
                   Thinking is folded; the answer is open. */}
@@ -8384,6 +8407,31 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                         localModelsError={localModelsError}
                         onRefreshLocal={refreshLocalModels}
                       />
+                      <div className="mt-4 pt-3 border-t border-border">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">{t('behavior.anchor.scope')}</div>
+                        {(['all', 'auto'] as const).map((sc) => (
+                          <label key={sc} className="flex items-center gap-2 cursor-pointer text-sm text-foreground py-0.5">
+                            <input
+                              type="radio"
+                              name="anchor-scope"
+                              checked={anchorSettings.scope === sc}
+                              onChange={() => setAnchorSettings((prev) => ({ ...prev, scope: sc }))}
+                              className="border-border text-sky-500 focus:ring-sky-500 bg-background"
+                            />
+                            <span>{t(sc === 'all' ? 'behavior.anchor.scopeAll' : 'behavior.anchor.scopeAuto')}</span>
+                          </label>
+                        ))}
+                        <label className="flex items-center gap-2 cursor-pointer mt-3">
+                          <input
+                            type="checkbox"
+                            checked={anchorSettings.act}
+                            onChange={(e) => setAnchorSettings((prev) => ({ ...prev, act: e.target.checked }))}
+                            className="rounded border-border text-sky-500 focus:ring-sky-500 bg-background"
+                          />
+                          <span className="text-sm text-foreground">{t('behavior.anchor.act')}</span>
+                        </label>
+                        <p className="text-xs text-muted-foreground mt-1 ml-6 leading-relaxed">{t('behavior.anchor.actHelp')}</p>
+                      </div>
                     </div>
                   )}
                 </div>

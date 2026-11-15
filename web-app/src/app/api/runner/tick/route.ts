@@ -23,6 +23,8 @@ import { loadLog, saveLog, listFolders, loadUserSettings } from '@/lib/fsStorage
 // itself. The cost is that this one line is untestable (next/server cannot
 // load outside Next's runtime), which is why every rule lives in lib.
 import { POST as chatPost } from '@/app/api/chat/route';
+import { execAnchor } from '@/lib/anchorExec';
+import type { AnchorMessage } from '@/lib/anchor';
 
 // One pass of the server-side runner (phase 4b-5, 2026-10-29).
 //
@@ -329,6 +331,21 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
           // on the reply instead of vanishing. Passed in rather than imported
           // inside the runner, so a test can supply a known set.
           takeUndelivered,
+          // The anchor (錨), run automatically on the finished reply when the
+          // log's anchor settings say so. Same executor as the manual button.
+          runAnchor: async (a) => {
+            const r = await execAnchor({
+              messages: a.messages as AnchorMessage[],
+              targetId: a.targetId,
+              folder: t.being,
+              convoId: t.convoId,
+              lang: a.lang,
+              settings: a.settings,
+              origin: opts.origin,
+              chatPost,
+            });
+            return r.ok ? r.report : null;
+          },
         });
       } catch (e) {
         offStop();

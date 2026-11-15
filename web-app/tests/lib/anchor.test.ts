@@ -19,7 +19,9 @@ test('settings: absent means OFF, with the default vessel', () => {
 
 test('settings: a chosen family/model/auth round-trips; Local may have no model yet', () => {
   const s = parseAnchorSettings({ enabled: true, family: 'Claude', model: 'claude-haiku-5-5', authMode: 'oauth' });
-  assert.deepEqual(s, { enabled: true, family: 'Claude', model: 'claude-haiku-5-5', authMode: 'oauth' });
+  // act/scope come back at their defaults (2026-11-15): a log saved before
+  // they existed is a log whose owner never chose otherwise.
+  assert.deepEqual(s, { enabled: true, family: 'Claude', model: 'claude-haiku-5-5', authMode: 'oauth', act: true, scope: 'all' });
   assert.equal(parseAnchorSettings({ family: 'Local' }).model, '');
 });
 
@@ -76,7 +78,7 @@ test('summariseToolCalls tolerates junk', () => {
 test('chat body: no soul, no desk, no tools — by construction', () => {
   const b = buildAnchorChatBody({
     systemPrompt: 'RULES', userMsg: 'U', folderName: 'Cairn',
-    settings: { enabled: true, family: 'Claude', model: 'claude-haiku-5-5', authMode: 'oauth' },
+    settings: { enabled: true, family: 'Claude', model: 'claude-haiku-5-5', authMode: 'oauth', act: true, scope: 'all' },
   }) as any;
   assert.equal(b.suppressLayer5, true, 'the switch that keeps Binding / Layer 4 / FOOTER out');
   assert.equal(b.toolUseEnabled, false);
@@ -140,9 +142,15 @@ test('wiring: button and report exist only behind the Behaviour switch; picker i
 
 test('wiring: the route bills as an anchor and reads the prompt above the separator only', () => {
   const route = read('src/app/api/anchor/route.ts');
-  assert.match(route, /kind: 'anchor'/);
-  assert.match(route, /extractAgentSystemPrompt\(/);
+  // Billing and the prompt read moved to lib/anchorExec.ts (2026-11-15) so the
+  // manual button and the runner's automatic run share ONE executor.
+  const exec = read('src/lib/anchorExec.ts');
+  assert.match(route, /execAnchor\(/);
+  assert.match(read('src/app/api/runner/tick/route.ts'), /execAnchor\(/);
+  assert.match(exec, /kind: 'anchor'/);
+  assert.match(exec, /extractAgentSystemPrompt\(/);
   assert.ok(!/saveLog|writeFile/.test(route), 'the route does not write the conversation');
+  assert.ok(!/saveLog|writeFile/.test(exec), 'the executor does not write the conversation');
   for (const lang of ['ja', 'en']) {
     const f = read(`defaults/system_prompt_agents/${lang}/anchor.md`);
     assert.ok(/^---\s*$/m.test(f), `${lang}/anchor.md has a notes separator`);

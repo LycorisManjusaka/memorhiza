@@ -23,6 +23,7 @@
 
 import { replayableCalls, selectToolHistoryIds } from '@/lib/toolHistory';
 import { thinkingBelongsToVessel } from '@/lib/modelHandoff';
+import { anchorNoticesFor, type AnchorAct } from '@/lib/anchorAct';
 
 // Turn-stopped diagnostics used to be streamed as ordinary reply text, so they
 // are baked into the body of every affected message already on disk. This
@@ -67,6 +68,10 @@ export interface SlimHistoryMessage {
    * `full` is what was actually sent — see `wireContent` below.
    */
   nexus?: { full?: string; purpose?: string } | null;
+  /** The anchor acted on this reply — see lib/anchorAct.ts. */
+  anchorAct?: AnchorAct | null;
+  /** On a user turn whose answer the anchor had replaced (INTERCEPT_RETRY). */
+  anchorRetryNotice?: string | null;
 }
 
 /**
@@ -88,6 +93,16 @@ export function wireContent(m: SlimHistoryMessage, isNewestUserTurn: boolean): s
   const full = m.nexus?.full;
   if (isNewestUserTurn && m.role === 'user' && typeof full === 'string' && full.trim()) return full;
   return m.content || '';
+}
+
+/**
+ * The anchor's notices, appended to the newest user turn as a separate voice.
+ * Appended, never stored: the person's words stay theirs, and the notice
+ * leaves the wire one turn later with no deletion step (lib/anchorAct.ts).
+ */
+function withAnchorNotices(content: string, notices: string[]): string {
+  if (!notices.length) return content;
+  return [content, ...notices].filter((x) => x.trim()).join('\n\n');
 }
 
 /** Everything outside the message list that changes what travels. */
@@ -146,7 +161,9 @@ export function buildSlimHistory(
       // way out so those old turns stop replaying a failure explanation to
       // the model every single turn. Non-destructive: only this outgoing
       // copy is cleaned, the stored log is untouched.
-      content: stripTurnNotices(wireContent(m, idx === newestUserIdx)),
+      content: idx === newestUserIdx
+        ? withAnchorNotices(stripTurnNotices(wireContent(m, true)), anchorNoticesFor(history, idx))
+        : stripTurnNotices(wireContent(m, false)),
       role: m.role,
       timestamp: m.timestamp,
     };

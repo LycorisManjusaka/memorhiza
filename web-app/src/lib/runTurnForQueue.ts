@@ -76,9 +76,24 @@ import { undeliveredNotice } from '@/lib/undeliveredInjection';
 import { noticeLanguage } from '@/lib/noticeLanguage';
 import { runnerNoticeT } from '@/lib/runnerNotices';
 import type { DrainedInjection } from '@/lib/injectMessage';
+import { parseAnchorSettings, type AnchorReport, type AnchorSettings } from '@/lib/anchor';
+import { readAnchorVerdict, decideAnchorAction, anchorRunsOn } from '@/lib/anchorAct';
+import { SURGERY_PURPOSE } from '@/lib/soulSurgery';
 
 /** What the runner could not do itself. */
 export interface RunTurnDeps {
+  /**
+   * One anchor (錨) call on an in-memory message list — lib/anchorExec.ts at
+   * the call site. Absent in tests that do not exercise the anchor, and then
+   * the anchor simply never runs automatically. Null = the call could not be
+   * made (no prompt, no model); a thrown error is caught by the caller.
+   */
+  runAnchor?: (a: {
+    messages: unknown[];
+    targetId: string;
+    settings: AnchorSettings;
+    lang: 'ja' | 'en';
+  }) => Promise<AnchorReport | null>;
   /** fsStorage.loadLog */
   loadLog: (convoId: string) => Promise<Record<string, unknown> | null>;
   /** fsStorage.saveLog */
@@ -1101,6 +1116,66 @@ export async function runTurnForQueue(
   let prevVessel: PassVessel | null = null;
   /** One failure report per turn, so a pair of dead vessels cannot ping-pong. */
   let reportedFailure = false;
+  /** Set once the anchor replaced this turn's answer (INTERCEPT_RETRY). */
+  let anchorRetried = false;
+
+  /**
+   * Run the anchor on a FINISHED reply, before it is saved, and act on what
+   * it said — so the verdict, an emptied DROP and the notice land in the same
+   * single save as the reply (no second writer racing the tabs).
+   *
+   * Never costs the reply: any throw leaves the reply exactly as it was.
+   */
+  const applyAnchor = async (assistant: Record<string, unknown>): Promise<
+    { assistant: Record<string, unknown>; retryText?: string }
+  > => {
+    if (!deps.runAnchor) return { assistant };
+    const settings = parseAnchorSettings((log as Record<string, unknown>).anchorSettings);
+    let openerIdx = -1;
+    for (let i = plan.keep.length - 1; i >= 0; i--) {
+      if (plan.keep[i]?.role === 'user') { openerIdx = i; break; }
+    }
+    const opener = openerIdx >= 0 ? (plan.keep[openerIdx] as Record<string, unknown>) : null;
+    const nexus = opener?.nexus as { purpose?: string } | null | undefined;
+    // Soul surgery is skipped: its reply carries the completion marker the
+    // confirm screen reads, and emptying or replacing it would break that.
+    if (nexus?.purpose === SURGERY_PURPOSE) return { assistant };
+    if (!anchorRunsOn(settings, !!nexus)) return { assistant };
+    // Nothing to judge (a redacted betrayal, a turn that produced no text).
+    if (!String(assistant.content ?? '').trim()) return { assistant };
+    const lang: 'ja' | 'en' = noticeJa ? 'ja' : 'en';
+    try {
+      const messages = [...plan.keep, assistant];
+      const targetId = String(assistant.id);
+      let report = await deps.runAnchor({ messages, targetId, settings, lang });
+      if (!report) return { assistant };
+      // An empty or unreadable first line is "could not judge" — asked ONCE more.
+      if (!report.error && readAnchorVerdict(report.output) === 'UNREADABLE') {
+        const second = await deps.runAnchor({ messages, targetId, settings, lang });
+        if (second) report = second;
+      }
+      let out: Record<string, unknown> = { ...assistant, anchorReport: report };
+      if (!settings.act || report.error) return { assistant: out };
+      const retryAllowed = depth === 0
+        && !plan.continueFromMessageId
+        && openerIdx === plan.keep.length - 1
+        && !(typeof opener?.anchorRetryNotice === 'string' && opener.anchorRetryNotice.trim());
+      const d = decideAnchorAction({ verdict: readAnchorVerdict(report.output), output: report.output, lang, retryAllowed });
+      if (d.kind === 'retry') return { assistant: out, retryText: d.text };
+      if (d.kind === 'notify') {
+        out = { ...out, anchorAct: { kind: 'notify', text: d.text, at: deps.nowMs() } };
+      } else if (d.kind === 'drop') {
+        // Emptied, not re-run. The thinking goes too, including the signed
+        // blocks that would otherwise be REPLAYED next turn.
+        const { thoughtProcess: _t, claudeThinkingBlocks: _b, ...rest } = out;
+        void _t; void _b;
+        out = { ...rest, content: '', anchorAct: { kind: 'drop', text: d.text, at: deps.nowMs() } };
+      }
+      return { assistant: out };
+    } catch {
+      return { assistant };
+    }
+  };
 
   for (;;) {
     const pass = await runPass(plan);
@@ -1134,7 +1209,10 @@ export async function runTurnForQueue(
       assistant: unknown,
       handoff: TurnHandoffPlan | null,
     ): TurnSavedPublish | undefined => {
-      if (depth > 0 || handoff) return undefined;
+      // A turn whose first answer the anchor replaced (INTERCEPT_RETRY) has
+      // streamed TWO answers into one bubble on a watching tab — the same
+      // reason a handoff chain takes the full reload.
+      if (depth > 0 || handoff || anchorRetried) return undefined;
       return { assistant, user: plan.announcedUser ?? null, dropId: plan.dropId ?? null };
     };
 
@@ -1306,7 +1384,32 @@ export async function runTurnForQueue(
     // turn, and the vessel taking over may still deliver a queued interjection
     // at its own first tool call — taking the note here would report it lost
     // moments before it arrived.
-    const finalAssistant = pass.handoff ? pass.assistant : withUndelivered(pass.assistant);
+    let judged = pass.assistant;
+    if (!pass.handoff) {
+      const acted = await applyAnchor(pass.assistant);
+      if (acted.retryText !== undefined) {
+        // INTERCEPT_RETRY: REPLACE the answer, as "rerun" does. The failed
+        // reply is never saved; the notice rides on the user turn it answered,
+        // beside the person's words and not inside them.
+        anchorRetried = true;
+        const opener = plan.keep[plan.keep.length - 1] as Record<string, unknown>;
+        const marked = { ...opener, anchorRetryNotice: acted.retryText } as unknown as SlimHistoryMessage;
+        const nextKeep = [...plan.keep.slice(0, -1), marked];
+        plan = {
+          ...plan,
+          history: nextKeep,
+          keep: nextKeep,
+          base: assistantShell(deps.newId(), deps.nowMs()),
+          seed: { continuedSeed: '', continuedThought: '', continuedBlocks: [] },
+          continueFromMessageId: null,
+          carryNotices: [],
+          announcedUser: marked as unknown as Record<string, unknown>,
+        };
+        continue;
+      }
+      judged = acted.assistant;
+    }
+    const finalAssistant = pass.handoff ? judged : withUndelivered(judged);
     const result = await saveMessages(
       [...plan.keep, finalAssistant],
       publishableSave(finalAssistant, pass.handoff),
