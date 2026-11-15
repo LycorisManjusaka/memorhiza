@@ -139,6 +139,13 @@ export default function WakeSettingsSection({ folder, convoId, value, onChange }
         )}
       </div>
 
+      {/* Mail */}
+      <label className="flex items-center gap-2 cursor-pointer text-sm">
+        <input type="checkbox" checked={value.mail} onChange={e => set({ mail: e.target.checked })} className="accent-indigo-500" />
+        <span>{t('wake.mail.enabled')}</span>
+      </label>
+      <div className="text-[10px] text-muted-foreground leading-relaxed -mt-1">{t('wake.mail.help')}</div>
+
       {/* Self-set */}
       <label className="flex items-center gap-2 cursor-pointer text-sm">
         <input type="checkbox" checked={value.self.enabled} onChange={e => setSelf({ enabled: e.target.checked })} className="accent-indigo-500" />

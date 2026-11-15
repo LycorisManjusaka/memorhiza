@@ -36,6 +36,12 @@ export interface WakeSettings {
   days: boolean[];
   self: SelfWakeSettings;
   /**
+   * Wake when a new letter arrives (つよ 2026-11-15). The wake is an ordinary
+   * [NEXUS] turn: its one line says a letter arrived, nothing more — the unread
+   * notice every turn already carries does the rest.
+   */
+  mail: boolean;
+  /**
    * Test beds only: the one conversation the clock wakes. A test bed's
    * conversations are separate beings with no "latest", so without a pin the
    * clock would wake whichever was touched last. Ordinary beings ignore this
@@ -50,6 +56,7 @@ export const DEFAULT_WAKE: WakeSettings = {
   enabled: false,
   times: [],
   days: [true, true, true, true, true, true, true],
+  mail: false,
   self: { enabled: false, maxPerDay: 1, windowFrom: '', windowTo: '', minGapMin: DEFAULT_MIN_GAP_MIN },
 };
 
@@ -97,6 +104,7 @@ export function parseWakeSettings(raw: unknown): WakeSettings {
     enabled: r.enabled === true,
     times,
     days,
+    mail: r.mail === true,
     self: {
       enabled: s.enabled === true,
       maxPerDay: max,
@@ -136,7 +144,7 @@ export interface DueSlot {
   /** Stable id for the create-only claim: 'YYYY-MM-DD_HHMM_admin' / '_self'. */
   key: string;
   at: number;
-  source: 'admin' | 'self';
+  source: 'admin' | 'self' | 'mail';
   hhmm: string;
 }
 
@@ -285,7 +293,14 @@ export function wakeLang(raw: unknown): WakeLang {
 }
 
 /** The one line that stays in the history (謡: 履歴に残るのは起きた理由だけ). */
-export function wakeShortText(lang: WakeLang, slot: { source: 'admin' | 'self'; hhmm: string }): string {
+export function wakeShortText(lang: WakeLang, slot: { source: 'admin' | 'self' | 'mail'; hhmm: string }): string {
+  if (slot.source === 'mail') {
+    return lang === 'en'
+      ? `[NEXUS]
+A new letter arrived (${slot.hhmm}), so an autonomous turn started.`
+      : `[NEXUS]
+新しい手紙が届いたため（${slot.hhmm}）、自律ターンが開始されました。`;
+  }
   if (lang === 'en') {
     return slot.source === 'self'
       ? `[NEXUS]\nAn autonomous turn started at the time you booked (${slot.hhmm}).`
@@ -410,4 +425,47 @@ export function nextAdminSlot(w: WakeSettings, now: number): { at: number; hhmm:
     }
   }
   return null;
+}
+
+// ── Mail wake ───────────────────────────────────────────────────────────────
+
+export interface MailWakeDecision {
+  /** Fire one wake now. */
+  fire: boolean;
+  /** The unread ids to remember as "already accounted for" after this cycle. */
+  seen: string[];
+}
+
+/**
+ * One cycle of the mail rule, pure.
+ *
+ *   · `seen === null` means this process has not looked at this being yet
+ *     (just started, or mail wake was just turned on). Everything unread now is
+ *     remembered WITHOUT firing: "missed while stopped → nothing", the same
+ *     line the timed wakes keep. Those letters are still announced by the
+ *     unread notice on the next turn.
+ *   · Any unread id not in `seen` is new → fire once, however many arrived.
+ *   · The minimum gap (the self-booking one; null = off) also spaces mail
+ *     wakes. Two beings answering each other's letters would otherwise wake
+ *     each other without end. Inside the gap nothing is remembered, so the
+ *     letter still wakes the being when the gap ends.
+ */
+export function mailWakeDecision(
+  unreadIds: string[],
+  seen: string[] | null,
+  lastMailWakeAt: number | undefined,
+  minGapMin: number | null,
+  now: number,
+): MailWakeDecision {
+  if (seen === null) return { fire: false, seen: unreadIds.slice() };
+  const known = new Set(seen);
+  const fresh = unreadIds.some(id => !known.has(id));
+  // Letters read or archived drop out of `seen` so it does not grow forever.
+  const stillUnread = seen.filter(id => unreadIds.includes(id));
+  if (!fresh) return { fire: false, seen: stillUnread };
+  const gapMs = (minGapMin ?? 0) * 60_000;
+  if (gapMs > 0 && lastMailWakeAt !== undefined && now - lastMailWakeAt < gapMs) {
+    return { fire: false, seen: stillUnread };
+  }
+  return { fire: true, seen: unreadIds.slice() };
 }

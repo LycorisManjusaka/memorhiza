@@ -33,10 +33,11 @@ import { livingConversation } from '@/lib/livingConversation';
 import { readAllAgentFiles, extractAgentSystemPrompt } from '@/lib/systemPromptStorage';
 import { beingIsBlockedHere } from '@/lib/blockedBeings';
 import { conversationToolsEnabled } from '@/lib/agentCapabilities';
+import { unreadFor } from '@/lib/letters';
 import {
   parseWakeSettings, dueAdminSlots, dueSelfSlots, pruneBookings, validateBooking, parseWakeupDirective,
   wakeShortText, buildCapabilityList, buildSelfWakeLine, describeRejection, fillWakeTemplate,
-  FALLBACK_WAKE_TEMPLATE, WAKE_PURPOSE, wakeLang, localDateKey, rescheduleBooking,
+  FALLBACK_WAKE_TEMPLATE, WAKE_PURPOSE, wakeLang, localDateKey, localHHMM, rescheduleBooking, mailWakeDecision,
   type SelfBooking, type WakeRejectReason, type DueSlot, type WakeLang, type WakeSettings,
 } from '@/lib/wakeSchedule';
 
@@ -82,9 +83,9 @@ export async function thisInstallationRunsClock(selfId: string, dataDir = DATA_D
 
 export interface WakeEvent {
   at: number;
-  kind: 'fired' | 'booked' | 'rejected' | 'no-conversation' | 'error' | 'admin-removed' | 'admin-moved';
+  kind: 'fired' | 'booked' | 'rejected' | 'no-conversation' | 'no-letters' | 'error' | 'admin-removed' | 'admin-moved';
   hhmm?: string;
-  source?: 'admin' | 'self';
+  source?: 'admin' | 'self' | 'mail';
   convoId?: string;
   reason?: WakeRejectReason | string;
   detail?: string;
@@ -95,6 +96,8 @@ export interface WakeState {
   /** A rejection not yet told to the being. Cleared when the next wake says it. */
   rejection?: { hhmm: string; reason: WakeRejectReason; detail?: string; at: number };
   history: WakeEvent[];
+  /** When the last mail wake fired (spaces mail wakes by the minimum gap). */
+  lastMailWakeAt?: number;
 }
 
 function statePath(being: string, dataDir = DATA_DIR) { return path.join(wakeDir(dataDir), `${safeName(being)}.json`); }
@@ -106,6 +109,7 @@ export async function readWakeState(being: string, dataDir = DATA_DIR): Promise<
       bookings: Array.isArray(p.bookings) ? p.bookings.filter((b: any) => typeof b?.at === 'number' && typeof b?.hhmm === 'string') : [],
       rejection: p.rejection && typeof p.rejection.hhmm === 'string' ? p.rejection : undefined,
       history: Array.isArray(p.history) ? p.history : [],
+      ...(typeof p.lastMailWakeAt === 'number' ? { lastMailWakeAt: p.lastMailWakeAt } : {}),
     };
   } catch { return { bookings: [], history: [] }; }
 }
@@ -242,6 +246,12 @@ async function fireSlot(being: string, w: WakeSettings, slot: DueSlot, selfId: s
       return null;
     }
     const log = ((await loadLog(convoId)) || {}) as Record<string, unknown>;
+    if (slot.source === 'mail' && log.lettersEnabled !== true) {
+      // Woken "because a letter came" with no way to read it would only confuse.
+      s.history.push({ at: now, kind: 'no-letters', hhmm: slot.hhmm, source: 'mail', convoId });
+      await writeWakeState(being, s);
+      return null;
+    }
     const short = wakeShortText(lang, slot);
     const full = fillWakeTemplate(await readTemplate(lang), {
       short,
@@ -257,6 +267,7 @@ async function fireSlot(being: string, w: WakeSettings, slot: DueSlot, selfId: s
       uiLang: lang,
     });
     s.rejection = undefined;
+    if (slot.source === 'mail') s.lastMailWakeAt = now;
     s.history.push({ at: now, kind: 'fired', hhmm: slot.hhmm, source: slot.source, convoId });
     await writeWakeState(being, s);
     return convoId;
@@ -303,6 +314,33 @@ async function waitingWakeConversations(being: string, selfId: string): Promise<
   return out;
 }
 
+// ── Mail ────────────────────────────────────────────────────────────────────
+//
+// Polled every cycle rather than hooked into writeLetter: a letter from 3003
+// arrives through the bridge junction with no event in THIS process, and the
+// unread list on disk is the only place both kinds of letter meet.
+//
+// What has been seen lives in process memory on purpose. A fresh process (or
+// mail wake just switched on) starts from "nothing seen" and the rule then
+// remembers what is unread without firing: letters that came while NEXUS was
+// stopped do not wake anyone, the same as missed timed slots.
+
+type MailGlobal = { __nexusMailSeen?: Map<string, string[]> };
+function mailSeen(): Map<string, string[]> {
+  const g = globalThis as MailGlobal;
+  return (g.__nexusMailSeen ??= new Map());
+}
+
+async function mailSlot(being: string, w: WakeSettings, s: WakeState, now: number): Promise<DueSlot | null> {
+  const memo = mailSeen();
+  if (!w.mail) { memo.delete(being); return null; }
+  const unread = (await unreadFor(being)).map(l => l.id);
+  const d = mailWakeDecision(unread, memo.get(being) ?? null, s.lastMailWakeAt, w.self.minGapMin, now);
+  if (!d.fire) { memo.set(being, d.seen); return null; }
+  // Remembered only once the wake is actually queued (see clockCycle).
+  return { key: `${localDateKey(new Date(now))}_mail_${now}`, at: now, source: 'mail', hhmm: localHHMM(new Date(now)), seenAfter: d.seen } as DueSlot & { seenAfter: string[] };
+}
+
 // ── The loop ────────────────────────────────────────────────────────────────
 
 export async function clockCycle(now = Date.now(), notBefore = 0): Promise<void> {
@@ -315,11 +353,21 @@ export async function clockCycle(now = Date.now(), notBefore = 0): Promise<void>
     if (beingIsBlockedHere(f.name)) continue;
     const w = parseWakeSettings(f.settings?.wake);
     const s = await readWakeState(f.name);
-    if (!w.enabled && !w.self.enabled && s.bookings.length === 0) continue;
-    const slots = [...dueAdminSlots(w, now, notBefore), ...(w.self.enabled ? dueSelfSlots(s.bookings, now, notBefore) : [])];
+    if (!w.enabled && !w.self.enabled && !w.mail && s.bookings.length === 0) { mailSeen().delete(f.name); continue; }
+    const slots: DueSlot[] = [...dueAdminSlots(w, now, notBefore), ...(w.self.enabled ? dueSelfSlots(s.bookings, now, notBefore) : [])];
+    try {
+      const m = await mailSlot(f.name, w, s, now);
+      if (m) slots.push(m);
+    } catch (e) {
+      console.warn(`[wake] mail check for ${f.name} failed:`, e);
+    }
     for (const slot of slots) {
       try {
         const convoId = await fireSlot(f.name, w, slot, selfId, lang, now);
+        const seenAfter = (slot as DueSlot & { seenAfter?: string[] }).seenAfter;
+        // A mail slot counts the letters as seen even when it could not fire
+        // (no conversation, letters off) — otherwise it would retry every 30 s.
+        if (seenAfter) mailSeen().set(f.name, seenAfter);
         if (convoId) void kick(f.name, convoId);
       } catch (e) {
         console.warn(`[wake] firing ${f.name} ${slot.key} failed:`, e);

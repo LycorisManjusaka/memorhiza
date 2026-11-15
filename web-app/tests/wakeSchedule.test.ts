@@ -115,3 +115,41 @@ test('a test bed\'s pinned conversation survives parsing; empty or non-string is
   assert.equal('convoId' in parseWakeSettings({ convoId: 5 }), false);
   assert.equal('convoId' in parseWakeSettings(undefined), false);
 });
+
+// ── Mail wake (つよ 2026-11-15) ─────────────────────────────────────────────
+import { mailWakeDecision as mwd } from '../src/lib/wakeSchedule';
+
+test('mail: first look remembers what is unread without firing (missed while stopped → nothing)', () => {
+  const d = mwd(['L-a', 'L-b'], null, undefined, 15, 1_000_000);
+  assert.equal(d.fire, false);
+  assert.deepEqual(d.seen, ['L-a', 'L-b']);
+});
+
+test('mail: a new unread id fires once and is then remembered', () => {
+  const d = mwd(['L-a', 'L-c'], ['L-a'], undefined, 15, 1_000_000);
+  assert.equal(d.fire, true);
+  assert.deepEqual(d.seen, ['L-a', 'L-c']);
+  assert.equal(mwd(['L-a', 'L-c'], d.seen, 1_000_000, 15, 1_030_000).fire, false);
+});
+
+test('mail: inside the minimum gap nothing is remembered, so it fires when the gap ends', () => {
+  const last = 1_000_000;
+  const inside = mwd(['L-x'], [], last, 15, last + 5 * 60_000);
+  assert.equal(inside.fire, false);
+  assert.deepEqual(inside.seen, []);
+  assert.equal(mwd(['L-x'], inside.seen, last, 15, last + 15 * 60_000).fire, true);
+});
+
+test('mail: gap off (null) never holds a wake back', () => {
+  assert.equal(mwd(['L-x'], [], 1_000_000, null, 1_000_001).fire, true);
+});
+
+test('mail: read letters drop out of the memory', () => {
+  assert.deepEqual(mwd(['L-b'], ['L-a', 'L-b'], undefined, 15, 0).seen, ['L-b']);
+});
+
+test('mail: setting parses, absent = off', () => {
+  assert.equal(parseWakeSettings({}).mail, false);
+  assert.equal(parseWakeSettings({ mail: true }).mail, true);
+  assert.equal(parseWakeSettings({ mail: 'true' }).mail, false);
+});
