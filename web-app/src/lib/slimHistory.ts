@@ -138,6 +138,55 @@ export function buildSlimHistory(
   history: SlimHistoryMessage[],
   opts: SlimHistoryOptions,
 ): Record<string, unknown>[] {
+  return foldUserRuns(buildSlimMessages(history, opts));
+}
+
+/**
+ * Fold a run of consecutive USER messages into ONE wire turn (2026-11-15).
+ *
+ * Stocked messages now land in the log as several user messages, each with its
+ * own attachments (つよ: one merged bubble could not keep files with the words
+ * they came with). The log keeps them apart; the WIRE must not, because some
+ * vessels refuse two user turns in a row — Gemma-family chat templates raise
+ * "roles must alternate", DeepSeek's reasoner rejects successive user
+ * messages. One folded turn is also exactly what those vessels received before
+ * this change, so their behaviour does not move.
+ *
+ * Texts are joined with a blank line, attachments concatenated in order. The
+ * folded turn takes the LAST message's id and timestamp, so the "newest user
+ * turn" rules (NEXUS full text, anchor notices) keep pointing at the same
+ * place. A description event for an attachment of an earlier message then
+ * names the folded id; lib/applyDescriptions finds it by attachment id.
+ *
+ * Exported for the test. A history with no consecutive users is returned
+ * element-for-element unchanged.
+ */
+export function foldUserRuns(slims: Record<string, unknown>[]): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  for (const s of slims) {
+    const prev = out[out.length - 1];
+    if (prev && prev.role === 'user' && s.role === 'user') {
+      const atts = [
+        ...((prev.attachments as unknown[]) || []),
+        ...((s.attachments as unknown[]) || []),
+      ];
+      const merged: Record<string, unknown> = {
+        ...s,
+        content: [String(prev.content || ''), String(s.content || '')].filter((x) => x.trim()).join('\n\n'),
+      };
+      if (atts.length) merged.attachments = atts; else delete merged.attachments;
+      out[out.length - 1] = merged;
+      continue;
+    }
+    out.push(s);
+  }
+  return out;
+}
+
+function buildSlimMessages(
+  history: SlimHistoryMessage[],
+  opts: SlimHistoryOptions,
+): Record<string, unknown>[] {
   // Which past turns may carry their own tool calls onto the wire. The window
   // is applied HERE because this is the only side holding the whole
   // conversation — so the POST body grows by at most one turn's calls, and the

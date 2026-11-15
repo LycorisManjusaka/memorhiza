@@ -312,6 +312,11 @@ export interface TurnPlanEvent {
    */
   user: Record<string, unknown> | null;
   /**
+   * The user messages BEFORE `user`, in order — present only when the stock
+   * held several items and each became its own message (2026-11-15).
+   */
+  usersBefore: Record<string, unknown>[];
+  /**
    * A continue starts from text that already exists. Carried for the same
    * reason the kicking tab carries it as a WatchTarget: every flush REPLACES
    * content and thoughtProcess, so an empty seed blanks the first half on the
@@ -337,6 +342,9 @@ export function normaliseTurnPlan(data: TurnEventPayload): TurnPlanEvent | null 
     user: data.user && typeof data.user === 'object' && !Array.isArray(data.user)
       ? (data.user as Record<string, unknown>)
       : null,
+    usersBefore: Array.isArray(data.usersBefore)
+      ? (data.usersBefore as unknown[]).filter((u): u is Record<string, unknown> => !!u && typeof u === 'object' && !Array.isArray(u))
+      : [],
     continuedSeed: typeof data.continuedSeed === 'string' ? data.continuedSeed : '',
     continuedThought: typeof data.continuedThought === 'string' ? data.continuedThought : '',
     continuedBlocks: Array.isArray(data.continuedBlocks)

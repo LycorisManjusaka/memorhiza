@@ -113,11 +113,41 @@ export function applyDescriptions<T extends { id?: unknown; attachments?: unknow
 ): { changed: boolean; next: T[] } {
   if (payloads.length === 0) return { changed: false, next: messages as T[] };
 
+  // ── Re-home payloads whose message no longer exists on the wire (2026-11-15)
+  // The wire folds a run of user messages into one turn under the LAST id
+  // (lib/slimHistory.foldUserRuns), so a description of an attachment on an
+  // earlier message of that run names the wrong message. When the payload
+  // carries an attachment id and that id is not on the named message, it is
+  // moved to the message that DOES hold it. Id only, never name: two pasted
+  // "image.jpg" in one run must not take each other's description.
+  const holderOf = new Map<string, unknown>();
+  const held = new Set<string>();   // `${messageId}\u0000${attachmentId}`
+  for (const m of messages) {
+    const atts = (m as { attachments?: unknown }).attachments;
+    if (!Array.isArray(atts)) continue;
+    const mid = (m as { id?: unknown }).id;
+    for (const a of atts as Array<{ id?: unknown }>) {
+      if (typeof a?.id !== 'string') continue;
+      held.add(`${String(mid)}\u0000${a.id}`);
+      holderOf.set(a.id, mid);   // last holder: the fold keeps the run's end
+    }
+  }
+  const present = new Set(messages.map((m) => String((m as { id?: unknown }).id)));
+  const rehomed = payloads.map((p) => {
+    if (!p.attachmentId) return p;
+    // A message that is GONE (a rerun deleted it) keeps the old rule: dropped
+    // in silence. Only a message that exists and lacks the file is a fold.
+    if (!present.has(String(p.messageId))) return p;
+    if (held.has(`${String(p.messageId)}\u0000${p.attachmentId}`)) return p;
+    const holder = holderOf.get(p.attachmentId);
+    return holder !== undefined ? { ...p, messageId: holder as string } : p;
+  });
+
   let changed = false;
   const next = messages.map((m) => {
     const atts = (m as { attachments?: unknown }).attachments;
     if (!Array.isArray(atts)) return m;
-    const mine = payloads.filter((p) => p.messageId && p.messageId === (m as { id?: unknown }).id);
+    const mine = rehomed.filter((p) => p.messageId && p.messageId === (m as { id?: unknown }).id);
     if (mine.length === 0) return m;
 
     let msgChanged = false;

@@ -63,7 +63,7 @@ import { runTurnStream } from '@/lib/turnStreamLoop';
 import { createRunnerSink, createTurnFlags } from '@/lib/runnerSink';
 import { effectiveFullAccess } from '@/lib/agentCapabilities';
 import {
-  composeBatch, splitLeadingTurn, isCommandKind, isEmptyTurnText,
+  composeBatch, composeMessages, splitLeadingTurn, isCommandKind, isEmptyTurnText,
   type QueueItem, type CommandPayload,
 } from '@/lib/turnQueue';
 import type { TurnEventDeps } from '@/lib/turnEventReducer';
@@ -425,6 +425,11 @@ export async function runTurnForQueue(
   /** send only: the composed batch, because the queue never reports bodies. */
   let announcedUser: Record<string, unknown> | null = null;
   /**
+   * send only: EVERY user message this turn adds, in order (announcedUser is
+   * the last of them). More than one only when the stock held several items.
+   */
+  let announcedUsers: Record<string, unknown>[] = [];
+  /**
    * send only: the two "copied vs original" fields, when THIS turn's new user
    * message resolves a boundary the clone left pending.
    *
@@ -509,6 +514,9 @@ export async function runTurnForQueue(
     // The queue batch becomes ONE user message, exactly as the client-side
     // drain composes it: `[label]\ntext` per item, FIFO, skipped items
     // contributing nothing at all (including their attachments).
+    // ⚠ Kept only for the blank-turn check below; the messages themselves are
+    // built per item since 2026-11-15 (composeMessages — one user message per
+    // queued item, each with its own attachments).
     const batch = composeBatch(take);
     // ── Never POST a blank turn ─────────────────────────────────────────────
     // REPORTED 2026-11-01 (トカゲくん): after a failed turn left an item in
@@ -532,23 +540,30 @@ export async function runTurnForQueue(
         reason: `nothing to send: ${take.length} queued item(s) [${kinds}] carried no text and no attachments`,
       };
     }
-    // A NEXUS-opened turn: `content` is the line that stays in the history,
-    // `nexus.full` is what is sent while this is the newest user turn
-    // (lib/slimHistory.wireContent). splitLeadingTurn guarantees a 'system'
-    // item is alone in `take`, so there is exactly one payload to read.
-    const nexusField = nexusFieldFromItem(take[0]);
-    const userMessage = {
-      id: deps.newId(),
-      role: 'user',
-      content: batch.text,
-      attachments: batch.attachments,
-      timestamp: nowStart,
-      ...(nexusField ? { nexus: nexusField } : {}),
-    };
-    history = [...stored, userMessage as SlimHistoryMessage];
+    // ONE user message per queued item (2026-11-15, つよ): each keeps its own
+    // text and attachments. A NEXUS-opened item carries `nexus.full` — sent
+    // while it is the newest user turn (lib/slimHistory.wireContent).
+    // splitLeadingTurn allows a 'system' item only as the LAST of `take`, so
+    // the covenant always sits on the newest message.
+    const composed = composeMessages(take).messages;
+    const newUsers = composed.map((c, i) => {
+      const nexusField = nexusFieldFromItem(c.item);
+      return {
+        id: deps.newId(),
+        role: 'user',
+        content: c.text,
+        attachments: c.attachments,
+        // Strictly increasing so the order survives any sort by timestamp.
+        timestamp: nowStart - (composed.length - 1 - i),
+        ...(nexusField ? { nexus: nexusField } : {}),
+      };
+    });
+    const userMessage = newUsers[newUsers.length - 1];
+    history = [...stored, ...(newUsers as SlimHistoryMessage[])];
     keep = history;
     base = assistantShell(firstPassAssistantId(), nowStart);
     announcedUser = userMessage as Record<string, unknown>;
+    announcedUsers = newUsers as Record<string, unknown>[];
     // The clone workflow's second half. `NexusApp` sets `firstOriginalIsNext`
     // when it clones a conversation forward and its comment says the flag is
     // "consumed by ChatArea.handleSend" — which stopped being true when sends
@@ -556,7 +571,8 @@ export async function runTurnForQueue(
     // minted in this process, after the tab's send has already returned. (A
     // comment that counts lines instead of naming the thing is wrong the next
     // time anyone edits above it; this one said "four lines up" and meant 15.)
-    markerPatch = promotePendingMarker(log, userMessage.id) ?? {};
+    // The FIRST new message is the boundary when the stock held several.
+    markerPatch = promotePendingMarker(log, String(newUsers[0].id)) ?? {};
   }
 
   // Write the log back WHOLE, with only `messages` replaced. The other ~55
@@ -788,6 +804,8 @@ export async function runTurnForQueue(
      */
     dropId?: string | null;
     announcedUser?: Record<string, unknown> | null;
+    /** Every user message this turn adds (announcedUser is the last). */
+    announcedUsers?: Record<string, unknown>[];
   }
 
   interface PassFailure {
@@ -853,6 +871,8 @@ export async function runTurnForQueue(
       assistantId: String(plan.base.id || ''),
       dropId: plan.dropId ?? null,
       user: plan.announcedUser ?? null,
+      // Only when the stock held several: the ones BEFORE `user`, in order.
+      ...((plan.announcedUsers?.length ?? 0) > 1 ? { usersBefore: plan.announcedUsers!.slice(0, -1) } : {}),
       continuedSeed: plan.seed.continuedSeed,
       continuedThought: plan.seed.continuedThought,
       continuedBlocks: plan.seed.continuedBlocks,
@@ -1106,6 +1126,7 @@ export async function runTurnForQueue(
     carryNotices: [],
     dropId,
     announcedUser,
+    announcedUsers,
   };
   let saved = false;
   let lastMessageId = '';
@@ -1222,6 +1243,9 @@ export async function runTurnForQueue(
       // streamed TWO answers into one bubble on a watching tab — the same
       // reason a handoff chain takes the full reload.
       if (depth > 0 || handoff || anchorRetried) return undefined;
+      // Several user messages from the stock: the small patch carries only
+      // one, so take the full reload — every message lands from the disk.
+      if ((plan.announcedUsers?.length ?? 0) > 1) return undefined;
       return { assistant, user: plan.announcedUser ?? null, dropId: plan.dropId ?? null };
     };
 

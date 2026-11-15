@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { claim, release, abandon, markReturned, queuedConversations, itemIsForThisInstallation, type QueueItem } from '@/lib/turnQueue';
+import { claim, release, abandon, markReturned, queuedConversations, itemIsForThisInstallation, pending, type QueueItem } from '@/lib/turnQueue';
 import { classifyReturn } from '@/lib/stockPanel';
 import { runTurnForQueue, type RunTurnResult } from '@/lib/runTurnForQueue';
 import { runnerHostStatus, describeRunnerHost, installationId, claimRunnerHostIfUnset, readRunnerHost, type RunnerHostStatus } from '@/lib/runnerHost';
@@ -432,6 +432,25 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
         await abandon(t.being, t.convoId, c.claim.token);
       }
       outcomes.push({ being: t.being, convoId: t.convoId, ran: result.ok, result });
+      // ── A NEXUS item that WAITED runs right now (2026-11-15, つよ) ─────────
+      // A wake that fires while the being is answering finds the lease taken
+      // and stays in the stock; the clock used to retry it on its next cycle
+      // (up to TICK_MS later — 33 s on 2026-11-15 21:34). "Wait, then send
+      // straight after" is the rule, so a finished turn checks for one and
+      // starts the next pass itself. NOT `auto`: a NEXUS item ignores the
+      // stock-trigger checkbox, exactly as the clock's own kick does. Messages
+      // stocked in front of it ride along into the same turn (splitLeadingTurn).
+      if (result.ok) {
+        try {
+          const left = await pending(t.being, t.convoId);
+          if (left.some((it) => it.kind === 'system' && accept(it))) {
+            setTimeout(() => {
+              void runPass({ ...opts, auto: false, oneBeing: t.being, oneConvo: t.convoId, assistantMsgId: '', proposedTurnId: '', relayConvoId: null })
+                .catch((e) => console.warn('[runner] follow-up NEXUS pass failed:', e));
+            }, 0);
+          }
+        } catch { /* the clock retries on its next cycle anyway */ }
+      }
       // F46: a runner that says nothing is indistinguishable from one that is
       // broken — and the only person who can read this is whoever opens the
       // server console, because a detached pass has no response to answer in.

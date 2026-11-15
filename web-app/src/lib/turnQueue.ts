@@ -1051,6 +1051,16 @@ export function splitLeadingTurn(items: QueueItem[]): { take: QueueItem[]; rest:
   if (isStandaloneKind(items[0].kind)) return { take: [items[0]], rest: items.slice(1) };
   let n = 0;
   while (n < items.length && !isCommandKind(items[n].kind) && !isStandaloneKind(items[n].kind)) n++;
+  // ── A NEXUS item right behind the stock JOINS the same turn (2026-11-15) ──
+  // つよ: messages put in the stock "so they are seen when the being wakes".
+  // Before this, a wake behind two stocked messages ran as TWO turns — the
+  // stock merged into one answer, then the wake as a second one — and the
+  // being never saw them together. Now [user, user, system] is ONE turn: each
+  // item still becomes its OWN user message (runTurnForQueue), the system one
+  // last, and the being answers all of them at once. Still a prefix, still
+  // FIFO; only one system item, because its full text belongs to exactly one
+  // message (the newest — lib/slimHistory.wireContent).
+  if (n > 0 && n < items.length && isStandaloneKind(items[n].kind)) n++;
   return { take: items.slice(0, n), rest: items.slice(n) };
 }
 
@@ -1149,6 +1159,47 @@ export function isEmptyTurnText(text: unknown, attachments: unknown): boolean {
  * does not already start with that exact label — a test, not a guess, and one
  * place owns it.
  */
+export interface ComposedMessage {
+  item: QueueItem;
+  text: string;
+  attachments: unknown[];
+}
+
+/**
+ * Render a claimed batch as ONE USER MESSAGE PER ITEM (2026-11-15, つよ).
+ *
+ * Replaces composeBatch on the runner's send path. One merged message could
+ * not keep attachments with the words they were sent with — three stocked
+ * messages became one bubble holding everybody's files. Now each item keeps
+ * its own text and its own attachments, in FIFO order, and the model gets one
+ * answer to all of them (the wire folds the run back into one turn for the
+ * vessels that refuse two user turns in a row — lib/slimHistory.ts).
+ *
+ * Same label rule as composeBatch: added only when there is more than one
+ * message and the text does not already start with it, so a single item is
+ * byte-identical to a direct send.
+ */
+export function composeMessages(items: QueueItem[]): { messages: ComposedMessage[]; skipped: Array<{ id: string; reason: string }> } {
+  const skipped: Array<{ id: string; reason: string }> = [];
+  const usable: QueueItem[] = [];
+  for (const it of items) {
+    const p = it.payload as UserMessagePayload | null;
+    if (!p || typeof p.text !== 'string') {
+      skipped.push({ id: it.id, reason: `kind=${it.kind} has no string payload.text` });
+      continue;
+    }
+    usable.push(it);
+  }
+  const many = usable.length > 1;
+  const messages = usable.map((it) => {
+    const p = it.payload as UserMessagePayload;
+    const label = (it.from || '').trim();
+    const text = many && label && !p.text.startsWith(`[${label}]`) ? `[${label}]\n${p.text}` : p.text;
+    return { item: it, text, attachments: Array.isArray(p.attachments) ? [...p.attachments] : [] };
+  });
+  return { messages, skipped };
+}
+
 export function composeBatch(items: QueueItem[]): Batch {
   const skipped: Array<{ id: string; reason: string }> = [];
   const usable: QueueItem[] = [];

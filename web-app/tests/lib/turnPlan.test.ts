@@ -84,7 +84,7 @@ test('a turn_plan frame reaches the sink, and nothing else', () => {
   );
   assert.deepEqual(calls.map(c => c.m), ['turnPlan']);
   assert.deepEqual(calls[0].a, {
-    assistantId: 'a9', dropId: 'a1', user: null,
+    assistantId: 'a9', dropId: 'a1', user: null, usersBefore: [],
     continuedSeed: '', continuedThought: '', continuedBlocks: [],
   });
   // Display-only: dropping the frame must not change anything that gets saved.

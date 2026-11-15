@@ -2305,9 +2305,19 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // the history is replayed as text. It is the LAST USER message rather than
   // simply the last message because a rerun re-sends exactly that one — hiding
   // its attachments would break rerun, not describe it.
+  //
+  // 2026-11-15: the START of the trailing run of user messages, not its end.
+  // Stocked messages now land as several user messages in a row, and the wire
+  // folds that run into ONE turn (lib/slimHistory.foldUserRuns) — so all of
+  // them are "the newest", and treating the earlier ones as past would hide
+  // (VRChat auto-hide) or mis-count the very images that are being sent.
   const lastUserMsgIndex = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if ((messages[i] as any)?.role === 'user') return i;
+      if ((messages[i] as any)?.role === 'user') {
+        let start = i;
+        while (start > 0 && (messages[start - 1] as any)?.role === 'user') start--;
+        return start;
+      }
     }
     return -1;
   }, [messages]);
@@ -3723,7 +3733,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           // message, a NEXUS-opened turn): see lib/announcedUser.ts.
           if (!attach) {
             const hasOptimistic = optimisticIdsRef.current.length > 0;
-            setMessages(prev => placeAnnouncedUser(prev, plan.user, watchId, hasOptimistic));
+            // Several stocked messages each became their own user message:
+            // placed in order, each directly before the placeholder.
+            setMessages(prev => [...plan.usersBefore, plan.user].reduce<any[]>(
+              (acc, u) => placeAnnouncedUser(acc, u, watchId, hasOptimistic), prev as any[]) as any);
             return;
           }
           // FIRST plan only. A handoff opens a second pass under a new id; a
@@ -3749,6 +3762,9 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
             // saves the whole turn at the end, and GET /api/turn-queue reports
             // labels and never bodies. Matched by id in case a reload already
             // brought it.
+            for (const u of plan.usersBefore as Array<{ id?: unknown }>) {
+              if (!next.some(m => m.id === u.id)) next = [...next, { ...u, autoPlay: false } as any];
+            }
             if (user && !next.some(m => m.id === user.id)) next = [...next, { ...user, autoPlay: false }];
             // A continue paints into a message that is already on screen.
             if (next.some(m => m.id === plan.assistantId)) {

@@ -111,7 +111,9 @@ const OPTS = {
 test('wire: the full text travels only while its message is the newest user turn', () => {
   const nx = { id: 'n', role: 'user', content: 'SHORT', nexus: { full: 'FULL COVENANT', purpose: SURGERY_PURPOSE } };
   // The turn itself.
-  assert.equal(buildSlimHistory([{ id: 'a', role: 'user', content: 'hi' }, nx], OPTS)[1].content, 'FULL COVENANT');
+  // Two user turns in a row fold into one on the wire (2026-11-15), with the
+  // NEXUS full text as the newest part.
+  assert.equal(buildSlimHistory([{ id: 'a', role: 'user', content: 'hi' }, nx], OPTS)[0].content, 'hi\n\nFULL COVENANT');
   // A continue: history ends on the assistant, the NEXUS turn is still the newest USER turn.
   assert.equal(buildSlimHistory([nx, { id: 'r', role: 'assistant', content: 'half' }], OPTS)[0].content, 'FULL COVENANT');
   // The next turn: one line, and no `nexus` field on the wire at all.
@@ -126,11 +128,15 @@ test('wire: the full text travels only while its message is the newest user turn
 const item = (kind: string, text: string, extra: Record<string, unknown> = {}): QueueItem =>
   ({ id: `${kind}-${text}`, at: 1, kind: kind as QueueItem['kind'], from: 'x', payload: { text, ...extra } });
 
-test('queue: a NEXUS turn never merges with a neighbour', () => {
+test('queue: a NEXUS item stands alone at the front, and closes a stocked run behind it', () => {
   const sys = item('system', 'SHORT', { fullText: 'FULL', purpose: SURGERY_PURPOSE });
   const a = item('user_message', 'a'); const b = item('user_message', 'b');
   assert.deepEqual(splitLeadingTurn([sys, a]).take, [sys]);
-  assert.deepEqual(splitLeadingTurn([a, b, sys]).take, [a, b]);
+  // つよ 2026-11-15: stocked messages + a wake = ONE turn, the wake last.
+  assert.deepEqual(splitLeadingTurn([a, b, sys]).take, [a, b, sys]);
+  // Only one system item joins: a second waits for its own turn.
+  const sys2 = item('system', 'SHORT2', { fullText: 'FULL2' });
+  assert.deepEqual(splitLeadingTurn([a, sys, sys2]).take, [a, sys]);
   assert.deepEqual(splitLeadingTurn([a, b]).take, [a, b]);        // unchanged for people
   assert.equal(composeBatch([sys]).text, 'SHORT');
 });
