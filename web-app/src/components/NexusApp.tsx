@@ -8,9 +8,10 @@ import StatsModal from '@/components/StatsModal';
 import MailModal from '@/components/MailModal';
 import { UserGuidePane, UserGuideModal } from '@/components/UserGuide';
 import { v4 as uuidv4 } from 'uuid';
-import { orderFolderConversations, buildDeepLink } from '@/lib/deepLink';
+import { orderFolderConversations, buildDeepLink, folderOrderOf } from '@/lib/deepLink';
 import type { DeepLink } from '@/lib/deepLink';
 import { nextConversationTitle, newerNumberedSibling, pickLatestConversation } from '@/lib/convoNaming';
+import { livingChangeOnRename } from '@/lib/livingConversation';
 import { initialFolderSelection } from '@/lib/rootLanding';
 import { resolveSoulGeneration, newerSiblingTitleInOrder, titleForGeneration } from '@/lib/soulGeneration';
 import { confirmIfBusy } from '@/lib/unloadGuard';
@@ -338,7 +339,7 @@ export default function NexusApp({ deepLink = null }: { deepLink?: DeepLink | nu
           } else {
             // `/c/<folder>` with no id → the row sitting at the top of the
             // sidebar, using the sidebar's own ordering.
-            const top = orderFolderConversations(folderConvos, activeFolder?.settings?.convoOrder || [])[0];
+            const top = orderFolderConversations(folderConvos, folderOrderOf(activeFolder))[0];
             if (top) setCurrentConvoId(top.id);
             else setDeepLinkError(`"${activeFolder.name}" has no conversations yet.`);
           }
@@ -539,6 +540,20 @@ export default function NexusApp({ deepLink = null }: { deepLink?: DeepLink | nu
   };
 
   const renameChat = async (id: string, newTitle: string) => {
+    // For an ordinary being the title IS the order, so a rename can move the
+    // being into another conversation (give a past log the largest number and
+    // it becomes the living one). That is allowed — it is how a person
+    // reorders — but never by accident: ask first, and only in that case.
+    const target = conversations.find(c => c.id === id);
+    const owner = target ? folders.find(f => f.name === target.folderName) : null;
+    if (target && owner && owner.settings?.testBed !== true) {
+      const change = livingChangeOnRename(
+        conversations.filter(c => c.folderName === target.folderName), owner.name, id, newTitle,
+      );
+      if (change && !window.confirm(
+        translate('sidebar.rename.livingChanges', globalSettings.language).replace('{before}', change.before).replace('{after}', change.after),
+      )) return;
+    }
     // Optimistic — update sidebar list immediately. The user shouldn't have
     // to wait for the disk write to see their new title.
     setConversations(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
@@ -936,6 +951,7 @@ export default function NexusApp({ deepLink = null }: { deepLink?: DeepLink | nu
         fetchLogs={fetchLogs}
         setConversations={setConversations}
         globalSettings={globalSettings}
+        bindingOptional={bindingOptional}
       />
 
       <main className="flex-1 flex flex-col relative min-w-0">
@@ -1028,7 +1044,7 @@ export default function NexusApp({ deepLink = null }: { deepLink?: DeepLink | nu
               newerTitle: newerSiblingTitleInOrder(
                 String(currentConvoId),
                 conversations.filter(c => c.folderName === activeFolder.name),
-                activeFolder.settings?.convoOrder || [],
+                folderOrderOf(activeFolder),
               ),
             })}
             fetchFolders={fetchFolders}

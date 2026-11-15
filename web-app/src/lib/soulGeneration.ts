@@ -68,7 +68,7 @@
 // and a test can measure it from shipped bytes without a server.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { orderFolderConversations } from '@/lib/deepLink';
+import { orderFolderConversations, type FolderOrder } from '@/lib/deepLink';
 import { escapeForRegExp } from '@/lib/convoNaming';
 
 /** Full-width → half-width digits. Titles in this house use both. */
@@ -151,9 +151,9 @@ export function nextHeadLabel(label: string): string {
  */
 export function newerSiblingTitleInOrder<
   T extends { id: string; updatedAt?: number | null; title?: string | null },
->(selfId: string, siblings: T[], convoOrder: string[] = []): string | null {
+>(selfId: string, siblings: T[], convoOrder: FolderOrder = []): string | null {
   const ordered = orderFolderConversations(
-    siblings.map((s) => ({ id: String(s.id), updatedAt: Number(s.updatedAt) || 0, s })),
+    siblings.map((s) => ({ id: String(s.id), updatedAt: Number(s.updatedAt) || 0, title: s.title, s })),
     convoOrder,
   );
   const pos = ordered.findIndex((x) => String(x.s.id) === String(selfId));

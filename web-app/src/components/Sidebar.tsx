@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { PlusCircle, MessageSquare, Settings, Trash2, MoreVertical, Copy, Pencil, UserRoundPlus, Edit2, Palette, Upload, Settings2, Mic, History, ArrowDown, ArrowUp, Eye, EyeOff, HelpCircle, X, Mail, BarChart3 } from 'lucide-react';
+import { PlusCircle, MessageSquare, Settings, Trash2, MoreVertical, Copy, Pencil, UserRoundPlus, Edit2, Palette, Upload, Settings2, Mic, History, ArrowDown, ArrowUp, Eye, EyeOff, HelpCircle, X, Mail, BarChart3, FlaskConical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import VoiceSelector from './VoiceSelector';
 import {
@@ -15,7 +15,7 @@ import {
 import { deepSeekJsonToMarkdown, isDeepSeekJson } from '@/lib/deepseekJson';
 import IdentityDropdown from './IdentityDropdown';
 import { v4 as uuidv4 } from 'uuid';
-import { orderFolderConversations } from '@/lib/deepLink';
+import { orderFolderConversations, folderOrderOf } from '@/lib/deepLink';
 import { nextConversationTitle } from '@/lib/convoNaming';
 import { onSummariesChanged } from '@/lib/summariesChanged';
 import {
@@ -63,6 +63,8 @@ interface SidebarProps {
   // `alwaysShowHoverControls`, which decides whether a row's "..." menu is
   // hover-revealed or permanent.
   globalSettings?: any;
+  /** Developer override (NEXUS_BINDING_OPTIONAL): offers the test-bed switch. */
+  bindingOptional?: boolean;
 
   folders: any[];
   setFolders?: React.Dispatch<React.SetStateAction<any[]>>;
@@ -97,7 +99,8 @@ export default function Sidebar({
   setActiveFolderId,
   fetchFolders,
   fetchLogs,
-  globalSettings
+  globalSettings,
+  bindingOptional = false
 }: SidebarProps) {
   const t = useT();
   const { isMobile, sidebarOpen, setSidebarOpen, setCameraSlot } = useDevice();
@@ -131,9 +134,15 @@ export default function Sidebar({
   // Shared with the deep-link router: `/c/<folder>` opens "the top conversation",
   // which must mean the row the user actually sees first. Two copies of this
   // comparator would drift apart silently.
+  //
+  // An ordinary being's list is in TITLE order and cannot be rearranged by
+  // hand: renaming is how a row moves. Only a test-bed being (a folder of
+  // unrelated chats, switchable under the developer override) keeps the drag
+  // order, the sort commands and the "new chat" button.
+  const isTestBed = activeFolder?.settings?.testBed === true;
   const filteredConvos = orderFolderConversations(
     conversations.filter(c => c.folderName === activeFolder?.name),
-    convoOrder,
+    folderOrderOf(activeFolder),
   );
 
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -1003,6 +1012,10 @@ export default function Sidebar({
                   >
                     <Upload size={14} /> {t('sidebar.import.md')}
                   </button>
+                  {/* Sorting by hand exists only for a test bed. An ordinary
+                      being's list is always in title order, newest generation
+                      on top — there is nothing to sort. */}
+                  {isTestBed && (<>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1012,7 +1025,7 @@ export default function Sidebar({
                   >
                     <ArrowDown size={14} /> {t('sidebar.menu.sortDesc')}
                   </button>
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleSort('asc');
@@ -1021,6 +1034,34 @@ export default function Sidebar({
                   >
                     <ArrowUp size={14} /> {t('sidebar.menu.sortAsc')}
                   </button>
+                  </>)}
+                  {/* The test-bed switch itself. Offered only under the
+                      developer override: for an ordinary install it is not a
+                      feature that exists. A being already marked keeps showing
+                      it, so the mark can always be taken off. */}
+                  {(bindingOptional || isTestBed) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFolderMenuOpen(false);
+                      const next = !isTestBed;
+                      // Local state only (the row order flips at once); the
+                      // write below names the one key it changes.
+                      const newSettings = Object.assign({}, activeFolder.settings, { testBed: next });
+                      if (setFolders) {
+                        setFolders(prev => prev.map(f => f.id === activeFolder.id ? { ...f, settings: newSettings } : f));
+                      }
+                      fetch('/api/folders', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: activeFolder.name, patch: { testBed: next } }),
+                      }).then(() => fetchFolders()).catch(() => fetchFolders());
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <FlaskConical size={14} /> {isTestBed ? t('sidebar.menu.testBedOff') : t('sidebar.menu.testBedOn')}
+                  </button>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1054,7 +1095,12 @@ export default function Sidebar({
           this panel's width on every screen to expose two rarely-used actions;
           the menu already holds the other once-in-a-while folder operations.
           The hidden file inputs stay here — the menu items click them. */}
-      <div className="px-4 py-3 flex gap-2">
+      <div className={isTestBed || filteredConvos.length === 0 ? 'px-4 py-3 flex gap-2' : 'hidden'}>
+        {/* "New conversation" belongs to the test bed. An ordinary being gets
+            new conversations two ways only — "to the next conversation" and
+            importing a log. The button still appears for a being with NO
+            conversation at all, so it can never be left with an empty list
+            and no way out. */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
@@ -1109,7 +1155,7 @@ export default function Sidebar({
               // Drag is disabled while this row is in rename mode — otherwise
               // selecting text inside the input would start a drag-and-drop
               // operation and make it impossible to highlight characters.
-              draggable={renamingId !== convo.id}
+              draggable={isTestBed && renamingId !== convo.id}
               onDragStart={() => handleDragStart(convo.id)}
               onDragOver={(e) => handleDragOver(e, convo.id)}
               onDragEnd={handleDragEnd}

@@ -29,6 +29,7 @@ import { atomicWriteFile } from '@/lib/atomicWrite';
 import { installationId, normaliseInstallPath } from '@/lib/runnerHost';
 import { enqueue, pending } from '@/lib/turnQueue';
 import { listFolders, listLogs, loadLog, loadUserSettings } from '@/lib/fsStorage';
+import { livingConversation } from '@/lib/livingConversation';
 import { readAllAgentFiles, extractAgentSystemPrompt } from '@/lib/systemPromptStorage';
 import { beingIsBlockedHere } from '@/lib/blockedBeings';
 import { conversationToolsEnabled } from '@/lib/agentCapabilities';
@@ -167,11 +168,26 @@ export async function claimSlot(being: string, key: string, dataDir = DATA_DIR):
   }
 }
 
-/** The being's newest ACTIVE conversation, by the same order the sidebar uses. */
+/**
+ * The conversation a wake opens: the being's LIVING conversation, decided by
+ * title (see livingConversation.ts) — the same row the sidebar shows on top.
+ *
+ * Until 2026-11-15 this took the first active log in `listLogs()` order, which
+ * is modification time: a past log that had merely been saved (its log cap
+ * edited, a summary rebuilt) would have been woken instead of the current one.
+ * A test-bed being has no generations, so it keeps that older answer.
+ */
 export async function latestActiveConversation(being: string): Promise<string | null> {
-  const logs = await listLogs();
-  const hit = (logs as Array<{ id: string; folderName: string; active?: boolean; corrupted?: boolean }>)
-    .find(l => l.folderName === being && l.active !== false && !l.corrupted);
+  type Row = { id: string; folderName: string; title?: string; active?: boolean; corrupted?: boolean };
+  const mine = (await listLogs() as Row[]).filter(l => l.folderName === being);
+  let testBed = false;
+  try {
+    const folders = await listFolders() as Array<{ name: string; settings?: { testBed?: unknown } }>;
+    testBed = folders.find(f => f.name === being)?.settings?.testBed === true;
+  } catch {}
+  const hit = testBed
+    ? mine.find(l => l.active !== false && !l.corrupted)
+    : livingConversation(mine, being);
   return hit?.id ?? null;
 }
 

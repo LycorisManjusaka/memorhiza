@@ -8,6 +8,7 @@ import {
   type RestorePlanReply,
 } from '@/lib/handoverRestore';
 import { resolveHandoverChain } from '@/lib/handoverWalk';
+import { folderOrderOf } from '@/lib/deepLink';
 
 /**
  * Plan a handover restore: which messages from older generations should be put
@@ -74,11 +75,11 @@ export async function POST(req: Request) {
   // has to be read here; absent, the comparator falls back to `updatedAt`
   // descending, which is still the order on screen.
   const folders = await listFolders();
-  const convoOrder: string[] = (() => {
-    const f = folders.find((x: any) => x.name === self.folderName);
-    const o = f?.settings?.convoOrder;
-    return Array.isArray(o) ? o.map((s: any) => String(s)) : [];
-  })();
+  // Since 2026-11-15 an ordinary being's rows are ordered by TITLE; only a
+  // test-bed being still uses the drag order (see `FolderOrder`).
+  const convoOrder = folderOrderOf(
+    folders.find((x: any) => x.name === self.folderName) ?? { name: self.folderName },
+  );
   const chain = resolveHandoverChain(logs, self, convoOrder);
   const olderLogs = chain.older;
 

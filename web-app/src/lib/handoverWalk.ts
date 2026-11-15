@@ -19,7 +19,7 @@
  * disk.
  */
 import { numberedIdentityTitleIndex, newerNumberedSibling } from '@/lib/convoNaming';
-import { orderFolderConversations } from '@/lib/deepLink';
+import { orderFolderConversations, type FolderOrder } from '@/lib/deepLink';
 
 /**
  * Older generations of the SAME being as `self`, newest generation first.
@@ -90,7 +90,7 @@ export type HandoverChain = {
 export function resolveHandoverChain(
   logs: any[],
   self: any,
-  convoOrder: string[] = [],
+  convoOrder: FolderOrder = [],
 ): HandoverChain {
   const index = numberedIdentityTitleIndex(self.title, self.folderName);
   const siblings = logs.filter((l: any) => l.folderName === self.folderName && !l.corrupted);
@@ -107,7 +107,7 @@ export function resolveHandoverChain(
   // `orderFolderConversations` is generic over `{id, updatedAt}`; the log header
   // is carried along so the caller gets back the same objects it passed in.
   const ordered = orderFolderConversations(
-    siblings.map((l: any) => ({ id: String(l.id), updatedAt: Number(l.updatedAt) || 0, l })),
+    siblings.map((l: any) => ({ id: String(l.id), updatedAt: Number(l.updatedAt) || 0, title: l.title, l })),
     convoOrder,
   );
   const pos = ordered.findIndex((x: any) => String(x.l.id) === String(self.id));

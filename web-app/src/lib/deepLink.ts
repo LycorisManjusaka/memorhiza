@@ -16,6 +16,8 @@
 // the way out. Next.js decodes route params on the way in, so `parseDeepLinkParts`
 // receives plain strings.
 
+import { orderByTitle } from '@/lib/livingConversation';
+
 export interface DeepLink {
   folderName: string;
   /** Absent → open the folder's top conversation. */
@@ -85,6 +87,29 @@ export function parseDeepLinkParts(parts: string[] | undefined | null): DeepLink
 }
 
 /**
+ * How one being's conversation list is ordered.
+ *
+ *   { beingName }                 title order — every ordinary being
+ *   { beingName, testBed: true }  manual drag order, then most recently updated
+ *   string[]                      legacy: a bare drag order, same as testBed
+ */
+export type FolderOrder =
+  | string[]
+  | { beingName: string; testBed?: boolean; convoOrder?: string[] };
+
+/** Build the order spec from a being's folder record (`{ name, settings }`). */
+export function folderOrderOf(
+  folder: { name?: string; settings?: { testBed?: unknown; convoOrder?: unknown } | null } | null | undefined,
+): FolderOrder {
+  const co = folder?.settings?.convoOrder;
+  return {
+    beingName: folder?.name || '',
+    testBed: folder?.settings?.testBed === true,
+    convoOrder: Array.isArray(co) ? (co as string[]) : [],
+  };
+}
+
+/**
  * The order the sidebar displays, so "top conversation in the folder" means the
  * same thing to a link as it does to the eye: the user's manual drag order
  * first (folder settings `convoOrder`), then most-recently-updated.
@@ -92,10 +117,19 @@ export function parseDeepLinkParts(parts: string[] | undefined | null): DeepLink
  * Shared with Sidebar deliberately — two copies of this comparator would drift
  * and `/c/<folder>` would start opening something other than the visible top row.
  */
-export function orderFolderConversations<T extends { id: string; updatedAt: number }>(
+export function orderFolderConversations<T extends { id: string; updatedAt: number; title?: string | null }>(
   convos: T[],
-  convoOrder: string[] = [],
+  order: FolderOrder = [],
 ): T[] {
+  // A being's list is ordered by TITLE (see livingConversation.ts). The manual
+  // drag order + modification time below survives for two callers only: a
+  // being marked as a test bed, whose conversations are unrelated chats rather
+  // than generations, and a caller that passes a bare id array (the pre-
+  // 2026-11-15 signature, kept so nothing changes meaning silently).
+  if (!Array.isArray(order) && !order.testBed) {
+    return orderByTitle(convos, order.beingName);
+  }
+  const convoOrder = Array.isArray(order) ? order : (order.convoOrder || []);
   return [...convos].sort((a, b) => {
     const ia = convoOrder.indexOf(a.id);
     const ib = convoOrder.indexOf(b.id);
