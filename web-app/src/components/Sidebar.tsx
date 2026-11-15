@@ -31,6 +31,8 @@ import { useDevice } from './DeviceProvider';
 import { confirmIfBusy, markBusyConfirmAnswered } from '@/lib/unloadGuard';
 import { withBuildTag } from '@/lib/buildVersion';
 import { beingVesselFamily } from '@/lib/beingVessel';
+import WakeSettingsSection from './WakeSettingsSection';
+import { parseWakeSettings, type WakeSettings } from '@/lib/wakeSchedule';
 
 interface SidebarProps {
   conversations: any[];
@@ -285,6 +287,7 @@ export default function Sidebar({
   // characters often want to keep more log than throwaway conversations).
   const [folderMaxConversationLog, setFolderMaxConversationLog] = useState<number>(DEFAULT_MAX_CONVERSATION_LOG);
   const [folderAutoTrim, setFolderAutoTrim] = useState<boolean>(true);
+  const [folderWake, setFolderWake] = useState<WakeSettings>(() => parseWakeSettings(undefined));
   const [folderMaxTokensPerLayer, setFolderMaxTokensPerLayer] = useState<number>(8000);
   const [liveSessionVoice, setLiveSessionVoice] = useState('Aoede');
   const [liveVoiceMode, setLiveVoiceMode] = useState<'preset' | 'custom'>('preset');
@@ -956,6 +959,7 @@ export default function Sidebar({
                       // like a value someone picked.
                       setFolderMaxConversationLog(activeFolder.settings?.maxConversationLog ?? DEFAULT_MAX_CONVERSATION_LOG);
                       setFolderAutoTrim(activeFolder.settings?.autoTrimCopiedMessages !== false);
+                      setFolderWake(parseWakeSettings(activeFolder.settings?.wake));
                       setFolderMaxTokensPerLayer(activeFolder.settings?.maxTokensPerLayer ?? 8000);
                       // Live Session voice — known prebuilt names use preset mode; anything else is custom
                       const lv = activeFolder.settings?.liveSessionVoice || 'Aoede';
@@ -1474,6 +1478,10 @@ export default function Sidebar({
                 </div>
               </div>
 
+              {activeFolder && (
+                <WakeSettingsSection folder={activeFolder.name} value={folderWake} onChange={setFolderWake} />
+              )}
+
               <div className="pt-4 border-t border-border mt-4">
                 <h4 className="text-sm font-semibold flex items-center gap-2 text-indigo-500 mb-4 block">
                   <Mic size={16} /> {t('folder.live.heading')}
@@ -1557,6 +1565,7 @@ export default function Sidebar({
                           voicePitch: folderVoicePitch,
                           maxConversationLog: folderMaxConversationLog,
                           autoTrimCopiedMessages: folderAutoTrim,
+                          wake: folderWake,
                           maxTokensPerLayer: folderMaxTokensPerLayer,
                           liveSessionVoice: liveVoiceMode === 'custom' ? liveCustomVoice.trim() : liveSessionVoice,
                         }

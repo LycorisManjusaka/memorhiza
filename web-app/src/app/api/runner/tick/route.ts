@@ -24,6 +24,7 @@ import { loadLog, saveLog, listFolders, loadUserSettings } from '@/lib/fsStorage
 // load outside Next's runtime), which is why every rule lives in lib.
 import { POST as chatPost } from '@/app/api/chat/route';
 import { execAnchor } from '@/lib/anchorExec';
+import { recordSelfWakeFromReply, ensureWakeClock } from '@/lib/wakeClock';
 import type { AnchorMessage } from '@/lib/anchor';
 
 // One pass of the server-side runner (phase 4b-5, 2026-10-29).
@@ -400,6 +401,18 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
       // An empty list means abandon: the lease goes back, the items stay, the
       // auto-trigger signature is unchanged, and an instantly-failing turn
       // cannot re-fire forever.
+      // Self-set wake (P5): read the reply just saved for `[->wakeup: HH:MM]`.
+      // After the save, never instead of it; a booking problem is logged, not
+      // thrown, so it cannot fail a finished turn.
+      if (result.ok) {
+        try {
+          const saved = await loadLog(t.convoId);
+          const msgs = (saved?.messages || []) as Array<{ id?: string; role?: string; content?: unknown }>;
+          const reply = msgs.find((m) => m.id === result.messageId) || [...msgs].reverse().find((m) => m.role === 'assistant');
+          if (reply && typeof reply.content === 'string') await recordSelfWakeFromReply(t.being, reply.content, t.settings);
+        } catch { /* see recordSelfWakeFromReply */ }
+      }
+
       if (result.consumedIds.length > 0) {
         await release(t.being, t.convoId, c.claim.token, result.consumedIds);
       } else {
@@ -448,6 +461,8 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
 
 export async function POST(req: Request) {
   try {
+    // Fallback start for the wake clock (instrumentation.ts is the main one).
+    ensureWakeClock();
     let body: Record<string, unknown> = {};
     try { body = (await req.json()) || {}; } catch { /* {} is a valid tick */ }
 

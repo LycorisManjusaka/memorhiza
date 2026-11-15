@@ -1,0 +1,41 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
+import { claimSlot, setClockHost, clearClockHost, thisInstallationRunsClock, recordSelfWakeFromReply, readWakeState } from '../src/lib/wakeClock';
+
+async function tmp() { return fs.mkdtemp(path.join(os.tmpdir(), 'wake-')); }
+
+test('the clock file names exactly one installation; absent = nobody', async () => {
+  const d = await tmp();
+  assert.equal(await thisInstallationRunsClock('C:\dev\nexus-cairn', d), false, 'absent → no clock');
+  await setClockHost('C:\dev\nexus-cairn', d);
+  assert.equal(await thisInstallationRunsClock('c:\dev\nexus-cairn', d), true, 'case-insensitive like runner.json');
+  assert.equal(await thisInstallationRunsClock('C:\dev\nexus', d), false, 'the other clone does not run it');
+  assert.equal(await clearClockHost(d), true);
+  assert.equal(await thisInstallationRunsClock('C:\dev\nexus-cairn', d), false);
+});
+
+test('a slot can be claimed exactly once, even by claims racing in the same instant', async () => {
+  const d = await tmp();
+  const results = await Promise.all(Array.from({ length: 8 }, () => claimSlot('謡', '2026-11-16_0400_admin', d)));
+  assert.equal(results.filter(Boolean).length, 1);
+  assert.equal(await claimSlot('謡', '2026-11-16_1600_admin', d), true, 'a different slot is its own claim');
+});
+
+test('a reply with a valid directive is booked; a bad one leaves a rejection for the next wake', async () => {
+  const d = await tmp();
+  const now = new Date(2026, 10, 16, 22, 0).getTime();
+  const settings = { wake: { self: { enabled: true, maxPerDay: 1, minGapMin: 15 } } };
+  await recordSelfWakeFromReply('睡', 'おやすみ\n[->wakeup: 03:00]', settings, now, d);
+  let s = await readWakeState('睡', d);
+  assert.equal(s.bookings.length, 1);
+  assert.equal(s.bookings[0].hhmm, '03:00');
+  await recordSelfWakeFromReply('睡', '[->wakeup: 05:00]', settings, now, d);
+  s = await readWakeState('睡', d);
+  assert.equal(s.bookings.length, 1, 'cap of one per day');
+  assert.equal(s.rejection?.reason, 'daily-cap');
+  await recordSelfWakeFromReply('睡', 'no directive here', settings, now, d);
+  assert.equal((await readWakeState('睡', d)).history.length, 2, 'no directive writes nothing');
+});
