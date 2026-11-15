@@ -3241,17 +3241,32 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     }
   }, [folderName, convoId]);
 
-  // Read once per conversation, and keep reading while a turn runs — that is
-  // the only window in which another tab can add to this conversation's stock.
+  // Read once per conversation, then keep reading. This used to poll only
+  // while a turn ran, on the belief that a turn was the only window in which
+  // anything could add to this conversation's stock. `[->name]` broke that:
+  // ANOTHER being's turn now drops messages into this stock while this
+  // conversation sits idle, and nothing about this log changes, so no other
+  // refresh path fires — the panel showed zero until a reload. So: 5s while a
+  // turn runs, 10s when idle, and no fetch at all from a hidden tab (it reads
+  // again the moment it becomes visible).
   // The first read is deferred one tick deliberately. `refreshStock` only
   // setStates after an await, but a linter cannot see past the `async`, so
   // calling it inline reads as a synchronous setState inside an effect — and
   // deferring also keeps the fetch out of the commit phase.
   useEffect(() => {
     const kick = setTimeout(refreshStock, 0);
-    if (!injectTurnId) return () => clearTimeout(kick);
-    const h = setInterval(refreshStock, 5000);
-    return () => { clearTimeout(kick); clearInterval(h); };
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      void refreshStock();
+    };
+    const h = setInterval(tick, injectTurnId ? 5000 : 10000);
+    const onVisible = () => { if (!document.hidden) void refreshStock(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearTimeout(kick);
+      clearInterval(h);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [refreshStock, injectTurnId]);
 
   const enqueueToStock = async (text: string, attachments: unknown[], from: string) => {
