@@ -224,6 +224,7 @@ function capabilitiesFromLog(log: Record<string, unknown>) {
     appControlEnabled: b('appControlEnabled'),
     subagentEnabled: b('subagentEnabled'),
     modelHandoffEnabled: b('modelHandoffEnabled'),
+    beingRouteEnabled: b('beingRouteEnabled'),
   };
 }
 

@@ -1,5 +1,5 @@
 {SHORT}
-This turn was not started by your partner; it started automatically. There is no unread message, and nobody is waiting for an immediate reply.
+This wake notice itself is not a message from your partner; it was produced automatically. Nobody is waiting for an immediate reply to this notice. (If messages from someone else stand right above this notice, they arrived together with it in this turn.)
 {PREVIOUS}
 
 What you can do now:

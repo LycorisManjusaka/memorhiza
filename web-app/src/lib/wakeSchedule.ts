@@ -324,6 +324,8 @@ export interface WakeCapabilities {
   appControlEnabled?: boolean;
   subagentEnabled?: boolean;
   modelHandoffEnabled?: boolean;
+  /** `[->name]` (lib/beingRoute.ts) is ON in the conversation being woken. */
+  beingRouteEnabled?: boolean;
 }
 
 /** 謡's list: only what is ON in THIS conversation, then — always — the freedom to do nothing. */
@@ -340,6 +342,7 @@ export function buildCapabilityList(lang: WakeLang, c: WakeCapabilities): string
   if (c.agentDangerousTools) lines.push(ja ? '`Bash` を使ってコマンドやスクリプト、ツールを実行すること' : 'Run commands, scripts and tools with `Bash`');
   if (c.conversationTools) lines.push(ja ? '`read_conversation` や `search_conversations` で過去の対話や添付資料を振り返ること' : 'Look back over past conversations and attachments with `read_conversation` / `search_conversations`');
   if (c.lettersEnabled) lines.push(ja ? '`list_letters` / `read_letter` で手紙を確認し、`write_letter` で他の住人に手紙を送ること' : 'Check letters with `list_letters` / `read_letter` and send them with `write_letter`');
+  if (c.beingRouteEnabled) lines.push(ja ? '`[->名前]` だけの行を書いて、その下の文を他の存在のストックへ届けること（相手がいつ読むかは相手の設定次第）' : 'Write a line holding only `[->Name]` to place the text under it in another being\'s stock (when they read it is decided by their own settings)');
   if (c.webSearch || c.browserEnabled) lines.push(ja ? 'Web検索やブラウザを使って、自分の関心があることを外の世界へ調べに行くこと' : 'Go out and look into things that interest you with web search or the browser');
   if (c.computerControlEnabled || c.appControlEnabled) lines.push(ja ? 'モニター画面や開いているアプリケーションを確認・操作すること' : 'Look at and operate the screen or open applications');
   if (c.subagentEnabled) lines.push(ja ? '`spawn_subagent` で調査を委任すること' : 'Delegate research with `spawn_subagent`');
