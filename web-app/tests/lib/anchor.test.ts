@@ -21,8 +21,15 @@ test('settings: a chosen family/model/auth round-trips; Local may have no model 
   const s = parseAnchorSettings({ enabled: true, family: 'Claude', model: 'claude-haiku-5-5', authMode: 'oauth' });
   // act/scope come back at their defaults (2026-11-15): a log saved before
   // they existed is a log whose owner never chose otherwise.
-  assert.deepEqual(s, { enabled: true, family: 'Claude', model: 'claude-haiku-5-5', authMode: 'oauth', act: true, scope: 'all' });
+  assert.deepEqual(s, { enabled: true, family: 'Claude', model: 'claude-haiku-5-5', authMode: 'oauth', act: true, scope: 'auto' });
   assert.equal(parseAnchorSettings({ family: 'Local' }).model, '');
+});
+
+test('settings: only an explicit "all" runs the anchor on hand-sent turns (no surprise billing)', () => {
+  assert.equal(ANCHOR_DEFAULTS.scope, 'auto');
+  assert.equal(parseAnchorSettings({ enabled: true }).scope, 'auto');
+  assert.equal(parseAnchorSettings({ enabled: true, scope: 'garbage' }).scope, 'auto');
+  assert.equal(parseAnchorSettings({ enabled: true, scope: 'all' }).scope, 'all');
 });
 
 const convo = [

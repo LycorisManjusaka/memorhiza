@@ -38,8 +38,10 @@ export interface AnchorSettings {
   act: boolean;
   /**
    * When the anchor runs by itself: every turn, or only turns NEXUS opened.
-   * 'all' by default (つよ) — check E only exists for turns with a partner,
-   * and 11-02's illness happened in exactly such a turn.
+   * 'auto' by default (トカゲくん, 2026-11-15): no turn a person sends by hand
+   * is billed for an anchor unless someone chose 'all' on purpose. The cost is
+   * real — check E only exists for turns with a partner, and 11-02's illness
+   * happened in exactly such a turn, so 'auto' never runs it until chosen.
    */
   scope: 'all' | 'auto';
 }
@@ -51,7 +53,7 @@ export const ANCHOR_DEFAULTS: AnchorSettings = {
   model: 'deepseek-flash',
   authMode: 'api-key',
   act: true,
-  scope: 'all',
+  scope: 'auto',
 };
 
 /**
@@ -74,7 +76,8 @@ export function parseAnchorSettings(raw: unknown): AnchorSettings {
     // Absent means the defaults — a log saved before these fields existed is
     // a log whose owner never chose otherwise.
     act: r.act !== false,
-    scope: r.scope === 'auto' ? 'auto' : 'all',
+    // Absent means 'auto': only an explicit 'all' bills every hand-sent turn.
+    scope: r.scope === 'all' ? 'all' : 'auto',
   };
 }
 

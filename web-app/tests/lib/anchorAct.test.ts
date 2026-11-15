@@ -47,10 +47,10 @@ test('decide: drop, notify, retry, and retry degrading to notify', () => {
   assert.equal(decideAnchorAction({ verdict: 'UNREADABLE', output: '', lang: 'ja', retryAllowed: true }).kind, 'none');
 });
 
-test('settings: act ON and scope all by default; old logs get the defaults', () => {
+test('settings: act ON and scope auto by default (no surprise billing); old logs get the defaults', () => {
   const s = parseAnchorSettings({ enabled: true });
   assert.equal(s.act, true);
-  assert.equal(s.scope, 'all');
+  assert.equal(s.scope, 'auto');
   assert.equal(parseAnchorSettings({ act: false, scope: 'auto' }).act, false);
   assert.equal(anchorRunsOn({ enabled: true, scope: 'auto' }, false), false);
   assert.equal(anchorRunsOn({ enabled: true, scope: 'auto' }, true), true);
@@ -96,7 +96,7 @@ function bodyOf(frames: string[]) {
 const say = (text: string) => [frame({ type: 'thought', content: 'thinking' }), frame({ type: 'text', content: text })];
 const item = (text: string): QueueItem => ({ id: 'item-1', at: 1000, kind: 'user_message', from: 'つよ', payload: { text } } as unknown as QueueItem);
 
-function rig(anchorOutputs: string[], passes: string[][], anchorSettings: Record<string, unknown> = { enabled: true }) {
+function rig(anchorOutputs: string[], passes: string[][], anchorSettings: Record<string, unknown> = { enabled: true, scope: 'all' }) {
   const saves: Array<Record<string, unknown>> = [];
   const anchorCalls: Array<{ messages: unknown[] }> = [];
   const posted: Array<Record<string, unknown>> = [];
@@ -212,7 +212,7 @@ test('runner: unreadable first line is asked once more', async () => {
 });
 
 test('runner: act OFF reports only; scope auto skips a partner turn', async () => {
-  const off = rig(['INTERCEPT_DROP'], [say('x')], { enabled: true, act: false });
+  const off = rig(['INTERCEPT_DROP'], [say('x')], { enabled: true, scope: 'all', act: false });
   await runTurnForQueue('Cairn', 'c1', [item('hi')], off.deps);
   const reply = last(off).at(-1)!;
   assert.equal(reply.content, 'x');
