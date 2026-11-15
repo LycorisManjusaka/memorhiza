@@ -6643,6 +6643,11 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                     if (!liveToolActivity) {
                       return t('chat.busy.thinking').replace('{entity}', folderName).replace('{model}', model);
                     }
+                    // The anchor is the actor here, not the being — its own
+                    // sentence, with the anchor's model (sent as `detail`).
+                    if (liveToolName === 'anchor') {
+                      return t('chat.busy.anchor').replace('{model}', liveToolDetail || t('chat.busy.itsModel'));
+                    }
                     const frame = liveToolLocalized ? 'chat.busy.usingTool' : 'chat.busy.usingToolRaw';
                     return t(frame)
                       .replace('{entity}', folderName)

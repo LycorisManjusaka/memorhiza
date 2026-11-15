@@ -1167,6 +1167,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'chat.busy.usingTool': '{entity} is using {model} to {action}…',
   'chat.busy.usingToolRaw': '{entity} is using {model} to {action}…',
   'chat.busy.thinking': '{entity} is thinking with {model}…',
+  'chat.busy.anchor': 'The anchor is checking the reply with {model}…',
   'chat.busy.itsModel': 'their model',
   'chat.stall.notice': '⚠ No activity from the model for {duration} — it may be stuck. Keep waiting, or Stop and rerun.',
   'chat.stall.min': '{n} min',
@@ -1378,6 +1379,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   // summarizes the conversation in place to make room). Shown in the same
   // slot so a multi-minute silence is never mistaken for a freeze.
   'chat.toolAction.compact': 'summarize this conversation',
+  'chat.toolAction.anchor': 'wait for the anchor',
 
   // ── System Instructions ▸ Being (continued) ───────────────────────────
   'id.websearch.label': '🌐 Enable Web Search & Access',
@@ -3035,6 +3037,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   // 辞書に項目のないツール用。{action} は英語のまま入るので、それを収められる枠にします。
   'chat.busy.usingToolRaw': '{entity} が {model} で「{action}」を実行しています…',
   'chat.busy.thinking': '{entity} が {model} で考えています…',
+  'chat.busy.anchor': '錨が {model} で返答を確かめています…',
   'chat.busy.itsModel': 'モデル',
   'chat.stall.notice': '⚠ {duration} のあいだモデルからの反応がありません — 停止している可能性があります。待ち続けるか、停止して再実行してください。',
   'chat.stall.min': '{n} 分',
@@ -3230,6 +3233,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   'chat.toolAction.WebFetch': 'ウェブページを取得して',
   'chat.toolAction.rate_limit_wait': 'レート制限の解除を待って',
   'chat.toolAction.compact': '会話を要約して',
+  'chat.toolAction.anchor': '錨の確認を待って',
 
   // ── システム指示 ▸ 存在（続き） ──────────────────────────
   'id.websearch.label': '🌐 ウェブ検索とアクセスを有効にする',

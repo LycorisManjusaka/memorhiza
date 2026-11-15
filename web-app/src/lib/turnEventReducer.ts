@@ -262,6 +262,17 @@ export function applyTurnEvent(
     // receives it as a no-op.
     const plan = normaliseTurnPlan(data);
     if (plan) sink.turnPlan(plan);
+  } else if (data.type === 'anchor_reset') {
+    // Relay-only. The anchor said INTERCEPT_RETRY: the reply that just
+    // streamed is being REPLACED, and the next pass writes into the same
+    // bubble. Without this the second answer was appended after the first.
+    acc.currentText = '';
+    acc.currentThought = '';
+    acc.claudeThinkingBlocks.length = 0;
+    acc.toolCalls.length = 0;
+    acc.notices.length = 0;
+    flags.sawOutput = false;
+    sink.requestFlush();
   } else if (data.type === 'turn_saved') {
     // Also relay-only, and the mirror image of `turn_plan`: that one says
     // where the reply is ABOUT to go, this one says what landed. Rejected

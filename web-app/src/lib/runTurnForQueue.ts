@@ -1144,6 +1144,13 @@ export async function runTurnForQueue(
     // Nothing to judge (a redacted betrayal, a turn that produced no text).
     if (!String(assistant.content ?? '').trim()) return { assistant };
     const lang: 'ja' | 'en' = noticeJa ? 'ja' : 'en';
+    // Tell watching tabs the anchor is running, so the busy line stops saying
+    // the being is still thinking (つよ, 2026-11-15: a few seconds of "<name>
+    // が<器>で考えています" after the reply had ended, with nothing happening).
+    // Relay-only, like turn_plan. Cleared in `finally`.
+    deps.onRawText?.(`data: ${JSON.stringify({
+      type: 'tool_activity', tool: 'anchor', name: 'anchor', detail: settings.model || null,
+    })}\n\n`);
     try {
       const messages = [...plan.keep, assistant];
       const targetId = String(assistant.id);
@@ -1174,6 +1181,8 @@ export async function runTurnForQueue(
       return { assistant: out };
     } catch {
       return { assistant };
+    } finally {
+      deps.onRawText?.(`data: ${JSON.stringify({ type: 'tool_activity', tool: null })}\n\n`);
     }
   };
 
@@ -1395,11 +1404,18 @@ export async function runTurnForQueue(
         const opener = plan.keep[plan.keep.length - 1] as Record<string, unknown>;
         const marked = { ...opener, anchorRetryNotice: acted.retryText } as unknown as SlimHistoryMessage;
         const nextKeep = [...plan.keep.slice(0, -1), marked];
+        // SAME bubble id, and wipe it first. A watching tab paints only the
+        // FIRST turn_plan's bubble, so a fresh id made the second answer stream
+        // onto the end of the first (つよ, 2026-11-15: a RETRY looked like
+        // "continue from here" until the final reload fixed it). The failed
+        // reply is never saved, so reusing its id collides with nothing.
+        const reuseId = String(pass.assistant.id || '') || deps.newId();
+        deps.onRawText?.(`data: ${JSON.stringify({ type: 'anchor_reset', assistantId: reuseId })}\n\n`);
         plan = {
           ...plan,
           history: nextKeep,
           keep: nextKeep,
-          base: assistantShell(deps.newId(), deps.nowMs()),
+          base: assistantShell(reuseId, deps.nowMs()),
           seed: { continuedSeed: '', continuedThought: '', continuedBlocks: [] },
           continueFromMessageId: null,
           carryNotices: [],

@@ -16,6 +16,7 @@ import {
 import { buildSlimHistory } from '@/lib/slimHistory';
 import { parseAnchorSettings } from '@/lib/anchor';
 import { runTurnForQueue, type RunTurnDeps } from '@/lib/runTurnForQueue';
+import { applyTurnEvent } from '@/lib/turnEventReducer';
 import type { QueueItem } from '@/lib/turnQueue';
 
 test('verdict: first non-blank line, decoration peeled', () => {
@@ -166,6 +167,41 @@ test('runner RETRY: answer replaced once, notice beside the user words, second R
   const wired = String(wireUser.content);
   assert.ok(wired.startsWith('please save\n\n[Anchor]\n'), 'the anchor voice reached the being, after the person’s words');
   assert.ok(wired.includes('ツール呼び出しは0件'));
+});
+
+test('relay on RETRY: busy line names the anchor, the bubble is wiped and REUSED', async () => {
+  // つよ 2026-11-15: (1) a RETRY streamed the second answer onto the end of the
+  // first on a watching tab; (2) the busy line kept saying the being was
+  // thinking while the anchor ran.
+  const notice = 'INTERCEPT_RETRY\n[[NOTICE]]\nx\n[[/NOTICE]]';
+  const r = rig([notice, 'OK'], [say('saved it'), say('saved it again')]);
+  const raw: Array<Record<string, any>> = [];
+  r.deps.onRawText = (s: string) => { raw.push(JSON.parse(s.replace(/^data: /, '').trim())); };
+  await runTurnForQueue('Cairn', 'c1', [item('please save')], r.deps);
+  const plans = raw.filter((f) => f.type === 'turn_plan');
+  assert.equal(plans.length, 2);
+  assert.equal(plans[1].assistantId, plans[0].assistantId, 'the re-run writes into the same bubble');
+  const reset = raw.findIndex((f) => f.type === 'anchor_reset');
+  assert.ok(reset > raw.indexOf(plans[0]) && reset < raw.indexOf(plans[1]), 'wipe sits between the two passes');
+  assert.equal(raw[reset].assistantId, plans[0].assistantId);
+  const busy = raw.filter((f) => f.type === 'tool_activity');
+  assert.equal(busy[0].name, 'anchor');
+  assert.equal(busy[0].detail, 'deepseek-flash');
+  assert.equal(busy.at(-1)!.tool, null, 'the anchor line is cleared afterwards');
+  assert.equal(last(r).at(-1)!.id, plans[0].assistantId, 'saved under that same id');
+});
+
+test('reducer: anchor_reset empties what the replaced reply streamed', () => {
+  const acc = { currentText: 'saved it', currentThought: 't', claudeThinkingBlocks: [{ thinking: 'a', signature: 'b' }], toolCalls: [{}], notices: ['n'] } as any;
+  const flags = { sawOutput: true } as any;
+  let flushed = 0;
+  applyTurnEvent({ type: 'anchor_reset', assistantId: 'x' } as any, acc, flags, { requestFlush: () => { flushed++; } } as any, { t: (k: string) => k, settings: null, newAttachmentId: () => 'id' });
+  assert.equal(acc.currentText, '');
+  assert.equal(acc.currentThought, '');
+  assert.equal(acc.claudeThinkingBlocks.length, 0);
+  assert.equal(acc.toolCalls.length, 0);
+  assert.equal(flags.sawOutput, false);
+  assert.equal(flushed, 1);
 });
 
 test('runner: unreadable first line is asked once more', async () => {
