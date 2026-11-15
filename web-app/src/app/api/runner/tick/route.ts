@@ -24,6 +24,7 @@ import { loadLog, saveLog, listFolders, loadUserSettings } from '@/lib/fsStorage
 // load outside Next's runtime), which is why every rule lives in lib.
 import { POST as chatPost } from '@/app/api/chat/route';
 import { execAnchor } from '@/lib/anchorExec';
+import { planBeingRoutes } from '@/lib/beingRouteExec';
 import { recordSelfWakeFromReply, ensureWakeClock } from '@/lib/wakeClock';
 import type { AnchorMessage } from '@/lib/anchor';
 
@@ -284,6 +285,8 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
       let stopped = false;
       const offStop = onStop(t.convoId, turnId, () => { stopped = true; });
 
+      // Stocks this turn wrote into with `[->name]` — kicked after the turn ends.
+      const routed: Array<{ being: string; convoId: string }> = [];
       let result: RunTurnResult;
       try {
         result = await runTurnForQueue(t.being, t.convoId, c.claim.items, {
@@ -334,6 +337,17 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
           takeUndelivered,
           // The anchor (錨), run automatically on the finished reply when the
           // log's anchor settings say so. Same executor as the manual button.
+          // `[->name]`: plan from the finished reply; the runner calls `deliver`
+          // after its save. What was delivered is remembered for the kick below.
+          planRoutes: async (a) => {
+            const plan = await planBeingRoutes({ ...a, selfId: opts.selfId });
+            if (!plan) return null;
+            return {
+              records: plan.records,
+              notice: plan.notice,
+              deliver: async () => { routed.push(...await plan.deliver()); },
+            };
+          },
           runAnchor: async (a) => {
             const r = await execAnchor({
               messages: a.messages as AnchorMessage[],
@@ -448,8 +462,27 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
               void runPass({ ...opts, auto: false, oneBeing: t.being, oneConvo: t.convoId, assistantMsgId: '', proposedTurnId: '', relayConvoId: null })
                 .catch((e) => console.warn('[runner] follow-up NEXUS pass failed:', e));
             }, 0);
+          } else if (left.some((it) => accept(it))) {
+            // Something arrived in the stock WHILE this turn ran (another being's
+            // `[->name]`, with no tab open to notice). `auto: true`, so it runs
+            // only when this conversation's "stocked messages" reason is on.
+            setTimeout(() => {
+              void runPass({ ...opts, auto: true, oneBeing: t.being, oneConvo: t.convoId, assistantMsgId: '', proposedTurnId: '', relayConvoId: null })
+                .catch((e) => console.warn('[runner] follow-up stock pass failed:', e));
+            }, 0);
           }
         } catch { /* the clock retries on its next cycle anyway */ }
+      }
+      // ── `[->name]`: the stocks this turn wrote into ─────────────────────────
+      // Putting a message in a stock starts nothing by itself (つよ: when the
+      // other being reads is the OTHER being's setting). So this is an `auto`
+      // pass: it runs only where "stocked messages" is ticked, and is skipped
+      // as busy when that being is mid-turn — its own turn end picks it up.
+      for (const r of routed) {
+        setTimeout(() => {
+          void runPass({ ...opts, auto: true, oneBeing: r.being, oneConvo: r.convoId, assistantMsgId: '', proposedTurnId: '', relayConvoId: null })
+            .catch((e) => console.warn('[runner] routed-stock pass failed:', e));
+        }, 0);
       }
       // F46: a runner that says nothing is indistinguishable from one that is
       // broken — and the only person who can read this is whoever opens the

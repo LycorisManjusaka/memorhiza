@@ -24,6 +24,7 @@
 import { replayableCalls, selectToolHistoryIds } from '@/lib/toolHistory';
 import { thinkingBelongsToVessel } from '@/lib/modelHandoff';
 import { anchorNoticesFor, type AnchorAct } from '@/lib/anchorAct';
+import { routeNoticeFor } from '@/lib/beingRoute';
 
 // Turn-stopped diagnostics used to be streamed as ordinary reply text, so they
 // are baked into the body of every affected message already on disk. This
@@ -72,6 +73,8 @@ export interface SlimHistoryMessage {
   anchorAct?: AnchorAct | null;
   /** On a user turn whose answer the anchor had replaced (INTERCEPT_RETRY). */
   anchorRetryNotice?: string | null;
+  /** On a reply whose `[->name]` blocks could not all be sent — lib/beingRoute.ts. */
+  routeNotice?: string | null;
 }
 
 /**
@@ -211,7 +214,7 @@ function buildSlimMessages(
       // the model every single turn. Non-destructive: only this outgoing
       // copy is cleaned, the stored log is untouched.
       content: idx === newestUserIdx
-        ? withAnchorNotices(stripTurnNotices(wireContent(m, true)), anchorNoticesFor(history, idx))
+        ? withAnchorNotices(stripTurnNotices(wireContent(m, true)), [...anchorNoticesFor(history, idx), routeNoticeFor(history, idx)])
         : stripTurnNotices(wireContent(m, false)),
       role: m.role,
       timestamp: m.timestamp,

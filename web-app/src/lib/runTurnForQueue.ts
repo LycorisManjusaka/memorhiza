@@ -94,6 +94,17 @@ export interface RunTurnDeps {
     settings: AnchorSettings;
     lang: 'ja' | 'en';
   }) => Promise<AnchorReport | null>;
+  /**
+   * `[->name]` — plan the routes in a finished reply (lib/beingRouteExec.ts at
+   * the call site). Called only when the conversation has the ability switched
+   * on. Absent in tests that do not exercise it. Null = the reply addresses
+   * nobody. `deliver` runs AFTER the save.
+   */
+  planRoutes?: (a: { sender: string; text: string; lang: 'ja' | 'en' }) => Promise<{
+    records: unknown[];
+    notice: string;
+    deliver: () => Promise<unknown>;
+  } | null>;
   /** fsStorage.loadLog */
   loadLog: (convoId: string) => Promise<Record<string, unknown> | null>;
   /** fsStorage.saveLog */
@@ -1449,6 +1460,25 @@ export async function runTurnForQueue(
       }
       judged = acted.assistant;
     }
+    // `[->name]`: decided HERE so the record is in the same single save as the
+    // reply; the stocks are written only after that save succeeded (see
+    // lib/beingRouteExec.ts for why in that order). Not on a handoff hop (the
+    // turn is not over) and not on a reply the anchor emptied.
+    let routePlan: { deliver: () => Promise<unknown> } | null = null;
+    if (!pass.handoff && deps.planRoutes && (log as Record<string, unknown>).beingRouteEnabled === true) {
+      const text = String(judged.content ?? '');
+      if (text.trim()) {
+        try {
+          const rp = await deps.planRoutes({ sender: being, text, lang: noticeJa ? 'ja' : 'en' });
+          if (rp) {
+            routePlan = rp;
+            judged = { ...judged, routes: rp.records, ...(rp.notice ? { routeNotice: rp.notice } : {}) };
+          }
+        } catch (e) {
+          console.warn('[route] planning failed; the reply is saved without routes:', e);
+        }
+      }
+    }
     const finalAssistant = pass.handoff ? judged : withUndelivered(judged);
     const result = await saveMessages(
       [...plan.keep, finalAssistant],
@@ -1466,6 +1496,7 @@ export async function runTurnForQueue(
       };
     }
     saved = true;
+    if (routePlan) { try { await routePlan.deliver(); } catch { /* deliver never throws; belt and braces */ } }
     lastMessageId = String(pass.assistant.id);
     lastSavedAt = deps.nowMs();
 

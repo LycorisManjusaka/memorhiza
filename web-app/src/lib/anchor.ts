@@ -237,6 +237,7 @@ export function buildAnchorChatBody(a: {
     agentDangerousTools: false,
     agentFullSystemAccess: false,
     lettersEnabled: false,
+    beingRouteEnabled: false,
     subagentEnabled: false,
     browserEnabled: false,
     computerControlEnabled: false,

@@ -49,6 +49,7 @@ function fullInput(over: Partial<TurnRequestInput> = {}): TurnRequestInput {
     subagentModel: 'sm',
     subagentFamily: 'sf',
     lettersEnabled: true,
+    beingRouteEnabled: false,
     browserEnabled: false,
     browserAllowedHosts: '',
     browserAllowAnyHost: false,
@@ -94,7 +95,7 @@ const WIRE_KEYS = [
   'messages', 'aiName', 'folderName', 'systemPrompt', 'toolUseEnabled',
   'agentFullSystemAccess', 'agentDangerousTools', 'hiddenAttachmentsAccessible',
   'toolHistoryEnabled', 'askUserEnabled', 'askUserTimeoutMs', 'subagentEnabled',
-  'subagentModel', 'subagentFamily', 'lettersEnabled', 'browserEnabled',
+  'subagentModel', 'subagentFamily', 'lettersEnabled', 'beingRouteEnabled', 'browserEnabled',
   'browserAllowedHosts', 'browserAllowAnyHost', 'computerControlEnabled',
   // `language` and `uiLang` are TWO fields on purpose: the first is
   // being-facing (which built-in language the hidden instructions and the

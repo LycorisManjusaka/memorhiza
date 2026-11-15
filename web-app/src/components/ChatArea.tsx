@@ -487,6 +487,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // Optional subagent (context-firewall helper) tool — OAuth path for now.
   const [subagentEnabled, setSubagentEnabled] = useState(TURN_INPUT_DEFAULTS.subagentEnabled);
   const [lettersEnabled, setLettersEnabled] = useState(TURN_INPUT_DEFAULTS.lettersEnabled);
+  const [beingRouteEnabled, setBeingRouteEnabled] = useState(TURN_INPUT_DEFAULTS.beingRouteEnabled);
   // Browser control. OFF unless deliberately turned on, like every other
   // capability here. A throwaway test window must start with nothing enabled —
   // an entity that can browse before anyone asked it to is a surprise, and a
@@ -1774,6 +1775,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         setAskUserTimeoutMs(typeof data.askUserTimeoutMs === 'number' ? data.askUserTimeoutMs : 0);
         setSubagentEnabled(data.subagentEnabled === true);
         setLettersEnabled(data.lettersEnabled === true);
+        setBeingRouteEnabled(data.beingRouteEnabled === true);
         // `=== true`: absent field means off. A conversation saved before
         // browser control existed never asked for it, so it does not get it.
         setBrowserEnabled(data.browserEnabled === true);
@@ -1886,6 +1888,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         setAskUserTimeoutMs(pick('askUserTimeoutMs', 0));
         setSubagentEnabled(pick('subagentEnabled', false));
         setLettersEnabled(pick('lettersEnabled', false));
+        setBeingRouteEnabled(pick('beingRouteEnabled', false));
         setBrowserEnabled(pick('browserEnabled', false));
         setBrowserAllowedHosts(pick('browserAllowedHosts', ''));
         setBrowserAllowAnyHost(pick('browserAllowAnyHost', false));
@@ -1987,8 +1990,8 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // is what keeps the dependency list complete — it caught claudeAuthMode,
   // which the old inline save-effect dep array had silently dropped.
   const buildLogData = useCallback((msgs: unknown[]) => ({
-    id: convoId, folderName, aiName: localAiName, title, messages: msgs, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel,
-  }), [convoId, folderName, localAiName, title, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel]);
+    id: convoId, folderName, aiName: localAiName, title, messages: msgs, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel,
+  }), [convoId, folderName, localAiName, title, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel]);
 
   useEffect(() => {
     // Skip the disk-save POST WHILE a reply is streaming (loading === true).
@@ -6549,6 +6552,31 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                   </details>
                 );
               })()}
+              {/* `[->name]`: where this reply's blocks went. The record saved
+                  beside the reply (lib/beingRoute.ts), one chip per marker —
+                  so "sent" and "sent to nobody" cannot look the same. */}
+              {msg.role !== 'user' && Array.isArray((msg as any).routes) && (msg as any).routes.length > 0 && (
+                <div className="mt-2 ml-2 max-w-2xl flex flex-wrap gap-1.5">
+                  {((msg as any).routes as Array<{ to: string; status: string; attachments?: number; missing?: string[] }>).map((r, i) => {
+                    const ok = r.status === 'sent' && !(r.missing && r.missing.length);
+                    const detail = r.status === 'sent'
+                      ? (r.attachments ? t('route.chip.sentWith').replace('{n}', String(r.attachments)) : t('route.chip.sent'))
+                        + (r.missing && r.missing.length ? ` · ${t('route.chip.missing').replace('{n}', String(r.missing.length))}` : '')
+                      : t(`route.chip.${r.status}`);
+                    return (
+                      <span
+                        key={i}
+                        title={r.missing && r.missing.length ? r.missing.join('\n') : undefined}
+                        className={`text-[11px] px-2 py-0.5 rounded-full border ${ok
+                          ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                          : 'border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300'}`}
+                      >
+                        {`→ ${r.to}: ${detail}`}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
               {/* The anchor's report for this reply. BELOW the message, its own
                   block, never part of it. Shown only while the anchor is on.
                   Thinking is folded; the answer is open. */}
@@ -7816,6 +7844,24 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                 )}
               </div>
 
+              {/* ── `[->name]`: address another being's stock ─────────────────
+                  An ability, not a behaviour (つよ): the note that explains it
+                  is in every turn while this is on. Rules: lib/beingRoute.ts. */}
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={beingRouteEnabled}
+                    onChange={(e) => setBeingRouteEnabled(e.target.checked)}
+                    className="accent-amber-500"
+                  />
+                  <span className="text-sm font-semibold text-foreground">{t('id.route.label')}</span>
+                </label>
+                <p className="text-xs text-muted-foreground mt-1 ml-6 leading-relaxed">
+                  <Tx k="id.route.help" />
+                </p>
+              </div>
+
               {/* ── Browser control ───────────────────────────────────────────
                   OFF by default, like everything else on this tab. Two separate
                   boundaries: this flag decides whether the tools exist, the host
@@ -8914,6 +8960,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                       subagentModel,
                       subagentFamily,
                       lettersEnabled,
+                      beingRouteEnabled,
                       browserEnabled,
                       browserAllowedHosts,
                       browserAllowAnyHost,

@@ -52,6 +52,7 @@ export type TurnInputDefaultKeys =
   | 'askUserTimeoutMs'
   | 'subagentEnabled'
   | 'lettersEnabled'
+  | 'beingRouteEnabled'
   | 'browserEnabled'
   | 'browserAllowedHosts'
   | 'browserAllowAnyHost'
@@ -138,6 +139,7 @@ export const TURN_INPUT_DEFAULTS: TurnInputDefaults = {
   askUserTimeoutMs: 0,
   subagentEnabled: false,
   lettersEnabled: false,
+  beingRouteEnabled: false,
   browserEnabled: false,
   browserAllowedHosts: '',
   browserAllowAnyHost: false,

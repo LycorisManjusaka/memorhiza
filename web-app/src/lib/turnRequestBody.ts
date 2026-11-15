@@ -93,6 +93,8 @@ export interface TurnRequestInput {
   subagentModel: string;
   subagentFamily: string;
   lettersEnabled: boolean;
+  /** `[->name]` — the being may address another being's stock (lib/beingRoute.ts). */
+  beingRouteEnabled: boolean;
 
   browserEnabled: boolean;
   /** Text as typed in the UI; this module turns it into the wire array. */
@@ -204,6 +206,7 @@ export function buildTurnRequestBody(
     subagentModel: input.subagentModel,
     subagentFamily: input.subagentFamily,
     lettersEnabled: input.lettersEnabled,
+    beingRouteEnabled: input.beingRouteEnabled,
     browserEnabled: input.browserEnabled,
     // Text in the UI, array on the wire. Split on newlines and commas so the
     // box accepts whichever way the host list was typed.

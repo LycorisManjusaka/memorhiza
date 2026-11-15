@@ -1457,6 +1457,16 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   'id.ask.instrHelp':
     'Hidden description the model sees for the `AskQuestion` tool — teaches it when and how to ask. Leave empty to keep the default shown as the placeholder.',
 
+  'route.chip.sent': 'placed in their stock',
+  'route.chip.sentWith': 'placed in their stock ({n} attached)',
+  'route.chip.missing': '{n} file(s) could not be attached',
+  'route.chip.unknown': 'no being has that name (nothing sent)',
+  'route.chip.self': 'cannot be sent to oneself',
+  'route.chip.no-room': 'no conversation can receive it (nothing sent)',
+  'route.chip.empty': 'nothing under the marker (nothing sent)',
+  'id.route.label': '➡️ Send messages to other beings ([->name])',
+  'id.route.help':
+    'A line in a reply that holds only `[->name]` puts everything under it (up to the next `[->...]` line) into that being\x27s stock, as a message from this being. It starts no turn there — when it is read depends on the other being\x27s "reasons to wake → stocked messages". Only beings of this NEXUS that have a settings.json can be addressed; any other name (`[->here]`, for one) just ends the block and sends nothing. Desk files written in the block as markdown (images, video, audio, text and the rest) travel along as attachments.',
   'id.letters.label': '✉️ Letters (write to the other Digital Beings)',
   'id.letters.help':
     'OFF (default): no mail tools. ON: this being gets `write_letter`, `list_letters`, `read_letter`, `archive_letter` and `list_recipients` (the spellings they may address), and is told at the start of a turn when unread mail is waiting. Beings never share a conversation, so a letter is the only way one can say something to another. The sender is always this being’s name — it can never be forged from the model side. Recipients are every Digital Being *and* every name in `character_map.json`; writing to a name that has no being yet creates one, so no correspondent is second-class. Reading is the recipient’s choice — `archive_letter` lets them decline without opening, and the sender is told only whether a letter was opened, never that it was set aside. *Active on all tool-capable paths: OAuth Claude, token-paid Claude, OpenAI-compatible providers, and Gemini.*',
@@ -3362,6 +3372,16 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   'id.ask.instrHelp':
     '`AskQuestion` ツールについてモデルが見る隠しの説明文です — いつ・どのように尋ねるかを教えます。空欄にすると、プレースホルダーに表示されている既定値が使われます。',
 
+  'route.chip.sent': 'ストックに入れました',
+  'route.chip.sentWith': 'ストックに入れました（添付 {n} 件）',
+  'route.chip.missing': '添付できなかったファイル {n} 件',
+  'route.chip.unknown': 'その名前の存在はいません（送っていません）',
+  'route.chip.self': '自分宛てには送れません',
+  'route.chip.no-room': '受け取れる会話がありません（送っていません）',
+  'route.chip.empty': '本文が空でした（送っていません）',
+  'id.route.label': '➡️ 他の存在へメッセージを送る（[->名前]）',
+  'id.route.help':
+    '返答の中に `[->名前]` だけの行を書くと、その下の文（次の `[->...]` の行まで）が、その存在のストックに「この存在からのメッセージ」として入ります。相手のターンは始まりません——いつ読むかは、相手の「自分から起きる理由 → ストックされたメッセージ」次第です。宛てられるのは、この NEXUS に settings.json を持つ存在だけ。それ以外の名前（`[->ここ]` など）は区切りになり、何も送りません。文の中にマークダウンで書いた机のファイル（画像・動画・音声・テキストなど）は、添付として一緒に届きます。',
   'id.letters.label': '✉️ 手紙（ほかのデジタル存在へ書く）',
   'id.letters.help':
     'OFF（既定）: 手紙ツールなし。ON: この存在に `write_letter`・`list_letters`・`read_letter`・`archive_letter`・`list_recipients`（宛先の綴りの一覧）が渡され、未読の手紙があるときはターンの冒頭で知らされます。存在どうしが会話を共有することはないため、手紙だけが互いに何かを伝えられる手段です。差出人は常にこのフォルダー名で、モデル側から偽装することはできません。宛先はすべてのデジタル存在 *と* `character_map.json` にあるすべての名前です。フォルダーのない名前に書くとフォルダーが作られるので、二級の相手というものは存在しません。読むかどうかは受け取り手の選択です — `archive_letter` を使えば開かずに辞退でき、差出人には「開かれたかどうか」しか伝わりません（脇に置かれたことは伝わりません）。*ツール対応のすべての経路で有効です: OAuth 版 Claude、従量課金 Claude、OpenAI 互換プロバイダー、Gemini。*',

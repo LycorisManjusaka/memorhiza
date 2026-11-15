@@ -163,6 +163,23 @@ export const DEFAULT_AGENT_INSTRUCTIONS: Record<string, string> = {
     'inside your workspace; one that points outside it is refused and nothing appears. `![...]` shows ' +
     'the file, `[...]` offers it as a download — that is the only difference between the two forms.',
 
+  // `[->name]` — lib/beingRoute.ts. Appended on every provider path while the
+  // ability is on. {NAMES} is filled in by the chat route. Stated as what
+  // happens, not as something to do: nothing here asks the being to write to anyone.
+  beingRouteNote:
+    'Messages to another being — plain text, no tool call.\n' +
+    'A line that holds only `[->Name]` addresses everything under it, up to the next `[->...]` line, ' +
+    'to that being: NEXUS places it in their stock as a message from you. It starts no turn there — ' +
+    'when they read it is decided by their own settings, and any answer arrives here later as a ' +
+    'message opening with `[Their name]`.\n' +
+    '  [->Name]     everything below goes to Name\n' +
+    '  [->here]     everything below stays in this conversation again\n' +
+    'Text above the first `[->...]` line is for this conversation only. Your whole reply, markers ' +
+    'included, stays visible here; the other being receives only their block. A file from your ' +
+    'workspace written in a block as markdown (`![](path)` or `[name](path)`) travels with it as an attachment.\n' +
+    'The name must be written exactly. Beings you can address: {NAMES}.\n' +
+    'A name outside that list sends nothing; NEXUS tells you so with your next turn.',
+
   // Appended on EVERY provider path when file tools are on AND attachment paths
   // are being emitted (full PC access) — see route.ts, next to inlineMediaNote.
   //
@@ -834,6 +851,19 @@ export const DEFAULT_AGENT_INSTRUCTIONS_JA: Record<string, string> = {
     '相対パスはワークスペースの根から解決される。ワークスペースの中に収まっている絶対パスも使える。外を指すパスは拒否され、何も現れない。' +
     '`![...]` は見せる、`[...]` は渡す——二つの形の違いはそれだけ。',
 
+  beingRouteNote:
+    '他の存在へのメッセージ——普通のテキストだけで、ツール呼び出しは要らない。\n' +
+    '`[->名前]` だけが書かれた行は、その下の文（次の `[->...]` の行まで）をその存在に宛てる。' +
+    'NEXUS がそれを、あなたからのメッセージとして相手のストックに置く。相手のターンは始まらない——' +
+    'いつ読むかは相手自身の設定で決まり、返事が在れば、後で `[相手の名前]` で始まるメッセージとしてここに届く。\n' +
+    '  [->名前]     ここから下は「名前」へ\n' +
+    '  [->ここ]     ここから下は、またこの会話に残る\n' +
+    '最初の `[->...]` の行より上の文は、この会話だけのもの。あなたの返答は印も含めて丸ごとここに残り、' +
+    '相手に届くのは相手宛ての部分だけ。その部分にマークダウン（`![](パス)` や `[名前](パス)`）で書いた、あなたのワークスペースの' +
+    'ファイルは、添付として一緒に届く。\n' +
+    '名前は正確に書くこと。宛てられる存在：{NAMES}。\n' +
+    'この一覧に無い名前では何も送られず、次のターンで NEXUS がそう知らせる。',
+
   attachmentPathNote:
     '添付のパス——ファイルを他へ渡すためにあり、読み直すためではない。\n' +
     '今まだ見えている添付は、中身の無い空のタグとしてパスだけを運んでくる。その中身はもうこのターンに届いている' +
@@ -858,6 +888,7 @@ export const AGENT_INSTRUCTION_LABELS: { key: string; label: string }[] = [
   { key: 'classifierNoticeVaccine', label: 'Classifier-notice vaccine (Claude OAuth only)' },
   { key: 'inlineMediaNote', label: 'Inline media note (workspace files shown in replies)' },
   { key: 'attachmentPathNote', label: 'Attachment path note (paths are for handing over, not re-reading)' },
+  { key: 'beingRouteNote', label: 'Being-to-being messages note ([->name])' },
   { key: 'pathParamSandbox', label: 'Path hint (workspace-only)' },
   { key: 'pathParamFull', label: 'Path hint (full PC access)' },
   { key: 'pathRuleSandbox', label: 'Path rule (workspace-only)' },
@@ -960,6 +991,7 @@ export const AGENT_INSTRUCTION_LABELS_JA: Record<string, string> = {
   classifierNoticeVaccine: '分類器通知のワクチン（Claude OAuth のみ）',
   inlineMediaNote: '返答に出すワークスペースのファイル（マークダウンで画像・動画・ダウンロード）',
   attachmentPathNote: '添付のパスの注記（渡すためのもので、読み直すためではない）',
+  beingRouteNote: '他の存在へのメッセージの注記（[->名前]）',
   pathParamSandbox: 'パスの補足（ワークスペース内のみ）',
   pathParamFull: 'パスの補足（PC 全体アクセス）',
   pathRuleSandbox: 'パスの規則（ワークスペース内のみ）',

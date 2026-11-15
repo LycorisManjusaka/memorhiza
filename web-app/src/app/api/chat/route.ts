@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import pathModule from 'path';
 import { promises as fsp } from 'fs';
+import { routableBeingNames } from '@/lib/beingRouteNames';
 import { loadKeys, readWorkspaceFile, readWorkspaceFileBinary, isImageFilename, writeWorkspaceFile, ensureWorkspace, editWorkspaceFile, globWorkspaceFiles, grepWorkspaceFiles, deleteWorkspaceFile, readEntityFooter, getTrustedJunctionRoot, getSharedZoneRoot } from '@/lib/fsStorage';
 import { isVisionCapable, isAudioCapable, isVideoCapable, resolveGeminiMinThinkingLevel, reportsNormalizedCoords } from '@/lib/modelVision';
 import { beingIsBlockedHere, blockedResponseBody } from '@/lib/blockedBeings';
@@ -4483,6 +4484,9 @@ export async function POST(req: Request) {
       continueFromMessage = false,
       maxToolIterations: maxToolIterationsRaw,
       lettersEnabled = false,
+      // `[->name]` (lib/beingRoute.ts): only a note in the system prompt here;
+      // the cutting happens in the runner after the reply is finished.
+      beingRouteEnabled = false,
       // ── Browser control ──────────────────────────────────────────────────
       // Per-Entity, OFF unless deliberately turned on. A request that omits the
       // field gets no browser: a test window, a script, or an older client must
@@ -4832,6 +4836,17 @@ export async function POST(req: Request) {
     // (shikigami), whose systemPrompt is a protocol, not an identity.
     if (toolUseEnabled && !isAgentInstructionPrompt && I.inlineMediaNote) {
       systemPrompt = `${systemPrompt}\n\n${I.inlineMediaNote}`;
+    }
+
+    // `[->name]` — an ability, described like a tool (つよ, 2026-11-15): present
+    // in every turn while its checkbox is on, not only in NEXUS-opened ones.
+    // The names are listed because an address nobody told you is not usable.
+    if (beingRouteEnabled && !isAgentInstructionPrompt && I.beingRouteNote) {
+      let names: string[] = [];
+      try { names = await routableBeingNames(folderName); } catch {}
+      if (names.length) {
+        systemPrompt = `${systemPrompt}\n\n${I.beingRouteNote.replace('{NAMES}', names.join(', '))}`;
+      }
     }
 
     // Says what the `path` on an attachment tag is FOR. Gated on
