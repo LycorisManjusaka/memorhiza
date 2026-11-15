@@ -3,7 +3,28 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { windowsFromRateLimitInfo, mergeUsage, viewWindow, parseSnapshot } from '@/lib/claudeUsage';
+import { windowsFromRateLimitInfo, mergeUsage, viewWindow, parseSnapshot, weekPace, WEEK_MS } from '@/lib/claudeUsage';
+
+// Lizard-kun's case, 2026-11-15 15:43: week 31%, resets 11/20 17:00.
+// Start = 11/13 17:00 → 46h43m elapsed of 168h ≈ 27.8% → 31% is ahead.
+test('weekPace: elapsed share counts from resetsAt minus 7 days; above it is ahead', () => {
+  const resetsAt = new Date(2026, 10, 20, 17, 0).getTime();
+  const now = new Date(2026, 10, 15, 15, 43).getTime();
+  const p = weekPace({ state: 'live', pct: 31, resetsAt }, now);
+  assert.ok(p);
+  assert.equal(p!.elapsedPct, 27.8);
+  assert.equal(p!.ahead, true);
+  assert.equal(weekPace({ state: 'live', pct: 27, resetsAt }, now)!.ahead, false);
+  // Right after the window opens, 0% elapsed; at the reset, 100%.
+  assert.equal(weekPace({ state: 'live', pct: 0, resetsAt }, resetsAt - WEEK_MS)!.elapsedPct, 0);
+  assert.equal(weekPace({ state: 'live', pct: 0, resetsAt }, resetsAt)!.elapsedPct, 100);
+});
+
+test('weekPace: no pace without a live window and a reset time', () => {
+  assert.equal(weekPace({ state: 'unknown' }, 0), null);
+  assert.equal(weekPace({ state: 'live', pct: 50, resetsAt: null }, 0), null);
+  assert.equal(weekPace({ state: 'reset', resetsAt: 1 }, 2), null);
+});
 import { recordRateLimitInfo, readClaudeUsage } from '@/lib/claudeUsageStore';
 
 // The rate_limit_info a live Haiku OAuth turn emitted on 2026-11-14 (the

@@ -107,6 +107,22 @@ export function viewWindow(w: UsageWindow | undefined, now: number): WindowView 
   return { state: 'live', pct, resetsAt: w.resetsAt };
 }
 
+export const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Even pace through the weekly window: the share of the week already elapsed,
+ * counted from `resetsAt − 7 days`. If usage is above it, the week runs out
+ * before the reset at this rate (Lizard-kun's rule, 2026-11-15). null when the
+ * window is not live or carries no reset time — no pace is invented.
+ */
+export function weekPace(v: WindowView, now: number): { elapsedPct: number; ahead: boolean } | null {
+  if (v.state !== 'live' || v.resetsAt === null) return null;
+  const start = v.resetsAt - WEEK_MS;
+  const frac = Math.max(0, Math.min(1, (now - start) / WEEK_MS));
+  const elapsedPct = Math.round(frac * 1000) / 10;
+  return { elapsedPct, ahead: v.pct > elapsedPct };
+}
+
 /** Parse the stored file; anything malformed reads as "no snapshot". */
 export function parseSnapshot(raw: unknown): ClaudeUsageSnapshot | null {
   if (!raw || typeof raw !== 'object') return null;

@@ -47,7 +47,7 @@ import { dedupeMessageIds } from '@/lib/messageIds';
 import { applyTurnSaved, type TurnSavedEvent } from '@/lib/turnSaved';
 import { placeAnnouncedUser } from '@/lib/announcedUser';
 import { retiredModelLabel } from '@/lib/retiredModels';
-import { parseSnapshot, viewWindow, type ClaudeUsageSnapshot, type WindowView } from '@/lib/claudeUsage';
+import { parseSnapshot, viewWindow, weekPace, type ClaudeUsageSnapshot, type WindowView } from '@/lib/claudeUsage';
 import { buildSoulExport, soulExportFilename } from '@/lib/soulExport';
 import { defaultSummaryHintForLang } from '@/lib/summaryHint';
 import { useT, useLanguage, Tx, renderRich } from '@/lib/i18n';
@@ -2257,6 +2257,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     if (!deliveryCtx.isOAuthClaude) return null;
     const five = viewWindow(claudeUsage?.fiveHour, usageNow);
     const week = viewWindow(claudeUsage?.sevenDay, usageNow);
+    const pace = weekPace(week, usageNow);
     const hm = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const dt = (ms: number) => new Date(ms).toLocaleString([], { month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' });
     const short = (v: WindowView) => (v.state === 'live' ? `${v.pct}%` : '—');
@@ -2270,6 +2271,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       t('chat.usage.title'),
       line(t('chat.usage.five'), five, hm),
       line(t('chat.usage.week'), week, dt),
+      ...(pace ? [t(pace.ahead ? 'chat.usage.paceAhead' : 'chat.usage.pace').replace('{pct}', String(pace.elapsedPct))] : []),
       claudeUsage ? t('chat.usage.asOf').replace('{time}', dt(claudeUsage.capturedAt)) : t('chat.usage.none'),
       t('chat.usage.note'),
     ].join('\n');
@@ -2282,7 +2284,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         </div>
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-2 font-semibold whitespace-nowrap">
           <span>{t('chat.usage.five')} {short(five)}{five.state === 'live' && five.resetsAt ? ` · ${hm(five.resetsAt)}` : ''}</span>
-          <span>{t('chat.usage.week')} {short(week)}</span>
+          <span className={pace?.ahead ? 'text-red-500' : undefined}>{t('chat.usage.week')} {short(week)}</span>
         </div>
       </div>
     );
