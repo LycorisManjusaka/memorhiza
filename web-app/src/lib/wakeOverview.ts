@@ -25,9 +25,16 @@ export async function wakeOverview(now = Date.now()): Promise<WakeOverviewRow[]>
     const state = await readWakeState(f.name);
     const convoId = await latestActiveConversation(f.name);
     let stock = false;
+    let log: Record<string, unknown> | null = null;
     if (convoId) {
-      try { stock = autoTriggerEnabled(((await loadLog(convoId)) as Record<string, unknown> | null)?.autoTriggers, 'stock'); } catch {}
+      try { log = (await loadLog(convoId)) as Record<string, unknown> | null; } catch {}
+      stock = autoTriggerEnabled(log?.autoTriggers, 'stock');
     }
+    // The vessel a wake would actually run on: the conversation's own pick,
+    // else the being's default — the same `||` turnInputFromLog uses.
+    const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+    const model = str(log?.specificModel) ?? str(f.settings?.specificModel);
+    const family = str(log?.aiName) ?? str(f.settings?.aiName);
     const facts: WakeOverviewFacts = {
       being: f.name,
       wake,
@@ -36,6 +43,9 @@ export async function wakeOverview(now = Date.now()): Promise<WakeOverviewRow[]>
       convoId,
       convoTitle: convoId ? (logs.find(l => l.id === convoId)?.title ?? null) : null,
       testBed: f.settings?.testBed === true,
+      model,
+      family,
+      oauth: log?.claudeAuthMode === 'oauth',
     };
     if (canWakeByItself(facts)) rows.push(overviewRow(facts, now));
   }

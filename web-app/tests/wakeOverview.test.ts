@@ -41,8 +41,8 @@ test('an unreadable clock file is not an empty seat', async () => {
   assert.equal(await claimClockHostIfUnset(A, d), 'taken');
 });
 
-function facts(over: Partial<WakeOverviewFacts> & { being: string; wake?: unknown }): WakeOverviewFacts {
-  return { bookings: [], stock: false, convoId: 'c', convoTitle: 'x_1', testBed: false, ...over, wake: parseWakeSettings(over.wake) };
+function facts(over: Partial<Omit<WakeOverviewFacts, 'wake'>> & { being: string; wake?: unknown }): WakeOverviewFacts {
+  return { bookings: [], stock: false, convoId: 'c', convoTitle: 'x_1', testBed: false, model: null, family: null, oauth: false, ...over, wake: parseWakeSettings(over.wake) };
 }
 
 test('the list holds every being with any way to wake, soonest first, no-time ones after by name', () => {
@@ -67,4 +67,23 @@ test('stopping switches every path off and keeps the times', () => {
   assert.deepEqual(out.times, ['03:30']);
   assert.equal(out.self.maxPerDay, 3);
   assert.equal(canWakeByItself(facts({ being: 'x', wake: out })), false);
+});
+
+test('each row carries its vessel price from the table, none for the Claude subscription or an unpriced id', () => {
+  const now = Date.UTC(2026, 10, 16, 0, 0);
+  const priced = overviewRow(facts({ being: 'a', model: 'deepseek-flash', family: 'DeepSeek' }), now);
+  assert.equal(priced.subscription, false);
+  assert.match(priced.priceTag ?? '', /^\$[0-9.]+\/\$[0-9.]+\/\$[0-9.]+$/);
+  const sub = overviewRow(facts({ being: 'b', model: 'claude-opus-5', family: 'Claude', oauth: true }), now);
+  assert.equal(sub.subscription, true);
+  assert.equal(sub.priceTag, null);
+  const apiKey = overviewRow(facts({ being: 'c', model: 'claude-opus-5', family: 'Claude', oauth: false }), now);
+  assert.equal(apiKey.subscription, false);
+  assert.ok(apiKey.priceTag);
+  const unknown = overviewRow(facts({ being: 'd', model: 'no-such-model-x' }), now);
+  assert.equal(unknown.priceTag, null);
+  assert.equal(unknown.local, false);
+  const mock = overviewRow(facts({ being: 'e', model: 'mock:魂のない機械', family: 'Local' }), now);
+  assert.equal(mock.local, true);
+  assert.equal(mock.priceTag, null);
 });

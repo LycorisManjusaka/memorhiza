@@ -32,6 +32,11 @@ type WakeOverviewView = {
   convoId: string | null;
   convoTitle: string | null;
   testBed: boolean;
+  model: string | null;
+  family: string | null;
+  priceTag: string | null;
+  subscription: boolean;
+  local: boolean;
   nextAdmin: { at: number; hhmm: string } | null;
   nextSelf: { at: number; hhmm: string } | null;
   nextAt: number | null;
@@ -1239,6 +1244,17 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
                       <span className="text-foreground">{b.stock ? yes : no}</span>
                       <span>{t('settings.wakeList.convo')}</span>
                       <span className="text-foreground truncate">{b.convoTitle || b.convoId || t('settings.wakeList.noConvo')}</span>
+                      <span>{t('settings.wakeList.vessel')}</span>
+                      <span className="text-foreground truncate">
+                        {b.model || b.family || t('settings.wakeList.noVessel')}
+                        {b.subscription
+                          ? <span className="text-muted-foreground"> · {t('settings.wakeList.subscription')}</span>
+                          : b.local
+                            ? <span className="text-muted-foreground"> · {t('settings.wakeList.localFree')}</span>
+                          : b.priceTag
+                            ? <span className="text-muted-foreground"> · {b.priceTag} {t('settings.wakeList.perMillion')}</span>
+                            : (b.model ? <span className="text-muted-foreground"> · {t('settings.wakeList.noPrice')}</span> : null)}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2 pt-1">
                       {/* Two steps, like every destructive button here: the

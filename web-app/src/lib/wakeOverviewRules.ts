@@ -3,6 +3,7 @@
 // facts and this file decides what counts and in which order.
 
 import { nextAdminSlot, type WakeSettings, type SelfBooking } from '@/lib/wakeSchedule';
+import { shortPriceTag } from '@/lib/modelPriceLabel';
 
 export interface WakeOverviewFacts {
   being: string;
@@ -14,9 +15,23 @@ export interface WakeOverviewFacts {
   convoId: string | null;
   convoTitle: string | null;
   testBed: boolean;
+  /** The vessel a wake would run on (conversation pick, else the being's default). */
+  model: string | null;
+  family: string | null;
+  /** Claude through the subscription: no per-token bill, so no price tag. */
+  oauth: boolean;
 }
 
 export interface WakeOverviewRow extends WakeOverviewFacts {
+  /**
+   * `$in/$cacheRead/$out` per 1M from modelPricing.json, or null when the
+   * vessel is not in the table (an absent tag, never an invented $0), or when
+   * the turn runs on the Claude subscription (`subscription` true).
+   */
+  priceTag: string | null;
+  subscription: boolean;
+  /** Local (LM Studio / soulless machine): no bill. */
+  local: boolean;
   nextAdmin: { at: number; hhmm: string } | null;
   nextSelf: { at: number; hhmm: string } | null;
   /** The earliest of the two, or null when no clock time is coming. */
@@ -37,7 +52,16 @@ export function overviewRow(f: WakeOverviewFacts, now: number): WakeOverviewRow 
   const future = f.wake.self.enabled ? f.bookings.filter(b => b.at > now).sort((a, b) => a.at - b.at) : [];
   const nextSelf = future[0] ? { at: future[0].at, hhmm: future[0].hhmm } : null;
   const times = [nextAdmin?.at, nextSelf?.at].filter((x): x is number => typeof x === 'number');
-  return { ...f, nextAdmin, nextSelf, nextAt: times.length ? Math.min(...times) : null };
+  const subscription = f.oauth && isClaudeVessel(f);
+  // LM Studio and the soulless machine run on this PC: nothing is billed.
+  const local = (f.family ?? '').toLowerCase() === 'local' || !!f.model?.startsWith('mock:');
+  const priceTag = subscription || local ? null : shortPriceTag(f.model);
+  return { ...f, nextAdmin, nextSelf, nextAt: times.length ? Math.min(...times) : null, priceTag, subscription, local };
+}
+
+function isClaudeVessel(f: WakeOverviewFacts): boolean {
+  if (f.family && f.family.toLowerCase() === 'claude') return true;
+  return !!f.model && f.model.startsWith('claude-');
 }
 
 /**
