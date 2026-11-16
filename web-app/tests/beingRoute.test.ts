@@ -148,3 +148,19 @@ test('runner: with the ability off nothing is planned; a failed save delivers no
   assert.equal(res.ok, false);
   assert.ok(!bad.events.includes('deliver'), 'a reply that was not saved must not have sent anything');
 });
+
+test('route notice: a correspondent (mailbox, no settings.json) is told apart from a name found nowhere, and neither says "failed"', () => {
+  const n = buildRouteNotice([
+    { to: 'トカゲ君', status: 'outside' },
+    { to: 'せんぱい', status: 'unknown' },
+  ], 'ja');
+  assert.match(n, /トカゲ君 はこの NEXUS に部屋を持っていない/);
+  assert.match(n, /届けるかどうかは管理者が決めます/);
+  assert.match(n, /せんぱい という宛先はこの NEXUS の一覧に見つからなかった/);
+  // Every line says where the text is, so the writer does not go looking for it.
+  assert.equal((n.match(/文はこの会話に残っています/g) || []).length, 2);
+  assert.doesNotMatch(n, /失敗|エラー|人間/);
+  const en = buildRouteNotice([{ to: 'X', status: 'outside' }], 'en');
+  assert.match(en, /no room in this NEXUS/);
+  assert.doesNotMatch(en, /fail|error|human/i);
+});

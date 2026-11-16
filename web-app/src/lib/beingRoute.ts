@@ -131,7 +131,8 @@ export function replaceAttachedMedia(body: string, attached: LocalMediaRef[]): s
 
 export type RouteStatus =
   | 'sent'      // in the other being's stock
-  | 'unknown'   // no being of this NEXUS has that name
+  | 'outside'   // a known name with a mailbox here but no settings.json (a correspondent)
+  | 'unknown'   // no name of this NEXUS matches (often a typo; cannot be told apart from a person outside)
   | 'self'      // addressed to the writer
   | 'no-room'   // a being, but with no living conversation to receive it
   | 'empty';    // a marker with nothing under it
@@ -156,18 +157,22 @@ export type RouteLang = 'ja' | 'en';
 export function buildRouteNotice(records: RouteRecord[], lang: RouteLang): string {
   const lines: string[] = [];
   for (const r of records) {
-    if (r.status === 'unknown') {
+    if (r.status === 'outside') {
       lines.push(lang === 'ja'
-        ? `・[->${r.to}]：その名前の存在はこの NEXUS にいません。その下の文は誰にも送られず、この会話に残っています。`
-        : `- [->${r.to}]: no being of this NEXUS has that name. The text under it was sent to nobody and stays in this conversation.`);
+        ? `・[->${r.to}]：${r.to} はこの NEXUS に部屋を持っていないので、自動では届けていません。文はこの会話に残っています。届けるかどうかは管理者が決めます。`
+        : `- [->${r.to}]: ${r.to} has no room in this NEXUS, so it was not delivered automatically. The text stays in this conversation; whether to pass it on is the administrator's call.`);
+    } else if (r.status === 'unknown') {
+      lines.push(lang === 'ja'
+        ? `・[->${r.to}]：${r.to} という宛先はこの NEXUS の一覧に見つからなかったので、自動では届けていません。文はこの会話に残っています。`
+        : `- [->${r.to}]: no address called ${r.to} was found in this NEXUS, so it was not delivered automatically. The text stays in this conversation.`);
     } else if (r.status === 'self') {
       lines.push(lang === 'ja'
         ? `・[->${r.to}]：自分宛てには送れません。その下の文はこの会話に残っています。`
         : `- [->${r.to}]: a message cannot be sent to oneself. The text under it stays in this conversation.`);
     } else if (r.status === 'no-room') {
       lines.push(lang === 'ja'
-        ? `・[->${r.to}]：受け取れる会話がその存在に無いので、送られませんでした。`
-        : `- [->${r.to}]: that being has no conversation that can receive it, so nothing was sent.`);
+        ? `・[->${r.to}]：${r.to} には今受け取れる会話が無いので、自動では届けていません。文はこの会話に残っています。`
+        : `- [->${r.to}]: ${r.to} has no conversation that can receive it right now, so it was not delivered automatically. The text stays in this conversation.`);
     } else if (r.status === 'sent' && r.missing && r.missing.length) {
       lines.push(lang === 'ja'
         ? `・[->${r.to}]：文は届きましたが、次のファイルは添付できませんでした（机の中に見つからない）：${r.missing.join('、')}`

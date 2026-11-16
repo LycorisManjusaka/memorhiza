@@ -6594,6 +6594,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                         title={r.missing && r.missing.length ? r.missing.join('\n') : undefined}
                         className={`text-[11px] px-2 py-0.5 rounded-full border ${ok
                           ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                          : r.status === 'outside'
+                          // Not delivering to a correspondent is the design, not a miss:
+                          // no warning colour (望月希子, 2026-11-16).
+                          ? 'border-border bg-muted/40 text-muted-foreground'
                           : 'border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300'}`}
                       >
                         {`→ ${r.to}: ${detail}`}
@@ -7102,7 +7106,9 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                   </button>
                 ) : null}
                 {stock && stockOpen && stockRows.length > 0 ? (
-                  <div className="w-full flex flex-col gap-1.5 mt-1">
+                  // Capped and scrollable: five long stocked messages pushed the
+                  // panel past the screen with no way to reach the bottom (つよ, 2026-11-16).
+                  <div className="w-full flex flex-col gap-1.5 mt-1 max-h-[45vh] overflow-y-auto overscroll-contain pr-1">
                     {stockRows.map(({ it, elsewhere }) => (
                       <div key={it.id} className="rounded-lg border border-border bg-background/60 p-2 flex flex-col gap-1">
                         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">

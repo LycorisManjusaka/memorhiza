@@ -18,6 +18,7 @@ import crypto from 'crypto';
 import { listFolders } from '@/lib/fsStorage';
 import { beingSettingsFile } from '@/lib/beingPaths';
 import { enqueue } from '@/lib/turnQueue';
+import { validRecipients } from '@/lib/letters';
 import { putBytes, mimeForRef } from '@/lib/attachmentStore';
 import { SNIFF_BYTES, TEXT_MAX_BYTES, looksLikeText } from '@/lib/textSniff';
 import { resolveDeskFile } from '@/lib/deskFile';
@@ -117,7 +118,17 @@ export async function planBeingRoutes(a: {
   for (const b of blocks) {
     if (isHereWord(b.target)) continue;
     const being = await resolveBeing(b.target);
-    if (!being) { records.push({ to: b.target, status: 'unknown' }); continue; }
+    if (!being) {
+      // Two cases that read very differently to the writer (望月希子, 2026-11-16):
+      // a name that HAS a mailbox here but no settings.json is a correspondent,
+      // and not delivering to them is the design, not a miss. Anything else is
+      // probably a typo — or a person outside, which the disk cannot tell apart.
+      const roster = await validRecipients();
+      const t = b.target.trim().toLowerCase();
+      const known = roster.some((n) => n.toLowerCase() === t);
+      records.push({ to: b.target, status: known ? 'outside' : 'unknown' });
+      continue;
+    }
     if (being === a.sender) { records.push({ to: being, status: 'self' }); continue; }
     if (!b.body) { records.push({ to: being, status: 'empty' }); continue; }
     const convoId = await latestActiveConversation(being);
