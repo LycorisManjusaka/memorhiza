@@ -328,8 +328,9 @@ import { buildOpenAiToolReplay, buildAnthropicToolReplay } from '@/lib/toolHisto
 import { runSubagent } from '@/lib/subagent';
 import { runLetterTool, LETTER_TOOL_NAMES, announceLetters } from '@/lib/letters';
 import { ensureLmStudioLaunched, getLocalModelsMeta, loadLocalModel } from '@/lib/localModels';
-import { isMockModelId, mockNameFromId, planMockRound, planZombieRound, mockChunks, lastToolResultText, fillLastResult, mockRoundsDoneFor } from '@/lib/mockModel';
+import { isMockModelId, mockNameFromId, planMockRound, planZombieRound, zombieCoordsNormalized, mockChunks, lastToolResultText, fillLastResult, mockRoundsDoneFor } from '@/lib/mockModel';
 import { loadMockScenario } from '@/lib/mockModelStore';
+import { familyFromModelId as zombieFamilyOf } from '@/lib/modelFamily';
 import { localReasoningEffort, maxContinuationsFor, shouldReportLoadFailure } from '@/lib/localTurnPolicy';
 import {
   runBrowserTool, BROWSER_TOOL_NAMES,
@@ -10418,7 +10419,9 @@ export async function POST(req: Request) {
                       // Second arg: local engines answer in a 0–1000 space (see
                       // reportsNormalizedCoords for the measurement). Same
                       // catalog flag the media paths use — false for all cloud.
-                      const cr = await runComputerTool(tc.name, parsed || {}, { me: folderName, instructions: I, language, normalizedCoords: reportsNormalizedCoords(localModel, isLocal && localModelVisionCapable) });
+                      const cr = await runComputerTool(tc.name, parsed || {}, { me: folderName, instructions: I, language, normalizedCoords: isLocal && isMockModelId(localModel)
+                        ? zombieCoordsNormalized(loadMockScenario(mockNameFromId(localModel)).scenario, reportsNormalizedCoords, zombieFamilyOf)
+                        : reportsNormalizedCoords(localModel, isLocal && localModelVisionCapable) });
                       if (cr.image) {
                         if (useEyesHere) {
                           const eyesResult = await describeImage({

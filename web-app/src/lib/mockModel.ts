@@ -57,6 +57,14 @@ export type MockScenario = {
    * thoughtLast and answer still close the turn. See planZombieRound.
    */
   steps: MockStep[];
+  /**
+   * How the recorded clicks are numbered. 'normalized' = 0–1000 per axis (what
+   * every local vision engine and Seed answer), 'pixels' = image pixels, '' =
+   * decide from _zombie.originalModel (see zombieCoordsNormalized).
+   */
+  coords: '' | 'normalized' | 'pixels';
+  /** _zombie.originalModel — the vessel whose message this zombie replays. */
+  originalModel: string;
 };
 
 /** One replayed step: the thought that preceded a call, then the call. */
@@ -87,6 +95,8 @@ export const MOCK_DEFAULTS: MockScenario = {
   thoughtLast: '台本の道具は全部呼び終わった。最後の答えを書く。',
   answer: '台本どおりに終わりました。私は何も読んでいませんし、何も考えていません。ただのスクリプトです。',
   steps: [],
+  coords: '',
+  originalModel: '',
 };
 
 function parseSteps(v: unknown): MockStep[] {
@@ -138,6 +148,8 @@ export function parseMockScenario(raw: unknown): MockScenario {
     thoughtLast: str(o.thoughtLast, MOCK_DEFAULTS.thoughtLast),
     answer: str(o.answer, MOCK_DEFAULTS.answer),
     steps: parseSteps(o.steps),
+    coords: o.coords === 'normalized' || o.coords === 'pixels' ? o.coords : '',
+    originalModel: typeof o._zombie?.originalModel === 'string' ? o._zombie.originalModel : '',
   };
 }
 
@@ -305,4 +317,22 @@ export function mockRoundsDoneFor(s: MockScenario, done: number, lastResult: str
 
 export function fillLastResult(text: string, last: string): string {
   return text.replace(/\{lastResult\}/g, () => last || '(no tool result)');
+}
+
+/**
+ * Whether a zombie's recorded click coordinates are 0–1000 normalized. The
+ * soulless machine has no eyes, so NEXUS would read them as pixels; but the
+ * numbers were written by the ORIGINAL vessel in ITS space, and computer_input
+ * must convert them the way it did then. A local original (LM Studio slug) is
+ * a local vision engine — the only kind that can answer a screenshot with a
+ * click — and those all report 0–1000 (measured 2026-10-11).
+ */
+export function zombieCoordsNormalized(
+  s: MockScenario,
+  reportsNormalized: (model: string, localVision: boolean) => boolean,
+  familyOf: (model: string) => string,
+): boolean {
+  if (s.coords) return s.coords === 'normalized';
+  if (!s.originalModel) return false;
+  return reportsNormalized(s.originalModel, familyOf(s.originalModel) === 'Local');
 }

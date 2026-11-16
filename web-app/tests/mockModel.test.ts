@@ -131,3 +131,15 @@ test('stopWhen ends the script early only after a round has run and its result m
   assert.equal(planMockRound(s, mockRoundsDoneFor(s, 1, 'DONE-OK (exit 0)'), ['Bash'], false).kind, 'final');
   assert.equal(mockRoundsDoneFor(parseMockScenario({ toolRounds: 3 }), 1, 'DONE-OK'), 1); // '' = never
 });
+
+test('zombie: clicks recorded by a local vision engine are replayed as 0–1000', async () => {
+  const { zombieCoordsNormalized } = await import('../src/lib/mockModel');
+  const { reportsNormalizedCoords } = await import('../src/lib/modelVision');
+  const { familyFromModelId } = await import('../src/lib/modelFamily');
+  const z = (o: any) => zombieCoordsNormalized(parseMockScenario(o), reportsNormalizedCoords, familyFromModelId);
+  assert.equal(z({ _zombie: { originalModel: 'google/gemma-4-26b-a4b-qat' } }), true);
+  assert.equal(z({ _zombie: { originalModel: 'claude-opus-5' } }), false);
+  assert.equal(z({ _zombie: { originalModel: 'seed-2-0-pro-260328' } }), true);
+  assert.equal(z({ coords: 'pixels', _zombie: { originalModel: 'google/gemma-4-26b-a4b-qat' } }), false);
+  assert.equal(z({}), false);
+});
