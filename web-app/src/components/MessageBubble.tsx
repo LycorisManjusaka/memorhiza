@@ -1310,6 +1310,35 @@ function MessageBubble({ msg, onEdit, onDelete, onToggleAttachment, onDeleteAtta
     }
   };
 
+  /**
+   * Save a text attachment as a file. Same two sources as openTextAttachment:
+   * the inline `textData`, or the full body behind `ref`. A Blob URL is used
+   * (not `navigator.clipboard`-style secure-context APIs), so it works on the
+   * plain-HTTP LAN address a phone opens. Failure is shown, not swallowed.
+   */
+  const downloadTextAttachment = async (att: TextAttachment) => {
+    try {
+      let text: string | null = typeof att?.textData === 'string' ? att.textData : null;
+      if (text === null) {
+        const ref = typeof att?.ref === 'string' && att.ref ? att.ref : null;
+        if (!ref) throw new Error('no content');
+        const res = await fetch(`/api/attachments/${encodeURIComponent(ref)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        text = await res.text();
+      }
+      const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = att?.name || 'attachment.txt';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (e) {
+      alert(`${t('bubble.att.downloadFailed')}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
   const getAttachmentPreview = (att: any) => {
     // An attachment's bytes live in ONE of two places, and both are supported
     // permanently — not as a migration window:
@@ -1646,6 +1675,15 @@ function MessageBubble({ msg, onEdit, onDelete, onToggleAttachment, onDeleteAtta
                     title={t('bubble.att.viewFull')}
                   >
                     <FileText size={14} />
+                  </button>
+                )}
+                {att.isText && attachmentHasFullText(att) && (
+                  <button
+                    onClick={() => downloadTextAttachment(att)}
+                    className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-indigo-500"
+                    title={t('bubble.att.download')}
+                  >
+                    <Download size={14} />
                   </button>
                 )}
                 <button
