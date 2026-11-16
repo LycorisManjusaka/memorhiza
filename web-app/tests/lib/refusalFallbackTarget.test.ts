@@ -6,6 +6,7 @@ import {
   refusalFallbackModelEnvValue,
   resolveRefusalFallback,
   DEFAULT_REFUSAL_FALLBACK_MODEL,
+  LEGACY_REFUSAL_FALLBACK_MODEL,
 } from '@/lib/agentEnv';
 
 describe('refusalFallbackTarget — precedence', () => {
@@ -46,11 +47,25 @@ describe('refusalFallbackTarget — precedence', () => {
 });
 
 describe('refusalFallbackTarget → resolveRefusalFallback (end to end)', () => {
-  test('nothing set anywhere falls to the measured opus-4-8 default', () => {
+  test('nothing set anywhere falls to claude-opus-5-5 (2026-11-16, トカゲくん)', () => {
+    // A missing .bat line must behave exactly like
+    // `set CLAUDE_CODE_REFUSAL_FALLBACK_MODEL=claude-opus-5-5`.
     const target = refusalFallbackTarget(undefined, undefined);
     const r = resolveRefusalFallback(target, 'claude-opus-5');
     assert.equal(r.catchAll, true);
     assert.equal(r.fallbackModel, DEFAULT_REFUSAL_FALLBACK_MODEL);
+    assert.equal(r.fallbackModel, 'claude-opus-5-5');
+    const named = resolveRefusalFallback(refusalFallbackTarget('claude-opus-5-5', undefined), 'claude-opus-5');
+    assert.deepEqual(named, r);
+  });
+
+  test('`auto` in the .bat hands back to the field, then to the old opus-4-8', () => {
+    // It has to be a word: cmd's `set NAME=` deletes the variable (measured),
+    // so an empty line is indistinguishable from a missing one.
+    assert.equal(refusalFallbackTarget('auto', undefined), LEGACY_REFUSAL_FALLBACK_MODEL);
+    assert.equal(refusalFallbackTarget(' AUTO ', ''), 'claude-opus-4-8');
+    assert.equal(refusalFallbackTarget('auto', 'claude-opus-5'), 'claude-opus-5');
+    const r = resolveRefusalFallback(refusalFallbackTarget('auto', ''), 'claude-fable-5-2');
     assert.equal(r.fallbackModel, 'claude-opus-4-8');
   });
 
@@ -99,6 +114,13 @@ describe('refusalFallbackModelEnvValue — env-only, for the Settings UI', () =>
   test('blank / whitespace env = undefined (not shown as an override)', () => {
     const prev = process.env[REFUSAL_FALLBACK_MODEL_ENV];
     process.env[REFUSAL_FALLBACK_MODEL_ENV] = '   ';
+    assert.equal(refusalFallbackModelEnvValue(), undefined);
+    restore(prev);
+  });
+
+  test('`auto` is not shown as an override (it defers to the field)', () => {
+    const prev = process.env[REFUSAL_FALLBACK_MODEL_ENV];
+    process.env[REFUSAL_FALLBACK_MODEL_ENV] = 'auto';
     assert.equal(refusalFallbackModelEnvValue(), undefined);
     restore(prev);
   });

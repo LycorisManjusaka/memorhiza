@@ -103,7 +103,20 @@ export function claudeAgentEnv(
  * that way. opus-4-8 is inside the same subscription, so the retry does not
  * move billing off the OAuth seat.
  */
-export const DEFAULT_REFUSAL_FALLBACK_MODEL = 'claude-opus-4-8';
+export const LEGACY_REFUSAL_FALLBACK_MODEL = 'claude-opus-4-8';
+
+/**
+ * 2026-11-16 (トカゲくん): the default moved to claude-opus-5-5. Observed: with
+ * the .bat naming claude-opus-5-5 the house stopped landing on 4.8 (and its
+ * court loop); with nothing named, the company PC did land on 4.8. So a fresh
+ * install now gets what this house already runs. The measured cross-generation
+ * target above stays reachable: write `auto` in the .bat (see
+ * refusalFallbackTarget) and a blank per-being field falls to opus-4-8 again.
+ * One consequence to know: a being whose vessel IS claude-opus-5-5 has no
+ * retry at all under this default (the self-swap guard below), so a refusal on
+ * that vessel is a dead stop rather than a silent move to another vessel.
+ */
+export const DEFAULT_REFUSAL_FALLBACK_MODEL = 'claude-opus-5-5';
 
 /**
  * Should a refused turn be retried on another model, and on which one?
@@ -204,8 +217,8 @@ export const REFUSAL_FALLBACK_MODEL_ENV = 'CLAUDE_CODE_REFUSAL_FALLBACK_MODEL';
  *   3. (downstream) opus-4-8 default     — applied by resolveRefusalFallback
  *
  * Blank env AND blank settings returns undefined, which resolveRefusalFallback
- * reads as "お任せ": it falls to DEFAULT_REFUSAL_FALLBACK_MODEL, the measured
- * cross-generation target. So an operator who sets nothing gets exactly today's
+ * reads as "お任せ": it falls to DEFAULT_REFUSAL_FALLBACK_MODEL (claude-opus-5-5 since 2026-11-16; `auto` in the .bat restores the measured
+ * cross-generation target, opus-4-8). So an operator who sets nothing gets claude-opus-5-5's
  * behaviour; one who writes a model id in the .bat overrides every being in that
  * installation (deliberately — the .bat is the operator's surface, the settings
  * field is the per-being one, and the stronger, repo-external knob wins).
@@ -215,10 +228,18 @@ export function refusalFallbackTarget(
   keysValue: string | undefined | null,
 ): string | undefined {
   const env = (typeof envRaw === 'string' ? envRaw.trim() : '');
-  if (env) return env;
   const k = (typeof keysValue === 'string' ? keysValue.trim() : '');
+  // `auto` = "the .bat says: leave it to the per-being field, and to the old
+  // measured default". It has to be a WORD: in cmd.exe `set NAME=` deletes the
+  // variable, so an empty line reaches Node exactly like a missing one
+  // (measured 2026-11-16). Missing/empty therefore mean the new default.
+  if (env.toLowerCase() === REFUSAL_FALLBACK_AUTO) return k || LEGACY_REFUSAL_FALLBACK_MODEL;
+  if (env) return env;
   return k || undefined;
 }
+
+/** The .bat word that hands the fallback target back to the settings field. */
+export const REFUSAL_FALLBACK_AUTO = 'auto';
 
 /**
  * The target for the process running this server — reads the real env var, then
@@ -251,5 +272,8 @@ export function refusalFallbackModelEnvValue(): string | undefined {
     ? process.env[REFUSAL_FALLBACK_MODEL_ENV]
     : undefined);
   const trimmed = (typeof raw === 'string' ? raw.trim() : '');
+  // `auto` is not an override: it hands the choice back to the field the UI is
+  // showing, so the UI must not say "the .bat wins".
+  if (trimmed.toLowerCase() === REFUSAL_FALLBACK_AUTO) return undefined;
   return trimmed || undefined;
 }

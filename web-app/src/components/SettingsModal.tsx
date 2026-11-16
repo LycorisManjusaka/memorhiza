@@ -828,7 +828,7 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
                   <Tx k="settings.allowHostAnthropicEnv.help" />
                 </p>
                 {/* Refusal fallback is baked in (2026-10-06) — no on/off here.
-                    Only the TARGET model is tunable; blank = claude-opus-4-8. */}
+                    Only the TARGET model is tunable; blank = claude-opus-5-5 (or claude-opus-4-8 when the .bat says auto). */}
                 <div className="mt-3">
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">
                     {t('settings.claudeRefusalFallbackModel.label')}
