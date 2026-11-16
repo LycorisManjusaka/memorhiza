@@ -328,7 +328,7 @@ import { buildOpenAiToolReplay, buildAnthropicToolReplay } from '@/lib/toolHisto
 import { runSubagent } from '@/lib/subagent';
 import { runLetterTool, LETTER_TOOL_NAMES, announceLetters } from '@/lib/letters';
 import { ensureLmStudioLaunched, getLocalModelsMeta, loadLocalModel } from '@/lib/localModels';
-import { isMockModelId, mockNameFromId, planMockRound, mockChunks, lastToolResultText, fillLastResult, mockRoundsDoneFor } from '@/lib/mockModel';
+import { isMockModelId, mockNameFromId, planMockRound, planZombieRound, mockChunks, lastToolResultText, fillLastResult, mockRoundsDoneFor } from '@/lib/mockModel';
 import { loadMockScenario } from '@/lib/mockModelStore';
 import { localReasoningEffort, maxContinuationsFor, shouldReportLoadFailure } from '@/lib/localTurnPolicy';
 import {
@@ -9161,7 +9161,10 @@ export async function POST(req: Request) {
         if (turnAbort.signal.aborted) return { ...empty, finishReason: null };
         const toolNames = (localTools || []).map((t: any) => t?.function?.name).filter(Boolean);
         const lastSeen = lastToolResultText(msgs);
-        const plan = planMockRound(scenario, mockRoundsDoneFor(scenario, mockRoundsDone, lastSeen), toolNames, !!opts?.noTools);
+        // A zombie (scenario.steps) replays one recorded message; otherwise the classic rounds.
+        const plan = scenario.steps.length
+          ? planZombieRound(scenario, mockRoundsDone, toolNames, !!opts?.noTools)
+          : planMockRound(scenario, mockRoundsDoneFor(scenario, mockRoundsDone, lastSeen), toolNames, !!opts?.noTools);
         const lastResult = plan.kind === 'final' ? lastSeen : '';
         await stream(fillLastResult(plan.thought, lastResult) + '\n', 'thought');
         if (plan.kind === 'final') {

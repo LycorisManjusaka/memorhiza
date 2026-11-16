@@ -6647,7 +6647,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                       {!msg.anchorReport.output && !msg.anchorReport.error ? (
                         <div className="mt-1 text-xs text-muted-foreground">{t('anchor.report.empty')}</div>
                       ) : null}
-                      {/* Save this run as a fixture for 謡's offline test bench. */}
+                      {/* Save this run as a fixture for 謡's offline test bench.
+                          Developer-only (NEXUS_BINDING_OPTIONAL): an ordinary install
+                          has no anchor lab, so the button would point nowhere. */}
+                      {bindingOptional && (
                       <div className="mt-2 flex items-center gap-2 border-t border-sky-500/20 pt-1.5">
                         <button
                           type="button"
@@ -6668,6 +6671,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                           return null;
                         })()}
                       </div>
+                      )}
                     </>
                   )}
                 </div>

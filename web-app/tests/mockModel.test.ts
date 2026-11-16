@@ -1,6 +1,39 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMockScenario, planMockRound, mockChunks, isMockModelId, mockNameFromId, MOCK_DEFAULTS, lastToolResultText, fillLastResult, mockRoundsDoneFor } from '../src/lib/mockModel';
+import { parseMockScenario, planMockRound, planZombieRound, zombieTranslate, mockChunks, isMockModelId, mockNameFromId, MOCK_DEFAULTS, lastToolResultText, fillLastResult, mockRoundsDoneFor } from '../src/lib/mockModel';
+
+test('zombie: read-only calls run for real (translated), writes become stand-ins, then the answer', () => {
+  const s = parseMockScenario({
+    thoughtLast: 'last', answer: 'done',
+    steps: [
+      { thought: 'a', tool: { name: 'Read', args: { file_path: 'notes/x.md' } }, waitSec: 2 },
+      { thought: 'b', tool: { name: 'Edit', args: { file_path: 'notes/x.md', old_string: 'p', new_string: 'q' } } },
+      { thought: 'c', tool: { name: 'Edit', args: { file_path: 'y' } } },
+      { thought: 'd', tool: { name: 'mcp__nexus__read_conversation', args: { name: 'Cairn_2' } } },
+    ],
+  });
+  const tools = ['Read', 'Write', 'Edit', 'Glob', 'Bash', 'read_conversation'];
+  const r0 = planZombieRound(s, 0, tools, false) as any;
+  assert.deepEqual(r0.tool, { name: 'Read', args: { path: 'notes/x.md' } });
+  assert.equal(r0.selfWaitSec, 2);
+  assert.equal(r0.thought, 'a');
+  const r1 = planZombieRound(s, 1, tools, false) as any;
+  const r2 = planZombieRound(s, 2, tools, false) as any;
+  assert.equal(r1.tool.name, 'Bash'); // the Edit did NOT run
+  assert.match(r1.tool.args.command, /^echo /);
+  assert.notEqual(r1.tool.args.command, r2.tool.args.command); // repeat guard safe
+  assert.equal((planZombieRound(s, 3, tools, false) as any).tool.name, 'read_conversation');
+  const f = planZombieRound(s, 4, tools, false);
+  assert.equal(f.kind, 'final');
+});
+
+test('zombie: "live": true lets a write run; no stand-in tool at all → answer, not a silent end', () => {
+  const s = parseMockScenario({ steps: [{ thought: 'w', live: true, tool: { name: 'Write', args: { path: 'a', content: 'b' } } }] });
+  assert.equal((planZombieRound(s, 0, ['Write'], false) as any).tool.name, 'Write');
+  const s2 = parseMockScenario({ steps: [{ thought: 'w', tool: { name: 'Write', args: {} } }] });
+  assert.equal(planZombieRound(s2, 0, ['Read'], false).kind, 'final');
+  assert.equal(zombieTranslate('mcp__claude_in_chrome__navigate', {}).name, 'navigate');
+});
 
 test('a broken or empty scenario plays the defaults instead of failing', () => {
   assert.deepEqual(parseMockScenario(null), MOCK_DEFAULTS);
@@ -26,7 +59,7 @@ test('every Bash command is unique, so the repeat guard never trips', () => {
   const cmds = new Set<string>();
   for (let i = 0; i < 10; i++) {
     const p = planMockRound(s, i, ['Bash'], false);
-    if (p.kind === 'tool' && p.tool?.name === 'Bash') cmds.add(p.tool.args.command);
+    if (p.kind === 'tool' && p.tool?.name === 'Bash') cmds.add(String(p.tool.args.command));
   }
   assert.equal(cmds.size, 10);
 });

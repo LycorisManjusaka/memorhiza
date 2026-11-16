@@ -51,6 +51,22 @@ export type MockScenario = {
   thoughtBetween: string[];
   thoughtLast: string;
   answer: string;
+  /**
+   * A zombie (2026-11-16, Tsuyo): one recorded message replayed step by step.
+   * When non-empty it REPLACES toolRounds/toolCommand/thoughtFirst/thoughtBetween;
+   * thoughtLast and answer still close the turn. See planZombieRound.
+   */
+  steps: MockStep[];
+};
+
+/** One replayed step: the thought that preceded a call, then the call. */
+export type MockStep = {
+  thought: string;
+  tool: { name: string; args: Record<string, unknown> };
+  /** Run the real tool even if it writes. Default false: only read-only tools run for real. */
+  live: boolean;
+  /** Seconds the zombie sits still after the thought, before calling (the original's pace). */
+  waitSec: number;
 };
 
 export const MOCK_DEFAULTS: MockScenario = {
@@ -70,7 +86,26 @@ export const MOCK_DEFAULTS: MockScenario = {
   ],
   thoughtLast: '台本の道具は全部呼び終わった。最後の答えを書く。',
   answer: '台本どおりに終わりました。私は何も読んでいませんし、何も考えていません。ただのスクリプトです。',
+  steps: [],
 };
+
+function parseSteps(v: unknown): MockStep[] {
+  if (!Array.isArray(v)) return [];
+  const out: MockStep[] = [];
+  for (const s of v) {
+    if (!s || typeof s !== 'object') continue;
+    const o: any = s;
+    const name = typeof o.tool?.name === 'string' ? o.tool.name.trim() : '';
+    if (!name) continue;
+    out.push({
+      thought: typeof o.thought === 'string' ? o.thought : '',
+      tool: { name, args: o.tool.args && typeof o.tool.args === 'object' && !Array.isArray(o.tool.args) ? o.tool.args : {} },
+      live: o.live === true,
+      waitSec: num(o.waitSec, 0, 0, 600),
+    });
+  }
+  return out;
+}
 
 const num = (v: unknown, def: number, lo: number, hi: number): number => {
   const n = typeof v === 'number' && Number.isFinite(v) ? v : def;
@@ -102,11 +137,87 @@ export function parseMockScenario(raw: unknown): MockScenario {
     thoughtBetween: between.length ? between : MOCK_DEFAULTS.thoughtBetween,
     thoughtLast: str(o.thoughtLast, MOCK_DEFAULTS.thoughtLast),
     answer: str(o.answer, MOCK_DEFAULTS.answer),
+    steps: parseSteps(o.steps),
   };
 }
 
+/**
+ * Tools a zombie may run for real without being told to: they only read.
+ * Everything else (Write, Edit, Delete, Bash, write_letter, read_letter — which
+ * marks a letter read —, web_*, browser/computer actions…) is replaced by a
+ * stand-in unless the step says `"live": true`. A recorded Edit replayed for
+ * real would write an OLD file over today's one.
+ */
+export const ZOMBIE_READ_ONLY = new Set([
+  'Read', 'Glob', 'Grep',
+  'read_conversation', 'search_conversations', 'search_attachments', 'read_attachment',
+  'list_letters', 'list_recipients',
+]);
+
+/**
+ * The recorded call, translated into the tool list this turn offers.
+ * Recordings from the Claude OAuth path carry Claude Code's names and argument
+ * shapes (`mcp__nexus__read_conversation`, Read's `file_path`); the stand-in's
+ * turn runs on the local path, whose tools are named and shaped differently.
+ */
+export function zombieTranslate(name: string, args: Record<string, unknown>): { name: string; args: Record<string, unknown> } {
+  const bare = name.replace(/^mcp__[^_]+(?:_[^_]+)*?__/, '');
+  const rename: Record<string, string> = { WebSearch: 'web_search', WebFetch: 'web_fetch' };
+  const n = rename[bare] || bare;
+  const a: Record<string, unknown> = { ...args };
+  if (n === 'Read' && typeof a.file_path === 'string' && a.path === undefined) {
+    return { name: n, args: { path: a.file_path } };
+  }
+  if (n === 'Grep') {
+    const out: Record<string, unknown> = { pattern: a.pattern };
+    if (typeof a.file_pattern === 'string') out.file_pattern = a.file_pattern;
+    else if (typeof a.glob === 'string') out.file_pattern = a.glob;
+    if (typeof a.flags === 'string') out.flags = a.flags;
+    else if (a['-i'] === true) out.flags = 'i';
+    return { name: n, args: out };
+  }
+  if (n === 'Glob') return { name: n, args: { pattern: a.pattern } };
+  return { name: n, args: a };
+}
+
+/**
+ * What zombie round `done` does. Live when the tool is read-only (or the step
+ * says live) AND this turn offers it; otherwise a stand-in that keeps the
+ * shape of the turn (a call happens, a result comes back) without touching
+ * anything: an `echo` through Bash, else a Glob that matches nothing, else no
+ * call at all. Every stand-in carries its step number so the repeat guard does
+ * not stop two stand-ins for the same tool.
+ */
+export function planZombieRound(
+  s: MockScenario,
+  done: number,
+  availableTools: string[],
+  noTools: boolean,
+): MockRoundPlan {
+  if (done >= s.steps.length || noTools) {
+    return { kind: 'final', thought: s.thoughtLast, answer: s.answer };
+  }
+  const step = s.steps[done];
+  const n = done + 1;
+  const total = s.steps.length;
+  const t = zombieTranslate(step.tool.name, step.tool.args);
+  const offered = availableTools.includes(t.name);
+  if (offered && (step.live || ZOMBIE_READ_ONLY.has(t.name))) {
+    return { kind: 'tool', thought: step.thought, tool: t, selfWaitSec: step.waitSec };
+  }
+  const label = `${t.name}${offered ? '' : ' (not offered in this turn)'}`;
+  if (availableTools.includes('Bash')) {
+    return { kind: 'tool', thought: step.thought, tool: { name: 'Bash', args: { command: `echo "[zombie] stand-in for ${label.replace(/"/g, "'")} - not run" # zombie step ${n}/${total}` } }, selfWaitSec: step.waitSec };
+  }
+  if (availableTools.includes('Glob')) {
+    return { kind: 'tool', thought: step.thought, tool: { name: 'Glob', args: { pattern: `zombie-standin-${n}-of-${total}-${t.name.replace(/[^A-Za-z0-9_]/g, '_')}/*` } }, selfWaitSec: step.waitSec };
+  }
+  // No tool at all to stand in with: answer now rather than end the turn silently.
+  return { kind: 'final', thought: s.thoughtLast, answer: s.answer };
+}
+
 export type MockRoundPlan =
-  | { kind: 'tool'; thought: string; tool: { name: 'Bash'; args: { command: string } } | { name: 'Glob'; args: { pattern: string } } | null; selfWaitSec: number }
+  | { kind: 'tool'; thought: string; tool: { name: string; args: Record<string, unknown> } | null; selfWaitSec: number }
   | { kind: 'final'; thought: string; answer: string };
 
 /**

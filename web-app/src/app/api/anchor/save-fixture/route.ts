@@ -4,6 +4,7 @@ import path from 'path';
 import { beingLogsDir, beingWorkspaceDir } from '@/lib/beingPaths';
 import { readAllAgentFiles, extractAgentSystemPrompt } from '@/lib/systemPromptStorage';
 import { beingIsBlockedHere, blockedResponseBody } from '@/lib/blockedBeings';
+import { isBaseBindingOptional } from '@/lib/baseBinding';
 import { buildAnchorUserMsg, type AnchorLang, type AnchorReport } from '@/lib/anchor';
 import {
   buildAnchorFixture, anchorFixtureFilename,
@@ -39,6 +40,11 @@ export async function POST(req: Request) {
     }
     if (!/^[0-9a-zA-Z_-]+$/.test(convoId)) {
       return NextResponse.json({ error: 'bad convoId' }, { status: 400 });
+    }
+    // Developer-only: the button is shown only under NEXUS_BINDING_OPTIONAL, and
+    // a tab that has not reloaded must not write into a being's desk either.
+    if (!isBaseBindingOptional()) {
+      return NextResponse.json({ error: 'developer-only (NEXUS_BINDING_OPTIONAL)' }, { status: 403 });
     }
     // Same door as the anchor run: the being being read is the being named.
     if (beingIsBlockedHere(folder)) {
