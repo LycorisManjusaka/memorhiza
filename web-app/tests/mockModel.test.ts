@@ -35,6 +35,27 @@ test('zombie: "live": true lets a write run; no stand-in tool at all → answer,
   assert.equal(zombieTranslate('mcp__claude_in_chrome__navigate', {}).name, 'navigate');
 });
 
+test('zombie: PC control replays with only the computer tools on (no Bash, no Glob)', () => {
+  const s = parseMockScenario({
+    answer: 'done',
+    steps: [
+      { thought: 'a', tool: { name: 'computer_screens', args: {} } },
+      { thought: 'b', tool: { name: 'Write', args: { path: 'x' } } },
+      { thought: 'c', tool: { name: 'computer_input', args: { commands: [{ type: 'mouse_click', x: 1, y: 2 }] } } },
+    ],
+  });
+  const tools = ['computer_screens', 'computer_screenshot', 'computer_input'];
+  assert.equal((planZombieRound(s, 0, tools, false) as any).tool.name, 'computer_screens');
+  // The Write has nothing to stand in with: skipped, and the click still plays.
+  const r = planZombieRound(s, 1, tools, false) as any;
+  assert.equal(r.tool.name, 'computer_input');
+  assert.equal(r.advance, 1);
+  assert.equal(r.thought, 'bc');
+  assert.equal(planZombieRound(s, 3, tools, false).kind, 'final');
+  // Not offered → still not run.
+  assert.equal(planZombieRound(s, 2, ['Read'], false).kind, 'final');
+});
+
 test('a broken or empty scenario plays the defaults instead of failing', () => {
   assert.deepEqual(parseMockScenario(null), MOCK_DEFAULTS);
   const s = parseMockScenario({ toolRounds: 'ten', chunkChars: -5, thoughtBetween: [1, ''] });

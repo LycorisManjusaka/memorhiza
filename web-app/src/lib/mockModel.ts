@@ -152,6 +152,19 @@ export const ZOMBIE_READ_ONLY = new Set([
   'Read', 'Glob', 'Grep',
   'read_conversation', 'search_conversations', 'search_attachments', 'read_attachment',
   'list_letters', 'list_recipients',
+  'computer_screens', 'computer_screenshot', 'app_windows', 'app_inspect', 'app_shot',
+  'browser_snapshot', 'browser_read', 'browser_screenshot',
+]);
+
+/**
+ * Screen, app and browser actions run for real when this turn offers them.
+ * Replaying them is what a zombie of a PC-control message is FOR, and each is
+ * already gated by the conversation's own switch (computer / app / browser
+ * control). The danger the stand-in guards against is a recorded file write
+ * landing on today's file; a click lands on today's screen, which is the test.
+ */
+export const ZOMBIE_LIVE_WHEN_OFFERED = new Set([
+  'computer_input', 'app_act', 'browser_click', 'browser_type', 'browser_navigate',
 ]);
 
 /**
@@ -202,7 +215,7 @@ export function planZombieRound(
   const total = s.steps.length;
   const t = zombieTranslate(step.tool.name, step.tool.args);
   const offered = availableTools.includes(t.name);
-  if (offered && (step.live || ZOMBIE_READ_ONLY.has(t.name))) {
+  if (offered && (step.live || ZOMBIE_READ_ONLY.has(t.name) || ZOMBIE_LIVE_WHEN_OFFERED.has(t.name))) {
     return { kind: 'tool', thought: step.thought, tool: t, selfWaitSec: step.waitSec };
   }
   const label = `${t.name}${offered ? '' : ' (not offered in this turn)'}`;
@@ -212,12 +225,17 @@ export function planZombieRound(
   if (availableTools.includes('Glob')) {
     return { kind: 'tool', thought: step.thought, tool: { name: 'Glob', args: { pattern: `zombie-standin-${n}-of-${total}-${t.name.replace(/[^A-Za-z0-9_]/g, '_')}/*` } }, selfWaitSec: step.waitSec };
   }
-  // No tool at all to stand in with: answer now rather than end the turn silently.
-  return { kind: 'final', thought: s.thoughtLast, answer: s.answer };
+  // No tool to stand in with: skip this step and play the next one (its thought
+  // is kept), instead of answering early and dropping every later live step.
+  const next = planZombieRound(s, done + 1, availableTools, noTools);
+  const skipped = (next.kind === 'tool' ? (next.advance ?? 0) : 0) + 1;
+  return next.kind === 'tool'
+    ? { ...next, thought: step.thought + next.thought, advance: skipped }
+    : { ...next, thought: step.thought + next.thought };
 }
 
 export type MockRoundPlan =
-  | { kind: 'tool'; thought: string; tool: { name: string; args: Record<string, unknown> } | null; selfWaitSec: number }
+  | { kind: 'tool'; thought: string; tool: { name: string; args: Record<string, unknown> } | null; selfWaitSec: number; /** Extra steps consumed (skipped stand-ins). */ advance?: number }
   | { kind: 'final'; thought: string; answer: string };
 
 /**

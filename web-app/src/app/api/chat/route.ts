@@ -9171,7 +9171,7 @@ export async function POST(req: Request) {
           await stream(fillLastResult(plan.answer, lastResult), 'text');
           return { ...empty, visibleText, reasoningText, finishReason: turnAbort.signal.aborted ? null : 'stop' };
         }
-        mockRoundsDone++;
+        mockRoundsDone += 1 + (plan.advance || 0);
         if (plan.selfWaitSec > 0) await sleep(plan.selfWaitSec * 1000);
         if (!plan.tool || turnAbort.signal.aborted) return { ...empty, visibleText, reasoningText, finishReason: null };
         return {
