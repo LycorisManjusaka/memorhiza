@@ -1086,6 +1086,20 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
    * can never lag behind its source.
    */
   const [optimisticIds, setOptimisticIds] = useState<string[]>([]);
+  /**
+   * The user messages the RUNNER announced for the turn in flight (turn_plan's
+   * `usersBefore` + `user`). Render-only, like the list above, and used for one
+   * thing: predicting where a PENDING copied/original boundary lands.
+   *
+   * ⚠ WHY: only the tab that typed the message has optimistic ids. Every OTHER
+   * tab watching the same turn — and the kicking tab of a turn nobody typed
+   * (stock, NEXUS) — had none, so the pending marker predicted nothing and the
+   * whole turn read as carry-over until it was saved. REPORTED 2026-11-16
+   * (つよ): 「別のブラウザじゃ寝た直後の状態のまま。考えてる最中でもフラグが
+   * 映ってなかった」. Kept apart from `optimisticIds` on purpose: those name
+   * bubbles applyTurnSaved deletes, and these are the runner's real ids.
+   */
+  const [announcedUserIds, setAnnouncedUserIds] = useState<string[]>([]);
   // Did SOMEONE IN THIS TAB press Stop on the turn being watched?
   //
   // A watched runner turn ends, when stopped, with the route's own abort echo
@@ -2479,7 +2493,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   const optimisticMarkerIdx = optimisticMarkerIndex(
     { firstOriginalMessageId, firstOriginalIsNext },
     messages,
-    optimisticIds,
+    [...optimisticIds, ...announcedUserIds],
   );
 
   // System / Copied / Original / Attachments breakdown for the progress bar.
@@ -3392,11 +3406,15 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       // most logs predate some of these fields, and reading absence as
       // divergence would make them permanently unable to mirror.
       let settingsDiffer = false;
+      // The marker the runner resolved is ADOPTED below, so it is not a
+      // disagreement — counting it withheld the base for the whole cycle.
+      const adoptable = adoptResolvedMarker(markerRef.current, data) !== null;
       if (opts?.keepBaseIfSettingsDiffer) {
         const mine = buildLogDataRef.current([]) as Record<string, unknown>;
         const theirs = data as Record<string, unknown>;
         for (const k of Object.keys(mine)) {
           if (k === 'messages') continue;
+          if (adoptable && (k === 'firstOriginalMessageId' || k === 'firstOriginalIsNext')) continue;
           if (!(k in theirs)) continue;
           if (JSON.stringify(theirs[k]) !== JSON.stringify(mine[k])) { settingsDiffer = true; break; }
         }
@@ -3746,6 +3764,17 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         attachmentDescribed: () => {},
         // ── WHERE to paint, for a tab that did not start this turn ──────────
         turnPlan: (plan) => {
+          // Every tab, kicking or watching: remember which user messages this
+          // turn adds, so a pending boundary is predicted while it runs.
+          {
+            const ids: string[] = [];
+            for (const u of plan.usersBefore as Array<{ id?: unknown }>) {
+              if (typeof u?.id === 'string') ids.push(u.id);
+            }
+            const pu = plan.user as { id?: unknown } | null;
+            if (pu && typeof pu.id === 'string') ids.push(pu.id);
+            if (ids.length > 0) setAnnouncedUserIds(ids);
+          }
           // The kicking tab decided all of this before the stream opened —
           // except the user message of a turn it did not type (a stocked
           // message, a NEXUS-opened turn): see lib/announcedUser.ts.
@@ -3943,6 +3972,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       // render in between where the boundary is neither predicted nor known.
       optimisticIdsRef.current = [];
       setOptimisticIds([]);
+      setAnnouncedUserIds([]);
       // GAUGE, stage 4 of 4, and the readout. Only a stop builds a trace, so
       // a normal completion costs nothing here. The note is `info`, which the
       // panel shows only with the runner debug display on: this is an
