@@ -730,7 +730,9 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
         )}
 
         {/* Tab bar */}
-        <div className="px-6 pt-3 border-b border-border bg-secondary/10 shrink-0 flex gap-1">
+        {/* flex-wrap: tabs fold onto a second row on a phone instead of
+            running off the right edge (pilot's report, 2026-11-16). */}
+        <div className="px-3 sm:px-6 pt-3 border-b border-border bg-secondary/10 shrink-0 flex flex-wrap gap-x-1">
           {TABS.map(tb => {
             const Icon = tb.icon;
             const active = tab === tb.id;
@@ -738,7 +740,7 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
               <button
                 key={tb.id}
                 onClick={() => setTab(tb.id)}
-                className={`px-3 py-2 text-xs font-semibold rounded-t-md flex items-center gap-1.5 border-b-2 -mb-px transition-colors ${
+                className={`px-2.5 sm:px-3 py-2 text-xs font-semibold rounded-t-md flex items-center gap-1.5 border-b-2 -mb-px transition-colors whitespace-nowrap ${
                   active
                     ? 'border-indigo-500 text-indigo-500 bg-background'
                     : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'

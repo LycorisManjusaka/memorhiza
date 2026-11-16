@@ -7327,7 +7327,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                            seed.
                 Model    = base family, specific model, generation parameters,
                            auto model selection. */}
-            <div className="flex gap-1 mb-4 border-b border-border shrink-0">
+            {/* flex-wrap: on a phone the five English tab names do not fit
+                one row; they fold onto a second row instead of running off
+                the right edge (pilot's report, 2026-11-16). */}
+            <div className="flex flex-wrap gap-x-1 mb-4 border-b border-border shrink-0">
               {([
                 { id: 'being'     },
                 { id: 'abilities' },
@@ -7338,7 +7341,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                 <button
                   key={tab.id}
                   onClick={() => setActiveSettingsTab(tab.id)}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  className={`px-2.5 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
                     activeSettingsTab === tab.id
                       ? 'border-indigo-500 text-foreground'
                       : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
