@@ -20,6 +20,9 @@ export interface WakeOverviewFacts {
   family: string | null;
   /** Claude through the subscription: no per-token bill, so no price tag. */
   oauth: boolean;
+  /** "Context elapsed" % of the conversation a wake would open (same number as
+   *  its header gauge); null when there is no such conversation. */
+  elapsedPct?: number | null;
 }
 
 export interface WakeOverviewRow extends WakeOverviewFacts {

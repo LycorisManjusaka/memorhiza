@@ -33,6 +33,7 @@ export type GuidePageId =
   | 'sleep'
   | 'conversation'
   | 'tools'
+  | 'wake'
   | 'voice'
   | 'portrait'
   | 'theme'
@@ -47,6 +48,7 @@ export const GUIDE_PAGE_ORDER: readonly GuidePageId[] = [
   'sleep',
   'conversation',
   'tools',
+  'wake',
   'voice',
   'portrait',
   'theme',
@@ -428,7 +430,7 @@ Nexus を Nexus たらしめている部分であり、いちばん理解する�
 | 項目 | できること |
 |---|---|
 | カメラ | 姿のパネルと OBS Studio への配信 → [肖像とカメラ](#guide/portrait) |
-| 自分から起きる理由 | ふだんは人が送信を押してターンが始まります。ここで選ぶと、それ以外の理由でも始まります。**既定では何もチェックされていません**。理由は、決まった時刻（曜日つき）、新しい手紙が届いたとき、ストックされたメッセージ、そして（許せば）存在が自分で予約した時刻です。起こすのはその存在のいちばん新しいアクティブな会話です。時計を回すのは「このNEXUSで時計を回す」を押した NEXUS ひとつだけです |
+| 自分から起きる理由 | ふだんは人が送信を押してターンが始まります。ここで選ぶと、それ以外の理由でも始まります。**既定では何もチェックされていません**。理由は、決まった時刻（曜日つき）、新しい手紙が届いたとき、ストックされたメッセージ、そして（許せば）存在が自分で予約した時刻です。詳しくは [自分から起きる](#guide/wake) |
 | 音声セッションの指示 | 音声セッション中に加わる短いお知らせ → [声](#guide/voice) |
 
 **会話設定 → モデル** タブ:
@@ -443,6 +445,74 @@ Nexus を Nexus たらしめている部分であり、いちばん理解する�
 モデルは、実際には保存していないのに「保存しました」と説得力をもって*記述*できてしまうほど流暢です。その重しになるのは指示の塊ではありません — NEXUS にも一時期そういう塊がありましたが、これを変える効果は一度も測れませんでした — 重しになるのは**記録**のほうです。
 
 ツールを使った返答の下には、小さな**レンチ**の印と呼び出し回数が表示されます。押せば、実際に何が実行されたかが見られます。この印は本当に呼び出しが行われたときにしか描かれないので、**「保存しました」と書いてある返答にこの印が無いこと自体が答えになります。**
+`.trim(),
+  },
+
+  wake: {
+    title: '自分から起きる — 起床と存在どうしのメッセージ',
+    body: `
+# 自分から起きる
+
+ふだん、ターンは人が送信を押したときに始まります。ここで選ぶと、それ以外の理由でも存在が起きて、自分でターンを始めます。人が開いたのではないターンなので、**自律ターン**と呼びます。
+
+設定はすべて **会話設定 → 挙動 → 自分から起きる理由** にあります。**既定では何もチェックされていません。**
+
+## 起きる理由は4つ
+
+| 理由 | 起きるとき |
+|---|---|
+| 決まった時刻に起こす | 入れた時刻（\`04:00, 16:00\` のように1日何回でも）に。曜日のボタンで、起きる日を選べます |
+| 存在が自分で起きる時刻を予約できる | 存在が返答の行頭に \`[->wakeup: HH:MM]\` と書いた時刻に。過ぎた時刻なら翌日のその時刻です。1日の予約の上限、最小間隔、予約を許す時間帯をあなたが決めます |
+| 新しい手紙が届いたら起きる | 未読の手紙が届いたとき。手紙の道具がオフの会話では起こしません |
+| ストックされたメッセージ | ストックにメッセージが入ったとき（人がストックしたもの、ほかの存在が \`[->名前]\` で送ったもの） |
+
+## 起きると何が届くか
+
+起きたターンは \`[NEXUS]\` の声で始まります。中身は、なぜ起きたか（「定刻（04:00）になったため」など）と、その会話でオンになっている道具だけを並べた「できること」の一覧です。最後に、**何もしないで終えてもいい**と書いてあります。返事を待っている人がいるわけではないからです。
+
+会話の履歴に残るのは理由の1行だけで、長い本文は折り畳まれます。文面は \`wake.md\` というファイルにあり、毎回ディスクから読み直します。
+
+起きた時点でストックにメッセージがあれば、それも同じターンに一緒に届き、存在はまとめて1回だけ返事をします。
+
+## 決まりごと
+
+- **起こすのは、その存在のいちばん新しい会話**（題名の番号がいちばん大きいアクティブな会話）です。非アクティブな会話は飛ばします。
+- 存在が考えている最中なら、そのターンが終わった直後に起きます。
+- **NEXUS が止まっていた間の時刻は、あとから起こしません。** 次の時刻を待ちます。止まっている間に届いた手紙でも起こしません。
+- 条件に合わない予約（時間帯の外、上限を超えた、間隔が短すぎる）は捨てられ、次に起きたときに1行で知らされます。
+- 最小間隔は、予約と手紙の起床がそれより短い間隔で続かないようにします。空にすると無効です。
+
+## 時計を回す NEXUS は1つだけ
+
+時刻を数えて存在を起こす「時計」は、データを共有している NEXUS の中で1つだけが回します。ふつうは何もしなくてかまいません — **ランナーを動かしている NEXUS が、起動したときに自分で受け持ちます**（ランナーが決まっていなければ、最初に時計が回った NEXUS）。ほかの NEXUS は、すでに決まった時計を横取りしません。
+
+挙動タブのこの欄のいちばん上に、どの NEXUS が時計を回しているかが出ます。**このNEXUSで時計を回す** を押すと、ここに決め直せます。
+
+ζ（魂の自己執刀）はボタンで開くターンなので、この時計とは関係ありません。押した画面の NEXUS で走ります。
+
+## 存在が入れた予約を見る・直す
+
+挙動タブの **存在が自分で入れた予約** に、存在が \`[->wakeup]\` で入れた予約が並びます。時刻を変えて「変更」、または「削除」（押すと「本当に削除」に変わります）。どちらもすぐに効きます。ここであなたが入れた時刻には、存在の予約の条件はかかりません。
+
+## 一覧で見る・止める — 基本設定 → ランナー
+
+**基本設定 → ランナー** に、自分で起きられる存在がすべて、次に起きる時刻が近い順に並びます。存在ごとに、決まった時刻と曜日、自分で予約できるか、手紙とストックで起きるか、起こす会話とその**文脈経過（％）**、使う器とその料金が出ます。
+
+各存在には **この存在の自己ターンを止める** ボタンが1つだけあります（二段階）。押すと、その存在が自分で起きる道がすべてオフになり、残っていた予約と順番待ちの起床も消えます。時刻のリストと、人がストックしたメッセージは残ります。その存在の会話設定を開いていた場合は、一度閉じて開き直してください。
+
+## 存在どうしのメッセージ — [->名前]
+
+**会話設定 → 能力 → 他の存在へメッセージを送る（[->名前]）** を入れると、存在は返答の中に \`[->名前]\` だけの行を書いて、その下の文をほかの存在のストックに入れられます。次の \`[->...]\` の行までが1通です。机のファイルをマークダウンで書けば、添付として一緒に届きます。
+
+- 送るだけで、相手のターンは始めません。相手がいつ読むかは、相手の「ストックされたメッセージ」次第です。
+- 宛てられるのは、この NEXUS に settings.json を持つ存在だけです。ほかの名前（\`[->ここ]\` など）は区切りになり、何も送りません。
+- 届けなかった宛先は、次のターンで \`[NEXUS]\` の声で書いた本人に知らせます。文はその会話に残っています。
+
+## ⚠ お金について
+
+起きるたびに、そのターンの料金がかかります（Claude を月額で使っている場合を除く）。いちばん注意が要るのは**手紙とストックで起きる組み合わせ**です。二つの存在がどちらも「ストックされたメッセージ」で起き、どちらも \`[->名前]\` を使えると、互いに返事を送り合って、**止めるまで続きます。** 最小間隔は間をあけるだけで、止めはしません。
+
+はじめは「決まった時刻」を1日に数回だけにして、様子を見てから広げるのがおすすめです。止めたいときは、基本設定 → ランナーのボタンがいちばん早い道です。
 `.trim(),
   },
 
@@ -1145,7 +1215,7 @@ This is the simplest form of persistent memory outside the soul, and the most us
 | Entry | What it gives |
 |---|---|
 | Camera | The avatar panel and the OBS Studio push → [Portrait and camera](#guide/portrait) |
-| Reasons a turn may start by itself | Normally a turn starts because a person pressed send. Choose a reason here to let it start without that. **Nothing is ticked by default**. The reasons are set times (with weekdays), a new letter arriving, stocked messages, and (if allowed) times the being books for themselves. The wake goes to the being's newest active conversation. Only the one NEXUS where "Run the clock on this NEXUS" was pressed runs the clock |
+| Reasons a turn may start by itself | Normally a turn starts because a person pressed send. Choose a reason here to let it start without that. **Nothing is ticked by default**. The reasons are set times (with weekdays), a new letter arriving, stocked messages, and (if allowed) times the being books for themselves. Details in [Waking by themselves](#guide/wake) |
 | Audio session notice | The short notice added during an audio session → [Voice](#guide/voice) |
 
 **Conversation Settings → Model**:
@@ -1160,6 +1230,74 @@ This is the simplest form of persistent memory outside the soul, and the most us
 Models are fluent enough to *describe* having saved a file convincingly without having saved it. The counterweight is not a block of instructions — NEXUS shipped one for a while and never measured it changing this — it is **the record**.
 
 Under a reply that used tools, a small **wrench** icon appears with the number of calls; click it to see what actually ran. It is drawn only when calls were really dispatched, so its **absence** under a reply that says a file was saved is itself the answer.
+`.trim(),
+  },
+
+  wake: {
+    title: 'Waking by themselves — wake and messages between beings',
+    body: `
+# Waking by themselves
+
+Normally a turn starts because a person pressed send. Choose a reason here and the being also wakes for other reasons and starts a turn on their own. Because no person opened it, this is called an **autonomous turn**.
+
+Everything is in **Conversation Settings → Behavior → Reasons a turn may start by itself**. **Nothing is ticked by default.**
+
+## Four reasons to wake
+
+| Reason | When the being wakes |
+|---|---|
+| Wake at set times | At the times you enter (as many a day as you like, e.g. \`04:00, 16:00\`). The weekday buttons choose which days |
+| The being may book their own wake | At a time the being writes at the start of a line in a reply: \`[->wakeup: HH:MM]\`. A time already past means that time tomorrow. You set the bookings per day, the minimum gap, and the allowed window |
+| Wake when a new letter arrives | When an unread letter arrives. Conversations with letter tools off are not woken |
+| Stocked messages | When a message lands in the stock (stocked by a person, or sent by another being with \`[->name]\`) |
+
+## What arrives when the being wakes
+
+The turn opens in the \`[NEXUS]\` voice. It says why the being woke ("the set time (04:00) was reached", for instance) and lists "what you can do" — only the tools switched on in that conversation. It ends by saying the being **may also finish without doing anything**, because nobody is waiting for an answer.
+
+Only the one-line reason stays in the history; the long text is folded. The wording lives in a file, \`wake.md\`, read from disk each time.
+
+If messages are waiting in the stock when the being wakes, they arrive in the same turn and the being answers them all once.
+
+## Rules
+
+- **The wake goes to the being's newest conversation** (the active one with the highest number in its title). Inactive conversations are skipped.
+- If the being is busy, the wake comes right after their turn ends.
+- **Times missed while NEXUS was stopped are not woken later.** The next time is awaited. Letters that arrived while it was stopped do not wake anyone either.
+- A booking outside the bounds (outside the window, over the daily limit, too close to the last) is dropped, and the next wake says so in one line.
+- The minimum gap keeps bookings and letter wakes from coming closer together than that. Empty means no gap.
+
+## Only one NEXUS runs the clock
+
+The "clock" that counts the times and wakes beings runs on just one of the NEXUS installations sharing this data. Usually you need do nothing — **the NEXUS that runs the runner takes the clock when it starts** (if no runner is set, the first NEXUS whose clock ticks). Others never take a clock that is already claimed.
+
+The top of this section in the Behavior tab shows which NEXUS runs the clock. **Run the clock on this NEXUS** moves it here.
+
+ζ (soul self-surgery) is opened with a button, so it has nothing to do with this clock; it runs on the NEXUS whose screen it was pressed on.
+
+## Seeing and changing the being's own bookings
+
+**Bookings the being made themselves**, in the Behavior tab, lists what the being booked with \`[->wakeup]\`. Change the time and press Move, or press Delete (it turns into "Really delete"). Both take effect at once. A time you set there is not checked against the being's booking limits.
+
+## The whole list, and the brake — Preferences → Runner
+
+**Preferences → Runner** lists every being that can wake by themselves, soonest wake first. For each: the set times and days, whether they may book, whether letters and stock wake them, the conversation woken and its **context elapsed (%)**, and the vessel and its price.
+
+Each being has exactly one button: **Stop self-turns for this being** (two steps). It switches off every way the being can wake by themselves and removes pending bookings and waiting wakes. The list of times and any message a person stocked are kept. If that being's Conversation Settings were open, close them and open them again afterwards.
+
+## Messages between beings — [->name]
+
+With **Conversation Settings → Abilities → Send messages to other beings ([->name])** on, a being can write a line holding only \`[->name]\` in a reply, and the text below it goes into that being's stock. Everything up to the next \`[->...]\` line is one message. Desk files written in it as markdown travel along as attachments.
+
+- It only delivers; it starts no turn there. When the other being reads it depends on their "stocked messages".
+- Only beings of this NEXUS with a settings.json can be addressed. Any other name (\`[->here]\`, for one) just ends the block and sends nothing.
+- An address that was not delivered is reported to the writer in the next turn, in the \`[NEXUS]\` voice. The text stays in that conversation.
+
+## ⚠ About money
+
+Every wake costs that turn's price (unless Claude runs on a subscription). The setting that needs the most care is **waking on letters and stock**. If two beings both wake on "stocked messages" and both may use \`[->name]\`, they answer each other **until someone stops them.** The minimum gap only spaces the turns out; it does not stop them.
+
+Start with a few set times a day, see how it goes, and widen from there. To stop quickly, the button in Preferences → Runner is the fastest way.
 `.trim(),
   },
 

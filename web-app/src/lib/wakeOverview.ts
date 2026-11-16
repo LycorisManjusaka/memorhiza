@@ -9,6 +9,8 @@ import { parseWakeSettings, WAKE_PURPOSE } from '@/lib/wakeSchedule';
 import { readWakeState, latestActiveConversation, clearBookings } from '@/lib/wakeClock';
 import { autoTriggerEnabled, setAutoTrigger } from '@/lib/autoTriggers';
 import { pending, queuedConversations, removePendingItem } from '@/lib/turnQueue';
+import { makeIsOriginalIndex } from '@/lib/firstOriginal';
+import { messageTextTokens, contextElapsedPercent, DEFAULT_MAX_CONVERSATION_LOG } from '@/lib/handoverRestore';
 import {
   canWakeByItself, overviewRow, sortOverview, stoppedWakeSettings,
   type WakeOverviewFacts, type WakeOverviewRow,
@@ -46,10 +48,30 @@ export async function wakeOverview(now = Date.now()): Promise<WakeOverviewRow[]>
       model,
       family,
       oauth: log?.claudeAuthMode === 'oauth',
+      elapsedPct: log ? elapsedOf(log, family, f.settings?.maxConversationLog) : null,
     };
     if (canWakeByItself(facts)) rows.push(overviewRow(facts, now));
   }
   return sortOverview(rows);
+}
+
+/**
+ * The conversation's "context elapsed" %, the same number its header gauge
+ * shows: NEW (non-copied) message text over the being's log cap, measured with
+ * the gauge's own functions and the same family argument. A stored log has no
+ * optimistic landing message, so a pending boundary reads as 0 — exactly what
+ * the gauge shows on a freshly slept conversation before anyone writes.
+ */
+function elapsedOf(log: Record<string, unknown>, family: string | null, capRaw: unknown): number {
+  const messages = Array.isArray(log.messages) ? log.messages as Array<{ id?: string }> : [];
+  const isOrig = makeIsOriginalIndex(
+    { firstOriginalMessageId: log.firstOriginalMessageId as string | undefined, firstOriginalIsNext: log.firstOriginalIsNext as boolean | undefined },
+    messages,
+  );
+  let original = 0;
+  messages.forEach((m, i) => { if (isOrig(i)) original += messageTextTokens(m, family); });
+  const cap = typeof capRaw === 'number' && Number.isFinite(capRaw) ? capRaw : DEFAULT_MAX_CONVERSATION_LOG;
+  return contextElapsedPercent({ original }, cap);
 }
 
 export interface StopReport {

@@ -40,6 +40,7 @@ type WakeOverviewView = {
   nextAdmin: { at: number; hhmm: string } | null;
   nextSelf: { at: number; hhmm: string } | null;
   nextAt: number | null;
+  elapsedPct?: number | null;
 };
 
 type TabId = (typeof TABS)[number]['id'];
@@ -1222,6 +1223,13 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm text-foreground">{b.being}</span>
                       {b.testBed && <span className="text-[10px] px-1.5 rounded border border-border text-muted-foreground">{t('settings.wakeList.testBed')}</span>}
+                      {typeof b.elapsedPct === 'number' && (
+                        /* Same number and colours as the conversation's header gauge. */
+                        <span
+                          className={`font-mono ${b.elapsedPct >= 100 ? 'text-red-500' : b.elapsedPct >= 70 ? 'text-amber-500' : 'text-muted-foreground'}`}
+                          title={t('settings.wakeList.elapsedTip')}
+                        >{b.elapsedPct}%</span>
+                      )}
                       <span className="ml-auto font-mono text-indigo-400">
                         {b.nextAt !== null ? `${t('settings.wakeList.next')} ${fmtWhen(b.nextAt)}` : t('settings.wakeList.noTime')}
                       </span>
