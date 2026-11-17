@@ -482,7 +482,13 @@ export default function MailModal({
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500/40"
                   />
                 </div>
-                <div className="flex min-h-0 flex-1 flex-col">
+                {/* Grows into spare room but never shrinks below its content.
+                    It used to be `min-h-0 flex-1`: when a phone keyboard cut the
+                    pane's height, this box shrank under the textarea's min
+                    height, the textarea spilled out, and Attach / Deliver were
+                    drawn ON TOP of the text being typed (Pilot, 2026-11-17).
+                    Now the pane scrolls instead. */}
+                <div className="flex flex-[1_0_auto] flex-col">
                   <label className="mb-1 block text-xs font-semibold text-foreground">{t('mail.letterField')}</label>
                   <textarea
                     value={cText}
