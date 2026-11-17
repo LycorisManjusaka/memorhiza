@@ -924,7 +924,12 @@ export async function runAppTool(name: string, args: any, ctx: AppToolCtx): Prom
         const stamp = new Date().toISOString().replace(/[:.]/g, '-');
         const raw = path.join(dir, `app_shot_${stamp}.png`);
         const r = await shotWindow(win, raw);
-        if (!r.ok) return { text: `Error: ${r.error}` };
+        if (!r.ok) {
+          // A refused capture leaves no PNG, so without this line the human's
+          // record simply skips the attempt and reads as a gap.
+          await logAct(me, { tool: 'app_shot', window: win.title, hwnd: win.hwnd, ok: false, error: String(r.error || '').slice(0, 200) }).catch(() => {});
+          return { text: `Error: ${r.error}` };
+        }
 
         let buf: Buffer<ArrayBufferLike> = await fsp.readFile(raw);
         let note = '';
