@@ -6765,6 +6765,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                     if (liveToolName === 'anchor') {
                       return t('chat.busy.anchor').replace('{model}', liveToolDetail || t('chat.busy.itsModel'));
                     }
+                    // Server-side read-aloud holds the turn open while the voice plays.
+                    if (liveToolName === 'speech') {
+                      return t('chat.busy.speech').replace('{entity}', folderName);
+                    }
                     const frame = liveToolLocalized ? 'chat.busy.usingTool' : 'chat.busy.usingToolRaw';
                     return t(frame)
                       .replace('{entity}', folderName)

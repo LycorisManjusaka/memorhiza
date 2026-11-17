@@ -10,6 +10,7 @@ import { remarkNoIndentedCode } from '@/lib/remarkNoIndentedCode';
 import { stripLeadingTimestamps, stripAllTimestamps, isOnlyTimestamps } from '@/lib/timestampStrip';
 import { messageCost, resolvePrice } from '@/lib/modelPricing';
 import { applyOutputFilter } from '@/lib/outputFilter';
+import { useServerSpeechKey, serverSpeechMode, serverSpeechAction } from '@/lib/serverSpeechClient';
 import { attachmentSrc } from '@/lib/attachmentUrl';
 import {
   attachmentPreviewSlice,
@@ -175,6 +176,12 @@ function MessageBubble({ msg, onEdit, onDelete, onToggleAttachment, onDeleteAtta
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(msg.content);
   const [ttsState, setTtsState] = useState<'idle' | 'playing' | 'paused'>('idle');
+  // Server-side read-aloud (lib/serverSpeech.ts): '' unless the SERVER is
+  // reading this very message. `srvOwnedRef` remembers that the playing state
+  // on screen came from the server, so only that state is cleared when the
+  // server moves on — a tab-side playback is never touched by it.
+  const srvKey = useServerSpeechKey(msg.id);
+  const srvOwnedRef = React.useRef(false);
   // Precise "audio is actually sounding RIGHT NOW" flag, distinct from
   // `ttsState`. `ttsState` goes 'playing' the instant TTS is triggered (the
   // synchronous lock in handleTTS/handleStreamingTTS), which still includes
@@ -325,10 +332,40 @@ function MessageBubble({ msg, onEdit, onDelete, onToggleAttachment, onDeleteAtta
     msg.attachments = [];
   }
 
+  // --- Server-side read-aloud: paint what the server is doing ---
+  React.useEffect(() => {
+    if (!srvKey) {
+      if (srvOwnedRef.current) {
+        srvOwnedRef.current = false;
+        clearTtsHighlight();
+        setIsSpeaking(false);
+        ttsStateRef.current = 'idle';
+        setTtsState('idle');
+      }
+      return;
+    }
+    // A tab-side playback of this message is already running: leave it be.
+    if (!srvOwnedRef.current && ttsStateRef.current !== 'idle') return;
+    let cur: { i: number; t: string; p: boolean; u: boolean };
+    try { cur = JSON.parse(srvKey); } catch { return; }
+    srvOwnedRef.current = true;
+    const next = cur.p ? 'paused' : 'playing';
+    ttsStateRef.current = next;
+    setTtsState(next);
+    setIsSpeaking(!cur.p && cur.i >= 0);
+    if (cur.i >= 0 && cur.t && globalSettings?.ttsHighlight !== false) {
+      highlightTtsPhrase(contentRef.current, cur.t, cur.u);
+    }
+  }, [srvKey]);
+
   // --- Auto-Play Logic ---
   React.useEffect(() => {
     if (msg.autoPlay && !hasAutoPlayed.current && msg.role === 'assistant' && msg.content) {
       hasAutoPlayed.current = true;
+      // "Read aloud: server" — the runner hands this reply to the server's
+      // voice queue itself. Playing it here too would be the double voice the
+      // setting exists to remove.
+      if (serverSpeechMode() === 'server') return;
       // Small timeout ensures the DOM has updated. Stored in a ref so a
       // manual click can cancel it (handleTTS / handleStreamingTTS clear it)
       // — otherwise the timer can fire AFTER the user has already started TTS
@@ -938,6 +975,10 @@ function MessageBubble({ msg, onEdit, onDelete, onToggleAttachment, onDeleteAtta
   };
 
   const handlePauseResume = () => {
+    if (srvOwnedRef.current) {
+      void serverSpeechAction({ action: ttsStateRef.current === 'paused' ? 'resume' : 'pause' });
+      return;
+    }
     if (ttsStateRef.current === 'playing') {
       if (currentAudioRef.current) currentAudioRef.current.pause();
       if (currentAudioRef2.current) currentAudioRef2.current.pause();
@@ -955,10 +996,17 @@ function MessageBubble({ msg, onEdit, onDelete, onToggleAttachment, onDeleteAtta
     // Read the LATEST state via ref, not closure-captured ttsState — otherwise
     // a setTimeout-triggered or stale invocation can mistake 'playing' for
     // 'idle' and start a parallel TTS pipeline, breaking the state machine.
+    if (srvOwnedRef.current) {
+      void serverSpeechAction({ action: 'stop', messageId: msg.id });
+      return;
+    }
     if (ttsStateRef.current !== 'idle') {
       stopTTS();
       return;
     }
+    // Server mode reads a FINISHED reply (the runner does it for an audio
+    // session); there is no server-side streaming pipeline to route to.
+    if (serverSpeechMode() === 'server' && msg.streaming && msg.role === 'assistant') return;
     // Streaming dispatch: if the user clicks the button while generation is
     // still in progress, route to the streaming TTS pipeline so audio starts
     // immediately and grows with the response. Falls through to the legacy
@@ -1134,6 +1182,18 @@ function MessageBubble({ msg, onEdit, onDelete, onToggleAttachment, onDeleteAtta
     });
 
     if (sentences.length === 0) { releaseIdle(); return; }
+
+    // "Read aloud: server": hand the phrases over and let go. The voices were
+    // resolved above exactly as for tab playback; from here the state on
+    // screen (playing / paused / which phrase) arrives from the server's
+    // stream, the same for every tab.
+    if (serverSpeechMode() === 'server') {
+      releaseIdle();
+      pushTtsDiag({ active: false });
+      const r = await serverSpeechAction({ action: 'speak', messageId: msg.id, folderName, isUser, sentences });
+      if (!r.ok) ttsWarn('[tts] server read-aloud refused:', r.error);
+      return;
+    }
 
     // State + AbortController already set up at the top of the function.
 
@@ -2040,7 +2100,7 @@ function MessageBubble({ msg, onEdit, onDelete, onToggleAttachment, onDeleteAtta
                 <button onClick={handlePauseResume} className={`${btnBase} transition-colors text-blue-500 hover:text-blue-600`} title={ttsState === 'playing' ? t('bubble.tts.pause') : t('bubble.tts.resume')}>
                   {ttsState === 'playing' ? <Pause size={actIcon} fill="currentColor" /> : <Play size={actIcon} fill="currentColor" />}
                 </button>
-                <button onClick={stopTTS} className={`${btnBase} transition-colors text-red-500 hover:text-red-600`} title={t('bubble.tts.stop')}>
+                <button onClick={() => { if (srvOwnedRef.current) void serverSpeechAction({ action: 'stop', messageId: msg.id }); else stopTTS(); }} className={`${btnBase} transition-colors text-red-500 hover:text-red-600`} title={t('bubble.tts.stop')}>
                   <Square size={actIcon} fill="currentColor" />
                 </button>
               </>

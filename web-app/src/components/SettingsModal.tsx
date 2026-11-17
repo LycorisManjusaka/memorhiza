@@ -6,6 +6,7 @@ import VoiceSelector from './VoiceSelector';
 import UserIdentityEditor from './UserIdentityEditor';
 import AdminLoginEditor from './AdminLoginEditor';
 import { useT, Tx } from '@/lib/i18n';
+import { useServerSpeechMode, setServerSpeechMode } from '@/lib/serverSpeechClient';
 import { ensureAudioPermission, supportsSinkId, invalidateDeviceCache } from '@/lib/audioSink';
 import { buildTag, loadBuildTag, setBuildTag } from '@/lib/buildVersion';
 import { AUDIO_SESSION_KEEP_MESSAGES_DEFAULT, resolveKeepMessages } from '@/lib/attachmentVisibility';
@@ -84,6 +85,7 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
   const [activeTab, setActiveTabState] = React.useState<'keys'|'audio'|'identity'|'other'>('keys');
   const setActiveTab = (tab: 'keys'|'audio'|'identity'|'other') => setActiveTabState(tab);
   const t = useT();
+  const speechMode = useServerSpeechMode();
   // Which build is this install running? Shown here because this is the one
   // screen every user opens at least once, and because a bug report from a
   // machine we cannot reach is unreadable without it. Selectable text, not an
@@ -1100,6 +1102,27 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
               </label>
               <p className="text-xs text-muted-foreground mt-1 ml-6">
                 <Tx k="settings.ttsHighlight.help" />
+              </p>
+            </div>
+
+            <div className="p-3 rounded-lg border border-border bg-muted/30">
+              <div className="text-sm text-foreground mb-1">{t('settings.ttsPlayback.label')}</div>
+              <div className="flex flex-wrap gap-x-5 gap-y-1">
+                {(['tab', 'server'] as const).map(m => (
+                  <label key={m} className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="radio"
+                      name="ttsPlayback"
+                      checked={speechMode === m}
+                      onChange={() => { void setServerSpeechMode(m); }}
+                      className="w-4 h-4 accent-indigo-500"
+                    />
+                    <span className="text-sm text-foreground">{t(m === 'tab' ? 'settings.ttsPlayback.tab' : 'settings.ttsPlayback.server')}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                <Tx k="settings.ttsPlayback.help" />
               </p>
             </div>
 

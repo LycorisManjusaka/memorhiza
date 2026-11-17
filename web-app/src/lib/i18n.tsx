@@ -306,6 +306,11 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.ttsHighlight.label': 'Highlight the phrase being spoken',
   'settings.ttsHighlight.help':
     'While TTS is speaking, tint the phrase currently being pronounced inside the message. This is drawn the same way the browser draws a text selection: nothing in the page is rewritten and no font is changed, so the text can never shift or reflow. Turn it off if you prefer a still page. Requires Chrome, Edge, Brave, Safari 17.2+ or Firefox 140+ — on older browsers the option simply does nothing. The colour is swapped from the other side\'s bubble — a being\'s phrase lights up in the partner\'s colour, the partner\'s own phrase lights up in the being\'s colour — so it is already customizable per being through the --primary/--card pair in that being\'s theme.css.',
+  'settings.ttsPlayback.label': 'Where read-aloud plays',
+  'settings.ttsPlayback.tab': 'Read aloud from the tab',
+  'settings.ttsPlayback.server': 'Read aloud from the server',
+  'settings.ttsPlayback.help':
+    '"Tab": the browser that has the conversation open plays the voice (as before). "Server": the PC running NEXUS plays it itself, on the default speaker of that PC. It reads even when no tab is open, there is one voice no matter how many tabs show the conversation, and the highlight moves in all of them together. When beings talk one after another, they are read one at a time. In a conversation with the audio session ON, the turn moves on only after the reading ends (a `[->name]` message is sent after it, too). This setting belongs to the whole NEXUS, not to one browser. The server cannot choose an output device (the default speaker only). Resuming after a pause re-reads the current phrase from its start. Reading starts when the reply is complete, not while it is being generated.',
   'settings.alwaysShowHoverControls.label': 'Always show buttons that normally appear on hover',
   'settings.alwaysShowHoverControls.help':
     'Show the message action bar (read aloud, copy, edit, rerun, continue, mark original, delete) and the sidebar row menu permanently, instead of revealing them only while the cursor rests on the message. Needed when the browser reports no hover-capable pointer: some remote-desktop and screen-sharing sessions do exactly that, and then hover-revealed controls can never be reached at all. Nexus already shows them automatically in that case -- this switch forces it even when the browser claims hovering works.',
@@ -1253,6 +1258,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'chat.busy.usingToolRaw': '{entity} is using {model} to {action}…',
   'chat.busy.thinking': '{entity} is thinking with {model}…',
   'chat.busy.anchor': 'The anchor is checking the reply with {model}…',
+  'chat.busy.speech': 'Reading the reply from {entity} aloud…',
   'chat.busy.itsModel': 'their model',
   'chat.stall.notice': '⚠ No activity from the model for {duration} — it may be stuck. Keep waiting, or Stop and rerun.',
   'chat.stall.min': '{n} min',
@@ -2348,6 +2354,11 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.ttsHighlight.label': '読み上げ中のフレーズをハイライトする',
   'settings.ttsHighlight.help':
     'TTSの再生中、いま読み上げているフレーズにメッセージ内で色を付けます。ブラウザがテキスト選択を描画するのと同じ仕組みで描かれ、ページの中身は一切書き換えず、フォントも変えません。そのため文字がずれたり折り返しが変わったりすることはありません。動きのない画面が好みならOFFにしてください。Chrome・Edge・Brave・Safari 17.2以降・Firefox 140以降が必要です（古いブラウザでは何も起きません）。色は相手側の吹き出しの色を借ります — 存在の発言はパートナーの色で、パートナー自身の発言(読み上げ)は存在の色で光ります。そのため各存在の theme.css にある --primary / --card の組み合わせで、既にキャラクターごとに調整可能です。',
+  'settings.ttsPlayback.label': '読み上げる場所',
+  'settings.ttsPlayback.tab': 'タブから読み上げる',
+  'settings.ttsPlayback.server': 'サーバーから読み上げる',
+  'settings.ttsPlayback.help':
+    '「タブ」では、会話を開いているブラウザが声を鳴らします（今までどおり）。「サーバー」では、NEXUS が動いている PC 自身が、その PC の既定のスピーカーで鳴らします。タブが一つも開いていなくても読み上げられ、同じ会話をいくつ開いても声は一つで、ハイライトは全部のタブで同時に動きます。存在どうしが続けて話すときも、一人ずつ順番に読みます。オーディオセッションが ON の会話では、読み終わってから次へ進みます（[->名前] の送信も読み終わってから）。この設定はブラウザごとではなく、この NEXUS 全体のものです。サーバーでは出力先を選べません（既定のスピーカー1台だけ）。一時停止から再開すると、そのフレーズの頭から読み直します。生成の途中から読み始めることはせず、返答が終わってから読みます。',
   'settings.alwaysShowHoverControls.label': 'カーソルを乗せると出るボタンを常に表示する',
   'settings.alwaysShowHoverControls.help':
     'メッセージの操作バー（読み上げ・コピー・編集・やり直す・続ける・オリジナルにする・削除）と、サイドバー各列の「…」メニューを、カーソルを乗せたときだけではなく常に表示します。ブラウザが「ホバーできるポインタが無い」と判定している場合に必要です（一部のリモートデスクトップや画面共有でその状態になります）。その場合、カーソルで現れる操作にはそもそも到達できません。Nexus はその状態を検出すると自動で常時表示にします。この項目は、ブラウザがホバー可能と申告しているのに実際は使えない、という場合の強制スイッチです。',
@@ -3230,6 +3241,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'chat.busy.usingToolRaw': '{entity} が {model} で「{action}」を実行しています…',
   'chat.busy.thinking': '{entity} が {model} で考えています…',
   'chat.busy.anchor': '錨が {model} で返答を確かめています…',
+  'chat.busy.speech': '{entity} の返答を読み上げています…',
   'chat.busy.itsModel': 'モデル',
   'chat.stall.notice': '⚠ {duration} のあいだモデルからの反応がありません — 停止している可能性があります。待ち続けるか、停止して再実行してください。',
   'chat.stall.min': '{n} 分',

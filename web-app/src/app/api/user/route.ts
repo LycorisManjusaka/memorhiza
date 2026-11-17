@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { loadUserSettings, saveUserSettings } from '@/lib/fsStorage';
 import { pickMirroredGlobalSettings } from '@/lib/serverGlobalSettings';
+import { serverSpeech, speechModeFromSettings } from '@/lib/serverSpeech';
 
 export async function GET() {
   try {
@@ -37,7 +38,11 @@ export async function PATCH(req: Request) {
   try {
     const patch = pickMirroredGlobalSettings(await req.json());
     const current = (await loadUserSettings()) || {};
-    await saveUserSettings({ ...current, ...patch });
+    const next = { ...current, ...patch };
+    await saveUserSettings(next);
+    // The voice queue keeps its own copy of the mode; tell it now, so tabs
+    // watching the stream switch at once instead of at their next reload.
+    if (patch.ttsPlayback) serverSpeech().setMode(speechModeFromSettings(next));
     return NextResponse.json({ success: true, applied: patch });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

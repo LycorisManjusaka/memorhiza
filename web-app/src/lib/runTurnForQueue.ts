@@ -105,6 +105,18 @@ export interface RunTurnDeps {
     notice: string;
     deliver: () => Promise<unknown>;
   } | null>;
+  /**
+   * Server-side read-aloud (lib/serverSpeech.ts at the call site). Called with
+   * the SAVED reply of a conversation whose audio session is ON; resolves when
+   * the voice has finished or was stopped. The call site answers at once when
+   * the house reads from the tab instead, so the runner need not know the mode.
+   * Never throws by contract; the runner guards anyway. Absent in tests.
+   */
+  speakReply?: (a: {
+    messageId: string;
+    content: string;
+    onPhrase: (index: number, total: number) => void;
+  }) => Promise<void>;
   /** fsStorage.loadLog */
   loadLog: (convoId: string) => Promise<Record<string, unknown> | null>;
   /** fsStorage.saveLog */
@@ -1496,6 +1508,38 @@ export async function runTurnForQueue(
       };
     }
     saved = true;
+    // Audio session + "read aloud: server": the voice is PART OF THE TURN. The
+    // reply is already on disk and on every tab (the save above published it);
+    // the lease is still held, so a message sent meanwhile waits in the stock
+    // exactly as it does while the being thinks, and `[->name]` below goes out
+    // only after the last phrase — the other being must not start answering a
+    // sentence that is still being spoken (つよ, 2026-11-17). Not on a handoff
+    // hop: the vessel taking over has not said its part yet.
+    if (!pass.handoff && deps.speakReply && (log as Record<string, unknown>).vrchatMode === true) {
+      const spoken = String(finalAssistant.content ?? '');
+      if (spoken.trim()) {
+        const say = (detail: string | null) => deps.onRawText?.(`data: ${JSON.stringify({
+          type: 'tool_activity', tool: 'speech', name: 'speech', detail,
+        })}
+
+`);
+        try {
+          await deps.speakReply({
+            messageId: String(finalAssistant.id),
+            content: spoken,
+            // One frame per phrase: progress for the busy line, and traffic that
+            // keeps a watching tab's stall detector from calling a long reading dead.
+            onPhrase: (i, n) => say(`${i + 1}/${n}`),
+          });
+        } catch (e) {
+          console.warn('[tts/server] read-aloud failed; the turn continues:', e);
+        } finally {
+          deps.onRawText?.(`data: ${JSON.stringify({ type: 'tool_activity', tool: null })}
+
+`);
+        }
+      }
+    }
     if (routePlan) { try { await routePlan.deliver(); } catch { /* deliver never throws; belt and braces */ } }
     lastMessageId = String(pass.assistant.id);
     lastSavedAt = deps.nowMs();

@@ -48,6 +48,12 @@
 export interface MirroredGlobalSettings {
   betrayalDefense?: boolean;
   maxToolIterations?: number;
+  /**
+   * Who plays read-aloud: a browser tab (default) or the NEXUS process itself
+   * (lib/serverSpeech.ts). A property of the house — there is one loudspeaker —
+   * and read by the runner, which has no browser.
+   */
+  ttsPlayback?: 'tab' | 'server';
 }
 
 /**
@@ -76,6 +82,8 @@ export function pickMirroredGlobalSettings(g: unknown): MirroredGlobalSettings {
   const n = Number(src.maxToolIterations);
   if (Number.isFinite(n) && n > 0) out.maxToolIterations = Math.min(300, Math.max(1, Math.round(n)));
 
+  if (src.ttsPlayback === 'tab' || src.ttsPlayback === 'server') out.ttsPlayback = src.ttsPlayback;
+
   return out;
 }
 
@@ -87,5 +95,6 @@ export function pickMirroredGlobalSettings(g: unknown): MirroredGlobalSettings {
  * than the whole blob keeps the write count at "once per actual decision".
  */
 export function mirrorChanged(a: MirroredGlobalSettings, b: MirroredGlobalSettings): boolean {
-  return a.betrayalDefense !== b.betrayalDefense || a.maxToolIterations !== b.maxToolIterations;
+  return a.betrayalDefense !== b.betrayalDefense || a.maxToolIterations !== b.maxToolIterations ||
+    a.ttsPlayback !== b.ttsPlayback;
 }

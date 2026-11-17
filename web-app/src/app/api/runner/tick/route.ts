@@ -27,6 +27,8 @@ import { execAnchor } from '@/lib/anchorExec';
 import { planBeingRoutes } from '@/lib/beingRouteExec';
 import { recordSelfWakeFromReply, ensureWakeClock } from '@/lib/wakeClock';
 import type { AnchorMessage } from '@/lib/anchor';
+import { serverSpeech, speechModeFromSettings } from '@/lib/serverSpeech';
+import { assistantSpeechSentences } from '@/lib/ttsSentences';
 
 // One pass of the server-side runner (phase 4b-5, 2026-10-29).
 //
@@ -283,7 +285,11 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
       // the chat route calls forgetStop the instant it aborts, so by the time
       // runTurnForQueue's throw is caught the record is already gone.
       let stopped = false;
-      const offStop = onStop(t.convoId, turnId, () => { stopped = true; });
+      const offStop = onStop(t.convoId, turnId, () => {
+        stopped = true;
+        // Stop also silences a reply the server is still reading for this turn.
+        serverSpeech().stop({ convoId: t.convoId });
+      });
 
       // Stocks this turn wrote into with `[->name]` — kicked after the turn ends.
       const routed: Array<{ being: string; convoId: string }> = [];
@@ -347,6 +353,24 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
               notice: plan.notice,
               deliver: async () => { routed.push(...await plan.deliver()); },
             };
+          },
+          // Server-side read-aloud. Answers at once unless the house reads from
+          // the server; the voice is the being's own (settings.json).
+          speakReply: async (a) => {
+            if (speechModeFromSettings(globalSettings) !== 'server') return;
+            const q = serverSpeech();
+            q.setMode('server');
+            const pitch = Number(t.settings?.voicePitch);
+            const sentences = assistantSpeechSentences(
+              a.content,
+              (t.settings?.aiVoice as Record<string, unknown> | undefined) ?? null,
+              Number.isFinite(pitch) ? pitch : 0,
+            );
+            if (!sentences.length) return;
+            await q.speak(
+              { messageId: a.messageId, convoId: t.convoId, folderName: t.being, isUser: false, sentences },
+              a.onPhrase,
+            );
           },
           runAnchor: async (a) => {
             const r = await execAnchor({
