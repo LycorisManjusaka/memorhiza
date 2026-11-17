@@ -29,6 +29,7 @@ import { recordSelfWakeFromReply, ensureWakeClock } from '@/lib/wakeClock';
 import type { AnchorMessage } from '@/lib/anchor';
 import { serverSpeech, speechModeFromSettings } from '@/lib/serverSpeech';
 import { assistantSpeechSentences } from '@/lib/ttsSentences';
+import { autoTurnsHeldForLog, isWakeItem, passIsUnattended } from '@/lib/autoHold';
 
 // One pass of the server-side runner (phase 4b-5, 2026-10-29).
 //
@@ -98,7 +99,7 @@ type Outcome = {
   // installation CAN run it and this one should say so, while 'blocked-here'
   // means this installation is forbidden to, which is a property of the
   // launcher and not of the queue.
-  skipped?: 'busy' | 'empty' | 'elsewhere' | 'auto-trigger-off' | 'claim-failed' | 'blocked-here';
+  skipped?: 'busy' | 'empty' | 'elsewhere' | 'auto-trigger-off' | 'claim-failed' | 'blocked-here' | 'context-full';
   result?: RunTurnResult;
 };
 
@@ -119,6 +120,12 @@ function fail(e: unknown, fallback: string) {
 
 interface PassOpts {
   auto: boolean;
+  /**
+   * The clock's kick (or the follow-up for a wake that waited): nobody asked
+   * for this turn. Unlike `auto` it does NOT consult the stock checkbox — a
+   * wake ignores that — but it IS held while the context is full.
+   */
+  wake: boolean;
   oneBeing: string;
   oneConvo: string;
   selfId: string;
@@ -220,6 +227,17 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
       if (opts.auto && !autoTriggerEnabled(log?.autoTriggers, 'stock')) {
         outcomes.push({ being: t.being, convoId: t.convoId, ran: false, skipped: 'auto-trigger-off' });
         closeRelay(t.convoId, { type: 'notice', content: 'This conversation does not start by itself.' });
+        continue;
+      }
+
+      // Context at 100% → turns nobody asked for wait (つよ, 2026-11-17). Before
+      // the claim, so nothing is taken out of the stock: the items stay exactly
+      // where they are. A person's send, "run it now" and ζ never set either
+      // flag and are not held. See lib/autoHold.ts.
+      if (passIsUnattended(opts) && autoTurnsHeldForLog(log as Record<string, unknown> | null, t.settings)) {
+        outcomes.push({ being: t.being, convoId: t.convoId, ran: false, skipped: 'context-full' });
+        console.log(`[runner] held ${t.being}/${t.convoId}: context is at 100%, automatic turns wait`);
+        closeRelay(t.convoId, { type: 'notice', content: 'Automatic turns are waiting: this conversation is at 100% of its log cap.' });
         continue;
       }
 
@@ -481,9 +499,13 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
       if (result.ok) {
         try {
           const left = await pending(t.being, t.convoId);
-          if (left.some((it) => it.kind === 'system' && accept(it))) {
+          const sys = left.filter((it) => it.kind === 'system' && accept(it));
+          if (sys.length) {
+            // Only wakes waiting → still a turn nobody asked for (held at 100%).
+            // A ζ item among them has a button press behind it and is not.
+            const wake = sys.every(isWakeItem);
             setTimeout(() => {
-              void runPass({ ...opts, auto: false, oneBeing: t.being, oneConvo: t.convoId, assistantMsgId: '', proposedTurnId: '', relayConvoId: null })
+              void runPass({ ...opts, auto: false, wake, oneBeing: t.being, oneConvo: t.convoId, assistantMsgId: '', proposedTurnId: '', relayConvoId: null })
                 .catch((e) => console.warn('[runner] follow-up NEXUS pass failed:', e));
             }, 0);
           } else if (left.some((it) => accept(it))) {
@@ -491,7 +513,7 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
             // `[->name]`, with no tab open to notice). `auto: true`, so it runs
             // only when this conversation's "stocked messages" reason is on.
             setTimeout(() => {
-              void runPass({ ...opts, auto: true, oneBeing: t.being, oneConvo: t.convoId, assistantMsgId: '', proposedTurnId: '', relayConvoId: null })
+              void runPass({ ...opts, auto: true, wake: false, oneBeing: t.being, oneConvo: t.convoId, assistantMsgId: '', proposedTurnId: '', relayConvoId: null })
                 .catch((e) => console.warn('[runner] follow-up stock pass failed:', e));
             }, 0);
           }
@@ -504,7 +526,7 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
       // as busy when that being is mid-turn — its own turn end picks it up.
       for (const r of routed) {
         setTimeout(() => {
-          void runPass({ ...opts, auto: true, oneBeing: r.being, oneConvo: r.convoId, assistantMsgId: '', proposedTurnId: '', relayConvoId: null })
+          void runPass({ ...opts, auto: true, wake: false, oneBeing: r.being, oneConvo: r.convoId, assistantMsgId: '', proposedTurnId: '', relayConvoId: null })
             .catch((e) => console.warn('[runner] routed-stock pass failed:', e));
         }, 0);
       }
@@ -543,6 +565,7 @@ export async function POST(req: Request) {
     try { body = (await req.json()) || {}; } catch { /* {} is a valid tick */ }
 
     const auto = body.auto === true;
+    const wake = body.wake === true;
     const detach = body.detach === true;
     const oneBeing = typeof body.being === 'string' ? body.being.trim() : '';
     const oneConvo = typeof body.convoId === 'string' ? body.convoId.trim() : '';
@@ -637,7 +660,7 @@ export async function POST(req: Request) {
       const named = resolveTurnName(null, proposedTurnId || undefined, newTurnId);
       const turnId = named.turnId;
       beginTurn(oneConvo, turnId);
-      void runPass({ auto, oneBeing, oneConvo, selfId, hostStatus: status, hostId: hostRecord?.host, origin, assistantMsgId, proposedTurnId, relayConvoId: oneConvo })
+      void runPass({ auto, wake, oneBeing, oneConvo, selfId, hostStatus: status, hostId: hostRecord?.host, origin, assistantMsgId, proposedTurnId, relayConvoId: oneConvo })
         .catch((e) => {
           console.error('[runner] detached pass threw:', e);
           endTurn(oneConvo, { type: 'error', error: String((e as Error)?.message || e) });
@@ -645,7 +668,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, started: true, attached: false, host: selfId, turnId, ...hostNote });
     }
 
-    const r = await runPass({ auto, oneBeing, oneConvo, selfId, hostStatus: status, hostId: hostRecord?.host, origin, assistantMsgId, proposedTurnId, relayConvoId: null });
+    const r = await runPass({ auto, wake, oneBeing, oneConvo, selfId, hostStatus: status, hostId: hostRecord?.host, origin, assistantMsgId, proposedTurnId, relayConvoId: null });
     return NextResponse.json({ ok: true, host: selfId, auto, ...r, ...hostNote });
   } catch (e) {
     return fail(e, 'the runner tick failed');

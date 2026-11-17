@@ -35,6 +35,7 @@ import { readAllAgentFiles, extractAgentSystemPrompt } from '@/lib/systemPromptS
 import { beingIsBlockedHere } from '@/lib/blockedBeings';
 import { conversationToolsEnabled } from '@/lib/agentCapabilities';
 import { unreadFor } from '@/lib/letters';
+import { autoTurnsHeldForLog } from '@/lib/autoHold';
 import {
   parseWakeSettings, dueAdminSlots, dueSelfSlots, pruneBookings, validateBooking, parseWakeupDirective,
   wakeShortText, buildCapabilityList, buildSelfWakeLine, describeRejection, fillWakeTemplate,
@@ -120,7 +121,7 @@ export async function runsClockOrClaims(selfId: string, dataDir = DATA_DIR): Pro
 
 export interface WakeEvent {
   at: number;
-  kind: 'fired' | 'booked' | 'rejected' | 'no-conversation' | 'no-letters' | 'error' | 'admin-removed' | 'admin-moved';
+  kind: 'fired' | 'booked' | 'rejected' | 'no-conversation' | 'no-letters' | 'context-full' | 'error' | 'admin-removed' | 'admin-moved';
   hhmm?: string;
   source?: 'admin' | 'self' | 'mail';
   convoId?: string;
@@ -290,6 +291,17 @@ async function fireSlot(being: string, w: WakeSettings, slot: DueSlot, selfId: s
       await writeWakeState(being, s);
       return null;
     }
+    // Context at 100% → no wake (つよ, 2026-11-17). Nothing is queued, the slot
+    // is spent like one missed while NEXUS was stopped, and the history says why.
+    let beingSettings: Record<string, unknown> | undefined;
+    try {
+      beingSettings = (await listFolders() as Array<{ name: string; settings?: Record<string, unknown> }>).find(x => x.name === being)?.settings;
+    } catch {}
+    if (autoTurnsHeldForLog(log, beingSettings)) {
+      s.history.push({ at: now, kind: 'context-full', hhmm: slot.hhmm, source: slot.source, convoId });
+      await writeWakeState(being, s);
+      return null;
+    }
     const short = wakeShortText(lang, slot);
     const full = fillWakeTemplate(await readTemplate(lang), {
       short,
@@ -316,7 +328,7 @@ async function fireSlot(being: string, w: WakeSettings, slot: DueSlot, selfId: s
 
 const inFlight = new Set<string>();
 
-async function kick(being: string, convoId: string, auto = false) {
+async function kick(being: string, convoId: string, auto = false, wake = false) {
   const key = `${being}\u0000${convoId}`;
   if (inFlight.has(key)) return;
   inFlight.add(key);
@@ -328,7 +340,7 @@ async function kick(being: string, convoId: string, auto = false) {
     await POST(new Request(`${origin}/api/runner/tick`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(auto ? { being, convoId, auto: true } : { being, convoId }),
+      body: JSON.stringify(auto ? { being, convoId, auto: true } : wake ? { being, convoId, wake: true } : { being, convoId }),
     }));
   } catch (e) {
     console.warn(`[wake] tick for ${being}/${convoId} failed:`, e);
@@ -432,14 +444,14 @@ export async function clockCycle(now = Date.now(), notBefore = 0): Promise<void>
         // A mail slot counts the letters as seen even when it could not fire
         // (no conversation, letters off) — otherwise it would retry every 30 s.
         if (seenAfter) mailSeen().set(f.name, seenAfter);
-        if (convoId) void kick(f.name, convoId);
+        if (convoId) void kick(f.name, convoId, false, true);
       } catch (e) {
         console.warn(`[wake] firing ${f.name} ${slot.key} failed:`, e);
       }
     }
     // Busy at the slot → the item waited. Try again now.
     try {
-      for (const convoId of await waitingWakeConversations(f.name, selfId)) void kick(f.name, convoId);
+      for (const convoId of await waitingWakeConversations(f.name, selfId)) void kick(f.name, convoId, false, true);
     } catch {}
   }
 }

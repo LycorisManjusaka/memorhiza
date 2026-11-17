@@ -53,6 +53,7 @@ import { defaultSummaryHintForLang } from '@/lib/summaryHint';
 import { useT, useLanguage, Tx, renderRich } from '@/lib/i18n';
 import BeingSettingsFields, { useBeingSettingsDraft } from './BeingSettingsFields';
 import WakeSettingsSection from './WakeSettingsSection';
+import { autoTurnsHeld } from '@/lib/autoHold';
 import { isNumberedIdentityTitle } from '@/lib/convoNaming';
 import { effectiveFullAccess, fullAccessForcedByShell, conversationToolsEnabled } from '@/lib/agentCapabilities';
 import {
@@ -731,6 +732,9 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // つよ 2026-11-17: whether the hidden audio text goes to the being at all.
   // Default ON (absent on disk = ON), so nothing changes until unticked.
   const [audioRuleEnabled, setAudioRuleEnabled] = useState(true);
+  // つよ 2026-11-17: turns nobody asked for wait while the context is at 100%.
+  // Default ON (absent on disk = ON). See lib/autoHold.ts.
+  const [autoStopAtFull, setAutoStopAtFull] = useState(true);
   const audioRuleFallback = t('behavior.audio.ruleDefault');
   // Fixed factual notice ("what this mode actually does") composed AHEAD of the
   // per-Entity `vrchatRule` behavioral text everywhere vrchatRule is used below.
@@ -1819,6 +1823,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         setVrchatMode(data.vrchatMode !== undefined ? data.vrchatMode : defaultVrchatMode);
         setVrchatRule(data.vrchatRule !== undefined ? data.vrchatRule : defaultVrchatRule);
         setAudioRuleEnabled(data.audioSessionRuleEnabled !== false);
+        setAutoStopAtFull(data.autoStopAtFull !== false);
         setLocalAiName(data.aiName || aiName);
         // A log that carries MESSAGES but neither a marker nor the pending flag
         // is one where every message is original — that is already the default
@@ -1922,6 +1927,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         setVrchatMode(defaultVrchatMode || false);
         setVrchatRule(defaultVrchatRule || '');
         setAudioRuleEnabled(true);
+        setAutoStopAtFull(true);
         setLocalAiName(aiName);
         setFirstOriginalMessageId(null);
         setFirstOriginalIsNext(false);
@@ -2009,8 +2015,8 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // is what keeps the dependency list complete — it caught claudeAuthMode,
   // which the old inline save-effect dep array had silently dropped.
   const buildLogData = useCallback((msgs: unknown[]) => ({
-    id: convoId, folderName, aiName: localAiName, title, messages: msgs, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, audioSessionRuleEnabled: audioRuleEnabled, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel,
-  }), [convoId, folderName, localAiName, title, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, audioRuleEnabled, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel]);
+    id: convoId, folderName, aiName: localAiName, title, messages: msgs, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, audioSessionRuleEnabled: audioRuleEnabled, autoStopAtFull, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel,
+  }), [convoId, folderName, localAiName, title, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, audioRuleEnabled, autoStopAtFull, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel]);
 
   useEffect(() => {
     // Skip the disk-save POST WHILE a reply is streaming (loading === true).
@@ -4236,10 +4242,13 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     // つよ 2026-10-28: auto-start is now a per-conversation choice. OFF
     // restores the pre-2026-10-27 behaviour (stock waits for a button).
     if (!autoRunStock) return;
+    // Context at 100% → the stock waits (the button still runs it). Returned
+    // BEFORE the signature is remembered, so it starts once there is room.
+    if (autoTurnsHeld(autoStopAtFull, contextElapsed)) return;
     if (autoTriedRef.current === stockSig) return;
     autoTriedRef.current = stockSig;
     void drainStock();
-  }, [stockSig, loading, stockBusy, injectTurnId, drainStock, autoRunStock]);
+  }, [stockSig, loading, stockBusy, injectTurnId, drainStock, autoRunStock, autoStopAtFull, contextElapsed]);
 
   const emptyLogWrittenRef = useRef<string | null>(null);
   const handleSend = async (
@@ -5857,14 +5866,14 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           // and below every modal (z-[100] and up), which must cover it.
           isMobile
             ? 'border-b border-border flex flex-wrap items-center px-3 pt-1 bg-secondary/30 backdrop-blur-md sticky top-0 z-30 shrink-0'
-            : 'h-14 border-b border-border flex items-center justify-between px-6 bg-secondary/30 backdrop-blur-md sticky top-0 z-30 shrink-0'
+            : 'min-h-14 py-1 border-b border-border flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-6 bg-secondary/30 backdrop-blur-md sticky top-0 z-30 shrink-0'
         }
       >
         <h2
           className={
             isMobile
               ? 'w-full min-w-0 flex items-center gap-2 font-semibold text-base py-1'
-              : 'font-semibold text-lg flex items-center gap-2'
+              : 'font-semibold text-lg flex items-center gap-2 min-w-0'
           }
         >
           {/* Mobile only: summons the conversation drawer. Lives in the header
@@ -5956,13 +5965,16 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
             </button>
           )}
         </h2>
-        <div className={isMobile ? 'w-full flex flex-col' : 'flex items-center gap-4'}>
+        {/* Desktop: gauges and icons are two groups that wrap as wholes, so a
+            narrow pane puts the icons on their own line instead of clipping
+            them (the settings button was unreachable). Wide panes look as before. */}
+        <div className={isMobile ? 'w-full flex flex-col' : 'flex flex-wrap items-center justify-end gap-x-4 gap-y-1 min-w-0 ml-auto'}>
           {/* The status bar: context gauge, elapsed, sleep cue, cost. Always
               visible — on mobile as its own row beneath the title. */}
           {/* `items-end` on mobile so the cost sits on the gauge's LAST line —
               level with the token numbers — instead of being centred against a
               two-line block and claiming a row of its own. */}
-          <div className={isMobile ? (mobileToolbarOpen ? `w-full flex flex-nowrap items-end justify-end gap-2 pb-1` : `hidden`) : `contents`}>
+          <div className={isMobile ? (mobileToolbarOpen ? `w-full flex flex-nowrap items-end justify-end gap-2 pb-1` : `hidden`) : `flex flex-wrap items-center justify-end gap-x-4 gap-y-1 min-w-0`}>
           {/* Claude plan usage — desktop: a sibling gauge LEFT of the context
               gauge, so the elapsed % that follows the context gauge is not read
               as belonging to it (つよ, 2026-11-14). On a phone it gets its own
@@ -6146,7 +6158,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
               collapsed by default — it cannot fit beside the status bar on a
               phone. On desktop the wrapper is `display:contents`, so it is
               layout-transparent and the parent gap-4 spacing is unchanged. */}
-          <div className={isMobile ? (mobileToolbarOpen ? `w-full flex flex-wrap items-center gap-1 pb-1` : `hidden`) : `contents`}>
+          <div className={isMobile ? (mobileToolbarOpen ? `w-full flex flex-wrap items-center gap-1 pb-1` : `hidden`) : `flex items-center gap-4 shrink-0`}>
           <button onClick={handleToggleAllAttachments} className={`p-1.5 transition-colors ${hasVisibleAttachments ? 'text-muted-foreground hover:text-red-400' : 'text-red-400 hover:text-muted-foreground'}`} title={hasVisibleAttachments ? t('chat.attach.hideAll') : t('chat.attach.showAll')}>
             {hasVisibleAttachments ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
@@ -8563,6 +8575,19 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                       </label>
                     ))}
                   />
+                  {/* Per-conversation, like the stock checkbox above it. */}
+                  <label className="flex items-center gap-2 cursor-pointer text-sm mt-3" title={t('behavior.autoStopAtFull.help')}>
+                    <input
+                      type="checkbox"
+                      checked={autoStopAtFull}
+                      onChange={(e) => setAutoStopAtFull(e.target.checked)}
+                      className="accent-indigo-500"
+                    />
+                    <span className="text-foreground">{t('behavior.autoStopAtFull')}</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mt-1 ml-6 leading-relaxed">
+                    {t('behavior.autoStopAtFull.help')}
+                  </p>
                 </div>
                 {/* ── The anchor (錨). The checkbox is the only gate: OFF means
                     no button on any bubble and no report shown. Its vessel is

@@ -1615,6 +1615,9 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   // ── System Instructions ▸ Behavior ───────────────────────────────────────
   'behavior.audio.enable': 'Enable Audio Session',
   'behavior.audio.ruleEnabled': 'Show the hidden rule to the being',
+  'behavior.autoStopAtFull': 'Hold automatic turns once the context reaches 100%',
+  'behavior.autoStopAtFull.help': 'While context elapsed is at 100% or more, turns nobody asked for (timed wakes, self-booked wakes, letters, a stock starting by itself) do not start. Stocked messages stay where they are, and a wake is recorded in the history as not fired. A message sent directly, "Run now" and ζ work as before.',
+  'wake.event.context-full': 'not woken: context is at 100%',
   'behavior.audio.ruleEnabledHelp': 'When off, the being is sent nothing for the audio session — neither the notice nor the hidden rule. Reading aloud and voice input keep working.',
   'behavior.audio.ruleLabel': 'Audio Session Hidden Rule',
   'behavior.audio.ruleHelp':
@@ -3582,6 +3585,9 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   // ── システム指示 ▸ ふるまい ──────────────────────────────────────────
   'behavior.audio.enable': 'オーディオセッションを有効にする',
   'behavior.audio.ruleEnabled': '隠しルールを存在に見せる',
+  'behavior.autoStopAtFull': 'コンテキストが100%に達したら、自動ターンを止める',
+  'behavior.autoStopAtFull.help': '文脈経過が100%以上の間、誰も頼んでいないターン（定刻・自分で予約・手紙・ストックの自動起動）は始まりません。ストックされたメッセージはそのまま残り、起床は起きなかったものとして履歴に残ります。直接送ったメッセージ、「今すぐ動かす」、ζ は今までどおり動きます。',
+  'wake.event.context-full': 'コンテキストが100%のため起こさなかった',
   'behavior.audio.ruleEnabledHelp': 'オフにすると、オーディオセッションの説明も隠しルールも、存在には何も送りません。読み上げと声の入力はそのまま動きます。',
   'behavior.audio.ruleLabel': 'オーディオセッションの隠しルール',
   'behavior.audio.ruleHelp':
