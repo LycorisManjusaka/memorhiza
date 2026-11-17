@@ -102,6 +102,10 @@ export default function Sidebar({
   // Desktop drag-to-resize (lib/panelWidth.ts). null = never dragged = the
   // original w-64 sm:w-72 classes, untouched.
   const [dragWidth, setDragWidth] = useState<number | null>(null);
+  // While the button is still held past the collapse line, the column shows as
+  // folded (width 0, only the grab strip left) so the person sees what letting
+  // go will do. Moving back right undoes it; only releasing there commits.
+  const [previewCollapsed, setPreviewCollapsed] = useState(false);
   useEffect(() => {
     try { setDragWidth(parseStoredWidth(localStorage.getItem(SIDEBAR_WIDTH_KEY), SIDEBAR_MIN, SIDEBAR_MAX)); } catch { /* storage blocked */ }
   }, []);
@@ -834,17 +838,22 @@ export default function Sidebar({
           ? `fixed inset-y-0 left-0 z-50 w-[86%] max-w-[340px] flex flex-col bg-background border-r border-border shadow-2xl transition-transform duration-200 will-change-transform ${
               sidebarOpen ? 'translate-x-0' : '-translate-x-full'
             }`
-          : `${dragWidth == null ? 'w-64 sm:w-72' : 'shrink-0'} relative h-full flex flex-col bg-secondary/30 backdrop-blur-xl border-r border-border shadow-2xl z-10 transition-colors${sidebarCollapsed ? ' hidden' : ''}`
+          : `${dragWidth == null && !previewCollapsed ? 'w-64 sm:w-72' : 'shrink-0'} relative h-full flex flex-col bg-secondary/30 backdrop-blur-xl border-r border-border shadow-2xl z-10 transition-colors${sidebarCollapsed ? ' hidden' : ''}${previewCollapsed ? ' [&>*:not([role=separator])]:hidden' : ''}`
       }
-      style={!isMobile && dragWidth != null ? { width: dragWidth } : undefined}
+      style={!isMobile && previewCollapsed ? { width: 0 } : !isMobile && dragWidth != null ? { width: dragWidth } : undefined}
     >
       {!isMobile && (
         <ResizeHandle
           edge="right"
           title={t('layout.resizeSidebar')}
-          onDrag={(raw) => setDragWidth(sidebarDragResult(raw).width)}
+          onDrag={(raw) => {
+            const r = sidebarDragResult(raw);
+            setPreviewCollapsed(r.collapse);
+            setDragWidth(r.width);
+          }}
           onEnd={(raw) => {
             const r = sidebarDragResult(raw);
+            setPreviewCollapsed(false);
             if (r.collapse) {
               // Keep the width it had before the drag, so reopening restores it.
               try { setDragWidth(parseStoredWidth(localStorage.getItem(SIDEBAR_WIDTH_KEY), SIDEBAR_MIN, SIDEBAR_MAX)); } catch { setDragWidth(null); }
