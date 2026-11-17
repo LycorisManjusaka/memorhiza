@@ -5669,7 +5669,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // Mobile only: the icon row is collapsed by default (it does not fit next to
   // the status bar on a phone) and this opens it as a second header row.
   const [mobileToolbarOpen, setMobileToolbarOpen] = useState(false);
-  const { isMobile, setSidebarOpen, cameraSlot } = useDevice();
+  const { isMobile, setSidebarOpen, cameraSlot, sidebarCollapsed, setSidebarCollapsed } = useDevice();
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isConvertingPngs, setIsConvertingPngs] = useState(false);
   const [sysPromptUpdaterOpen, setSysPromptUpdaterOpen] = useState(false);
@@ -5890,9 +5890,9 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
               being — ChatArea itself is then absent, and on a phone it took
               the only opener with it. NexusApp now renders one for every pane
               that is not a conversation; see lib/paneChrome.ts. */}
-          {isMobile && (
+          {(isMobile || sidebarCollapsed) && (
             <button
-              onClick={() => setSidebarOpen(true)}
+              onClick={() => (isMobile ? setSidebarOpen(true) : setSidebarCollapsed(false))}
               title={t('layout.openSidebar')}
               aria-label={t('layout.openSidebar')}
               className="shrink-0 -ml-1.5 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"

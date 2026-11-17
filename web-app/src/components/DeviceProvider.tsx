@@ -30,6 +30,7 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { classifyFromNavigator, type DeviceKind } from '@/lib/deviceClass';
+import { SIDEBAR_COLLAPSED_KEY } from '@/lib/panelWidth';
 
 interface DeviceContextValue {
   /** The honest three-value measurement. */
@@ -51,6 +52,15 @@ interface DeviceContextValue {
    */
   sidebarOpen: boolean;
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  /**
+   * Desktop only: the sidebar column was dragged shut (see lib/panelWidth.ts).
+   * Shared for the same reason as sidebarOpen: the control that reopens it
+   * lives in ChatArea's header / NexusApp's pane header, not in the sidebar.
+   * Stored per browser; false until someone collapses it, so the default
+   * layout is unchanged.
+   */
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (v: boolean) => void;
 }
 
 const DeviceContext = createContext<DeviceContextValue>({
@@ -60,6 +70,8 @@ const DeviceContext = createContext<DeviceContextValue>({
   setCameraSlot: () => {},
   sidebarOpen: false,
   setSidebarOpen: () => {},
+  sidebarCollapsed: false,
+  setSidebarCollapsed: () => {},
 });
 
 export function useDevice(): DeviceContextValue {
@@ -78,6 +90,19 @@ export function DeviceProvider({
   // Closed by default: on a phone the conversation is the point of the app,
   // and a drawer that starts open would hide it behind a list every time.
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Starts false on the server AND the client's first render (no hydration
+  // mismatch); the stored value is applied right after mount.
+  const [sidebarCollapsed, setCollapsedState] = useState(false);
+  useEffect(() => {
+    try { if (localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1') setCollapsedState(true); } catch { /* storage blocked */ }
+  }, []);
+  const setSidebarCollapsed = React.useCallback((v: boolean) => {
+    setCollapsedState(v);
+    try {
+      if (v) localStorage.setItem(SIDEBAR_COLLAPSED_KEY, '1');
+      else localStorage.removeItem(SIDEBAR_COLLAPSED_KEY);
+    } catch { /* storage blocked */ }
+  }, []);
 
   useEffect(() => {
     const c = classifyFromNavigator();
@@ -91,8 +116,12 @@ export function DeviceProvider({
   }, []);
 
   const value = useMemo<DeviceContextValue>(
-    () => ({ kind, isMobile: kind !== 'desktop', cameraSlot, setCameraSlot, sidebarOpen, setSidebarOpen }),
-    [kind, cameraSlot, sidebarOpen],
+    () => ({
+      kind, isMobile: kind !== 'desktop', cameraSlot, setCameraSlot, sidebarOpen, setSidebarOpen,
+      // A phone never has a collapsed column: its sidebar is a drawer.
+      sidebarCollapsed: kind === 'desktop' && sidebarCollapsed, setSidebarCollapsed,
+    }),
+    [kind, cameraSlot, sidebarOpen, sidebarCollapsed, setSidebarCollapsed],
   );
 
   return <DeviceContext.Provider value={value}>{children}</DeviceContext.Provider>;

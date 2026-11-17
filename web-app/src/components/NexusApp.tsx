@@ -393,7 +393,7 @@ export default function NexusApp({ deepLink = null }: { deepLink?: DeepLink | nu
   // Read here, not threaded down: the drawer's open/close state lives in the
   // device context precisely because the control that opens it and the panel it
   // opens are siblings. This component is now a third opener site.
-  const { isMobile, setSidebarOpen } = useDevice();
+  const { isMobile, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed } = useDevice();
 
   // ── Keep the address bar on the visible conversation ─────────────────────
   // history.replaceState, deliberately, for two reasons:
@@ -959,10 +959,10 @@ export default function NexusApp({ deepLink = null }: { deepLink?: DeepLink | nu
             non-conversation pane renders, this is how the being list is
             reached. Same icon in the same corner as ChatArea's, so it is one
             control that moved, not a second one to learn. */}
-        {needsSidebarOpener({ isMobile, chatOpen }) && (
+        {needsSidebarOpener({ isMobile, chatOpen, sidebarCollapsed }) && (
           <div className="shrink-0 px-3 py-2.5 flex items-center border-b border-border">
             <button
-              onClick={() => setSidebarOpen(true)}
+              onClick={() => (isMobile ? setSidebarOpen(true) : setSidebarCollapsed(false))}
               title={translate('layout.openSidebar', globalSettings.language)}
               aria-label={translate('layout.openSidebar', globalSettings.language)}
               className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"

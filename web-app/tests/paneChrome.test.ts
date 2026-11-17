@@ -41,3 +41,11 @@ test('does not depend on how many beings exist', () => {
   assert.deepEqual(Object.keys(args).sort(), ['chatOpen', 'isMobile']);
   assert.equal(needsSidebarOpener(args), true);
 });
+
+test('desktop with the sidebar dragged shut needs one when no conversation is open', () => {
+  // Collapsing the column (lib/panelWidth.ts) removes the list from the
+  // screen; without this the welcome pane would have no way back to it.
+  assert.equal(needsSidebarOpener({ isMobile: false, chatOpen: false, sidebarCollapsed: true }), true);
+  // ChatArea carries its own opener in that state.
+  assert.equal(needsSidebarOpener({ isMobile: false, chatOpen: true, sidebarCollapsed: true }), false);
+});

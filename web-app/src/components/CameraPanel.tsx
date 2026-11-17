@@ -22,6 +22,8 @@
 // the panel from re-triggering the same transition on every ChatArea render.
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import ResizeHandle from './ResizeHandle';
+import { parseStoredWidth, clampCameraWidth, CAMERA_MIN, CAMERA_MAX, CAMERA_WIDTH_KEY } from '@/lib/panelWidth';
 import { cameraFileKind, pickResolvedState, type CameraManifest, type CameraSignal } from '@/lib/cameraTypes';
 import { useT } from '@/lib/i18n';
 
@@ -51,6 +53,12 @@ const EMPTY_MANIFEST: CameraManifest = { states: {}, transitions: {} };
 
 export default function CameraPanel({ folderName, enabled, signal, variant = 'column' }: CameraPanelProps) {
   const t = useT();
+  // Desktop drag-to-resize (lib/panelWidth.ts). null = never dragged = the
+  // original w-64 sm:w-72 column. Hooks above the early return below.
+  const [dragWidth, setDragWidth] = useState<number | null>(null);
+  useEffect(() => {
+    try { setDragWidth(parseStoredWidth(localStorage.getItem(CAMERA_WIDTH_KEY), CAMERA_MIN, CAMERA_MAX)); } catch { /* storage blocked */ }
+  }, []);
   const [manifest, setManifest] = useState<CameraManifest | null>(null);
   const [currentFile, setCurrentFile] = useState<string | null>(null);
   const [loopCurrent, setLoopCurrent] = useState(false);
@@ -232,7 +240,7 @@ export default function CameraPanel({ folderName, enabled, signal, variant = 'co
   const inline = variant === 'inline';
   const shellClass = inline
     ? 'w-full flex flex-col items-center justify-center bg-secondary/30 border-t border-border overflow-hidden'
-    : 'w-64 sm:w-72 h-full flex flex-col items-center justify-center bg-secondary/30 backdrop-blur-xl border-l border-border shadow-2xl z-10 shrink-0 overflow-hidden';
+    : `${dragWidth == null ? 'w-64 sm:w-72' : ''} relative h-full flex flex-col items-center justify-center bg-secondary/30 backdrop-blur-xl border-l border-border shadow-2xl z-10 shrink-0 overflow-hidden`;
   // Inline: the width is the panel's, the height is whatever the asset needs
   // (capped by the slot, so a tall portrait cannot swallow the list above it).
   const mediaClass = inline
@@ -240,7 +248,23 @@ export default function CameraPanel({ folderName, enabled, signal, variant = 'co
     : 'max-w-full max-h-full object-contain';
 
   return (
-    <aside className={shellClass}>
+    <aside className={shellClass} style={!inline && dragWidth != null ? { width: dragWidth } : undefined}>
+      {!inline && (
+        <ResizeHandle
+          edge="left"
+          title={t('layout.resizeCamera')}
+          onDrag={(raw) => setDragWidth(clampCameraWidth(raw))}
+          onEnd={(raw) => {
+            const w = clampCameraWidth(raw);
+            setDragWidth(w);
+            try { localStorage.setItem(CAMERA_WIDTH_KEY, String(w)); } catch { /* storage blocked */ }
+          }}
+          onReset={() => {
+            setDragWidth(null);
+            try { localStorage.removeItem(CAMERA_WIDTH_KEY); } catch { /* storage blocked */ }
+          }}
+        />
+      )}
       {src ? (
         kind === 'video' ? (
           <video

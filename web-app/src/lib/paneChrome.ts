@@ -24,14 +24,18 @@
  * remembering to, which is the whole reason this is one guard outside the
  * branch rather than a button copied into each arm.
  *
- * Desktop is never true: there the sidebar is a column that is always on
- * screen, so a second opener would be a control that does nothing visible.
+ * Desktop is false while the sidebar column is on screen (a second opener
+ * would do nothing visible). It becomes true once the column has been dragged
+ * shut (`sidebarCollapsed`, lib/panelWidth.ts) — then the same rule applies
+ * for the same reason: something must bring the list back.
  */
 export function needsSidebarOpener(args: {
   /** Phone or tablet — the layout decision, not the three-value measurement. */
   isMobile: boolean;
   /** Is ChatArea rendered? It carries its own opener when it is. */
   chatOpen: boolean;
+  /** Desktop: the sidebar column was dragged shut. */
+  sidebarCollapsed?: boolean;
 }): boolean {
-  return args.isMobile && !args.chatOpen;
+  return (args.isMobile || !!args.sidebarCollapsed) && !args.chatOpen;
 }

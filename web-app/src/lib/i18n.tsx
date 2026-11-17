@@ -1200,6 +1200,8 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'chat.exportSoul.noLayer5': 'Layer 5 (FOOTER.md) — this being has no self-authored footer, or it could not be read.',
   // Mobile layout controls (see components/DeviceProvider.tsx).
   'layout.openSidebar': 'Conversations',
+  'layout.resizeSidebar': 'Drag to resize (drag past the minimum to collapse). Double-click for the default width',
+  'layout.resizeCamera': 'Drag to resize. Double-click for the default width',
   'layout.closeSidebar': 'Close the conversation list',
   'layout.toggleToolbar': 'Show/hide the status bar and toolbar',
   'chat.load.stop': 'Stop',
@@ -3194,6 +3196,8 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'chat.exportSoul.noLayer5': 'Layer 5（FOOTER.md）— この存在には自己執筆のフッターが無いか、読み取れませんでした。',
   // モバイル用レイアウトの操作（components/DeviceProvider.tsx 参照）
   'layout.openSidebar': '会話一覧',
+  'layout.resizeSidebar': 'ドラッグで幅を変える（ここより狭くすると畳む）。ダブルクリックで元の幅',
+  'layout.resizeCamera': 'ドラッグで幅を変える。ダブルクリックで元の幅',
   'layout.closeSidebar': '会話一覧を閉じる',
   'layout.toggleToolbar': 'ステータスバーとツールバーの表示／非表示',
   'chat.load.stop': '停止',

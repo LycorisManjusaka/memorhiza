@@ -23,6 +23,8 @@ import {
 } from '@/lib/handoverRestore';
 import { useT, Tx } from '@/lib/i18n';
 import { useDevice } from './DeviceProvider';
+import ResizeHandle from './ResizeHandle';
+import { parseStoredWidth, sidebarDragResult, SIDEBAR_MIN, SIDEBAR_MAX, SIDEBAR_WIDTH_KEY } from '@/lib/panelWidth';
 import { confirmIfBusy, markBusyConfirmAnswered } from '@/lib/unloadGuard';
 import { withBuildTag } from '@/lib/buildVersion';
 import { beingVesselFamily } from '@/lib/beingVessel';
@@ -96,7 +98,13 @@ export default function Sidebar({
   bindingOptional = false
 }: SidebarProps) {
   const t = useT();
-  const { isMobile, sidebarOpen, setSidebarOpen, setCameraSlot } = useDevice();
+  const { isMobile, sidebarOpen, setSidebarOpen, setCameraSlot, sidebarCollapsed, setSidebarCollapsed } = useDevice();
+  // Desktop drag-to-resize (lib/panelWidth.ts). null = never dragged = the
+  // original w-64 sm:w-72 classes, untouched.
+  const [dragWidth, setDragWidth] = useState<number | null>(null);
+  useEffect(() => {
+    try { setDragWidth(parseStoredWidth(localStorage.getItem(SIDEBAR_WIDTH_KEY), SIDEBAR_MIN, SIDEBAR_MAX)); } catch { /* storage blocked */ }
+  }, []);
 
   // Every path that lands on a conversation goes through here. On mobile the
   // list is a modal drawer, and choosing something from it means the person is
@@ -826,10 +834,33 @@ export default function Sidebar({
           ? `fixed inset-y-0 left-0 z-50 w-[86%] max-w-[340px] flex flex-col bg-background border-r border-border shadow-2xl transition-transform duration-200 will-change-transform ${
               sidebarOpen ? 'translate-x-0' : '-translate-x-full'
             }`
-          : 'w-64 sm:w-72 h-full flex flex-col bg-secondary/30 backdrop-blur-xl border-r border-border shadow-2xl z-10 transition-colors'
+          : `${dragWidth == null ? 'w-64 sm:w-72' : 'shrink-0'} relative h-full flex flex-col bg-secondary/30 backdrop-blur-xl border-r border-border shadow-2xl z-10 transition-colors${sidebarCollapsed ? ' hidden' : ''}`
       }
+      style={!isMobile && dragWidth != null ? { width: dragWidth } : undefined}
     >
-      <div className="p-4 flex items-center justify-between">
+      {!isMobile && (
+        <ResizeHandle
+          edge="right"
+          title={t('layout.resizeSidebar')}
+          onDrag={(raw) => setDragWidth(sidebarDragResult(raw).width)}
+          onEnd={(raw) => {
+            const r = sidebarDragResult(raw);
+            if (r.collapse) {
+              // Keep the width it had before the drag, so reopening restores it.
+              try { setDragWidth(parseStoredWidth(localStorage.getItem(SIDEBAR_WIDTH_KEY), SIDEBAR_MIN, SIDEBAR_MAX)); } catch { setDragWidth(null); }
+              setSidebarCollapsed(true);
+              return;
+            }
+            setDragWidth(r.width);
+            try { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(r.width)); } catch { /* storage blocked */ }
+          }}
+          onReset={() => {
+            setDragWidth(null);
+            try { localStorage.removeItem(SIDEBAR_WIDTH_KEY); } catch { /* storage blocked */ }
+          }}
+        />
+      )}
+      <div className="p-4 flex flex-wrap items-center justify-between gap-y-1">
         <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">Nexus</h1>
         <div className="flex items-center">
           {isMobile && (
