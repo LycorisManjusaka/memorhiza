@@ -64,8 +64,37 @@ export interface SpeechDeps {
   play: (wav: Buffer) => PlayHandle;
 }
 
+/**
+ * Time limits (トカゲくん, 2026-11-17). Without them one engine that never
+ * answered — or a player that never said `done` — held the queue's only slot
+ * for ever; the runner awaits the voice while holding the turn lease, so the
+ * conversation sat on "thinking" with nothing running, and Stop could not get
+ * the queue out because the await it was stuck in was not one Stop touched.
+ */
+export const SYNTH_TIMEOUT_MS = 90_000; // an engine may have to start first
+export const PLAY_SLACK_MS = 15_000;    // on top of the WAV's own length
+export const PLAY_FALLBACK_MS = 180_000; // when the header gives no length
+
+/** Seconds of audio in a canonical WAV, or null when the header is not one. */
+export function wavSeconds(wav: Buffer): number | null {
+  if (wav.length < 44 || wav.toString('ascii', 0, 4) !== 'RIFF' || wav.toString('ascii', 8, 12) !== 'WAVE') return null;
+  const byteRate = wav.readUInt32LE(28);
+  if (!byteRate) return null;
+  return Math.max(0, wav.length - 44) / byteRate;
+}
+
+function timeout<T>(ms: number, value: T): { p: Promise<T>; clear: () => void } {
+  let id: ReturnType<typeof setTimeout> | undefined;
+  // unref: a limit on a phrase must not keep the process alive by itself.
+  const p = new Promise<T>((r) => { id = setTimeout(() => r(value), ms); (id as { unref?: () => void }).unref?.(); });
+  return { p, clear: () => { if (id) clearTimeout(id); } };
+}
+
 interface Job extends SpeakRequest {
   cancelled: boolean;
+  /** Settles the moment the job is stopped — every await in pump races it. */
+  cancelSignal: Promise<void>;
+  fireCancel: () => void;
   index: number;
   text: string;
   failed: number;
@@ -124,8 +153,14 @@ export class SpeechQueue {
    */
   speak(req: SpeakRequest, onPhrase?: (index: number, total: number) => void): Promise<'done' | 'stopped'> {
     if (!req.sentences.length) return Promise.resolve('done');
-    return new Promise((resolve) => {
-      this.jobs.push({ ...req, cancelled: false, index: -1, text: '', failed: 0, lastError: '', resolve, onPhrase });
+    return new Promise((outer) => {
+      // Once only: Stop answers the caller at once, and pump answers again
+      // when it gets out of whatever it was awaiting.
+      let answered = false;
+      const resolve = (how: 'done' | 'stopped') => { if (!answered) { answered = true; outer(how); } };
+      let fireCancel = () => {};
+      const cancelSignal = new Promise<void>((r) => { fireCancel = r; });
+      this.jobs.push({ ...req, cancelled: false, cancelSignal, fireCancel, index: -1, text: '', failed: 0, lastError: '', resolve, onPhrase });
       this.emit();
       void this.pump();
     });
@@ -139,12 +174,19 @@ export class SpeechQueue {
       (!!filter.convoId && j.convoId === filter.convoId);
     const dropped = this.jobs.filter(hit);
     this.jobs = this.jobs.filter((j) => !hit(j));
-    for (const j of dropped) j.resolve('stopped');
+    for (const j of dropped) { j.cancelled = true; j.fireCancel(); j.resolve('stopped'); }
     if (this.current && hit(this.current)) {
-      this.current.cancelled = true;
+      const j = this.current;
+      j.cancelled = true;
       this.paused = false;
       this.playing?.kill();
       this.wake?.();
+      // Answer the runner NOW, not when pump gets out — it may be stuck in an
+      // engine that never answers, and the runner holds the turn lease meanwhile.
+      j.fireCancel();
+      j.resolve('stopped');
+      // And stop PAINTING it now: a stuck engine must not leave a phrase lit.
+      this.current = null;
     }
     this.emit();
   }
@@ -177,17 +219,23 @@ export class SpeechQueue {
         this.current = job;
         this.paused = false;
         this.emit();
-        const synthAt = (i: number): Promise<Buffer | null> =>
-          this.deps.synth(job.sentences[i], job.folderName || '').catch((e) => {
-            job.failed++;
-            job.lastError = String((e as Error)?.message || e).slice(0, 300);
-            console.warn(`[tts/server] phrase ${i + 1}/${job.sentences.length} failed: ${job.lastError}`);
-            return null;
-          });
+        const fail = (i: number, msg: string): null => {
+          job.failed++;
+          job.lastError = msg.slice(0, 300);
+          console.warn(`[tts/server] phrase ${i + 1}/${job.sentences.length} failed: ${job.lastError}`);
+          return null;
+        };
+        const synthAt = (i: number): Promise<Buffer | null> => {
+          const lim = timeout(SYNTH_TIMEOUT_MS, 'timeout' as const);
+          return Promise.race([
+            this.deps.synth(job.sentences[i], job.folderName || '').catch((e) => fail(i, String((e as Error)?.message || e))),
+            lim.p.then(() => fail(i, `the engine did not answer in ${SYNTH_TIMEOUT_MS / 1000}s`)),
+          ]).finally(lim.clear);
+        };
         // One phrase is synthesised ahead while the previous one sounds.
         let next: Promise<Buffer | null> = synthAt(0);
         for (let i = 0; i < job.sentences.length && !job.cancelled; i++) {
-          const wav = await next;
+          const wav = await Promise.race([next, job.cancelSignal.then(() => null)]);
           if (i + 1 < job.sentences.length && !job.cancelled) next = synthAt(i + 1);
           if (job.cancelled) break;
           // 44 bytes is a WAV header with no samples.
@@ -201,7 +249,16 @@ export class SpeechQueue {
             if (job.cancelled) break;
             const h = this.deps.play(wav);
             this.playing = h;
-            const how = await h.done;
+            const secs = wavSeconds(wav);
+            const lim = timeout(secs == null ? PLAY_FALLBACK_MS : secs * 1000 + PLAY_SLACK_MS, 'stuck' as const);
+            const raced = await Promise.race([h.done, lim.p, job.cancelSignal.then(() => 'killed' as const)]);
+            lim.clear();
+            let how: PlayEnd;
+            if (raced === 'stuck') {
+              // The player never reported the end of a phrase whose length we know.
+              h.kill();
+              how = 'failed';
+            } else how = raced;
             this.playing = null;
             if (how === 'failed') { job.failed++; job.lastError = 'the player could not play this phrase'; }
             // Killed by pause: wait, then replay this phrase. Anything else moves on.
@@ -209,7 +266,7 @@ export class SpeechQueue {
             break;
           }
         }
-        this.current = null;
+        if (this.current === job) this.current = null;
         this.paused = false;
         this.emit();
         job.resolve(job.cancelled ? 'stopped' : 'done');

@@ -1515,7 +1515,12 @@ export async function runTurnForQueue(
     // only after the last phrase — the other being must not start answering a
     // sentence that is still being spoken (つよ, 2026-11-17). Not on a handoff
     // hop: the vessel taking over has not said its part yet.
-    if (!pass.handoff && deps.speakReply && (log as Record<string, unknown>).vrchatMode === true) {
+    // ⚠ NOT after a Stop (トカゲくん, 2026-11-17): a stopped turn still saves its
+    // partial reply, and reading that partial aloud AFTER the person pressed
+    // Stop is the opposite of what they asked for — the Stop listener had
+    // already silenced an empty queue, so nothing could stop the voice that
+    // started afterwards.
+    if (!pass.handoff && deps.speakReply && !deps.wasStopped?.() && (log as Record<string, unknown>).vrchatMode === true) {
       const spoken = String(finalAssistant.content ?? '');
       if (spoken.trim()) {
         const say = (detail: string | null) => deps.onRawText?.(`data: ${JSON.stringify({

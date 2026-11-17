@@ -83,6 +83,7 @@ import type { AutoTriggers } from '@/lib/autoTriggers';
 import { ANCHOR_DEFAULTS, parseAnchorSettings } from '@/lib/anchor';
 import type { AnchorSettings, AnchorReport } from '@/lib/anchor';
 import { showStockPanel } from '@/lib/stockPanel';
+import { serverSpeechAction } from '@/lib/serverSpeechClient';
 import type { StockNote } from '@/lib/stockPanel';
 import CameraPanel from './CameraPanel';
 import LiveSession from './LiveSession';
@@ -5296,6 +5297,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     }
     setMessages(prev => prev.filter(m => m.id !== id));
     if (id === firstOriginalMessageId) setFirstOriginalMessageId(null);
+    // A message the SERVER is reading must stop sounding when it is deleted —
+    // the tab has no player to silence in server mode, so ask. Harmless in tab
+    // mode (the server has nothing for that id). Fire-and-forget on purpose.
+    void serverSpeechAction({ action: 'stop', messageId: id });
     // Deletion diverges NEXUS history from Anthropic's session record →
     // invalidate the OAuth session for the next generation.
     setAgentSession(null);

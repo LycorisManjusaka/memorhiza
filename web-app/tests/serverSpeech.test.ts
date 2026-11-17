@@ -182,3 +182,22 @@ test('runner: without an audio session nothing is read', async () => {
   await runTurnForQueue('謡', 'c1', [item('hi')], r.deps);
   assert.deepEqual(r.events, ['save', 'deliver']);
 });
+
+test('queue: Stop gets out of an engine that never answers, and the next message still plays (2026-11-17)', async () => {
+  const p = fakePlayer();
+  const q = new SpeechQueue({
+    // 'hang' never answers — the shape that held the turn lease for ever.
+    synth: (s) => s.text === 'hang' ? new Promise<Buffer | null>(() => {}) : Promise.resolve(wavOf(s.text)),
+    play: p.play,
+  });
+  const a = q.speak({ messageId: 'a', convoId: 'c', sentences: [seg('hang')] });
+  await tick();
+  q.stop({ convoId: 'c' });
+  assert.equal(await a, 'stopped', 'the runner is answered at once');
+  assert.equal(q.snapshot().current, null, 'nothing is left painted as sounding');
+  const b = q.speak({ messageId: 'b', sentences: [seg('b1')] });
+  await tick();
+  assert.equal(p.playing(), 'b1', 'the queue is not wedged');
+  await p.finish();
+  assert.equal(await b, 'done');
+});

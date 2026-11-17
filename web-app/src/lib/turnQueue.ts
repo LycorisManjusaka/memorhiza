@@ -42,7 +42,9 @@
 // the exact data loss turnRegistry exists to warn about. So the lease carries
 // who holds it (pid, holder label, heartbeat) and `readLease` reports it;
 // breaking requires `breakLease` with the token read from disk. Nothing here
-// ever frees a lease on a guess.
+// ever frees a lease on a guess — the one automatic case (`claim`, since
+// 2026-11-17) is a lease whose pid no longer exists on this machine, which is
+// a fact, not a guess: a dead process runs no turn.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import fs from 'fs/promises';
@@ -500,6 +502,21 @@ export async function pendingWithErrors(
   return { items, unreadable, elsewhere };
 }
 
+/**
+ * True only when `pid` names no running process on this machine. EPERM means
+ * it exists under another user — alive. Anything unclear is "not gone".
+ */
+export function holderIsGone(pid: unknown): boolean {
+  if (typeof pid !== 'number' || !Number.isInteger(pid) || pid <= 0) return false;
+  if (pid === process.pid) return false;
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (e) {
+    return errCode(e) === 'ESRCH';
+  }
+}
+
 /** The lease on disk, or null. Never throws on a missing/corrupt lease. */
 export async function readLease(being: string, convoId: string, opts?: Opts): Promise<Lease | null> {
   try {
@@ -545,13 +562,24 @@ export async function claim(
   };
 
   let fh;
-  try {
-    fh = await fs.open(leasePath, 'wx');
-  } catch (e) {
-    if (errCode(e) === 'EEXIST') {
-      return { ok: false, reason: 'busy', lease: await readLease(being, convoId, opts) };
+  for (let attempt = 0; ; attempt++) {
+    try {
+      fh = await fs.open(leasePath, 'wx');
+      break;
+    } catch (e) {
+      if (errCode(e) !== 'EEXIST') throw e;
+      const held = await readLease(being, convoId, opts);
+      // The ONE case this module frees a lease by itself: its holder process is
+      // gone from this machine. Not a guess — a dead pid can run no turn, and
+      // NEXUS restarted mid-turn left exactly this behind, after which every
+      // message only stocked and nothing ever ran again (トカゲくん, 2026-11-17).
+      // A live pid (even a reused one) is left alone, as before.
+      if (attempt === 0 && held && holderIsGone(held.pid)) {
+        await breakLease(being, convoId, held.token, opts);
+        continue;
+      }
+      return { ok: false, reason: 'busy', lease: held };
     }
-    throw e;
   }
   try {
     await fh.writeFile(JSON.stringify(lease));
