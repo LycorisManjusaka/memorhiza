@@ -10,6 +10,7 @@ import { readWakeState, latestActiveConversation, clearBookings } from '@/lib/wa
 import { autoTriggerEnabled, setAutoTrigger } from '@/lib/autoTriggers';
 import { pending, queuedConversations, removePendingItem } from '@/lib/turnQueue';
 import { logContextElapsedPercent as elapsedOf } from '@/lib/autoHold';
+import { logCapUnlimited } from '@/lib/handoverRestore';
 import {
   canWakeByItself, overviewRow, sortOverview, stoppedWakeSettings,
   type WakeOverviewFacts, type WakeOverviewRow,
@@ -47,7 +48,8 @@ export async function wakeOverview(now = Date.now()): Promise<WakeOverviewRow[]>
       model,
       family,
       oauth: log?.claudeAuthMode === 'oauth',
-      elapsedPct: log ? elapsedOf(log, family, f.settings?.maxConversationLog) : null,
+      // A 0 cap has no ceiling, so there is no % to show.
+      elapsedPct: log && !logCapUnlimited(f.settings?.maxConversationLog) ? elapsedOf(log, family, f.settings?.maxConversationLog) : null,
     };
     if (canWakeByItself(facts)) rows.push(overviewRow(facts, now));
   }

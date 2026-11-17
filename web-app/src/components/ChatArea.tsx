@@ -60,6 +60,7 @@ import {
   DEFAULT_MAX_CONVERSATION_LOG,
   logCapUsage,
   contextElapsedPercent,
+  logCapUnlimited,
   messageTextTokens,
   messageIdentityKey,
   type RestorePlanReply,
@@ -5924,7 +5925,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
               it — that is the one signal that changes on its own and decides
               when to sleep. A gauge reports a QUANTITY, never a condition: the
               colour here marks how full the log is, nothing about capability. */}
-          {isMobile && (
+          {isMobile && !logCapUnlimited(conversationLogCap) && (
             <span
               className={`shrink-0 ml-auto text-xs font-semibold tabular-nums ${
                 consolidationDue ? 'text-red-500' : contextElapsed >= 70 ? 'text-amber-500' : 'text-muted-foreground'
@@ -6085,7 +6086,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
               title row, where it stays visible with the status bar collapsed —
               rendering it here too printed the same number twice and cost a
               whole wrapped line of a 414px-wide header. One reading, one place. */}
-          {!isMobile && (
+          {!isMobile && !logCapUnlimited(conversationLogCap) && (
           <span
             // Same rule as the gauge's red ring: mid-turn the reading is SUPPOSED
             // to be over, so the alarm colour waits for the turn to resolve. Only

@@ -107,7 +107,17 @@ export function logCapUsage(b: { copied: number; original: number }): number {
  * outside the cap, so a longer soul must not make a session read as fuller.
  * Can exceed 100 — original messages are never deleted.
  */
+/** A cap of 0 (or less) means "carry no history", not "a log of 0 tokens is
+ *  full": there is no ceiling to measure against, so the elapsed reading does
+ *  not exist. Callers hide the % and nothing is held at "100%" (つよ,
+ *  2026-11-17 — a 0-cap conversation read 36800% and would have stopped its
+ *  scheduled wake). */
+export function logCapUnlimited(cap: unknown): boolean {
+  return typeof cap === 'number' && Number.isFinite(cap) && cap <= 0;
+}
+
 export function contextElapsedPercent(b: { original: number }, cap: number): number {
+  if (logCapUnlimited(cap)) return 0;
   return Math.round(((b?.original || 0) / Math.max(1, cap)) * 100);
 }
 

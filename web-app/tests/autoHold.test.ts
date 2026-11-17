@@ -64,3 +64,13 @@ test('only auto and wake passes are unattended — a plain tick has a hand behin
   assert.equal(passIsUnattended({ auto: true, wake: false }), true);
   assert.equal(passIsUnattended({ auto: false, wake: true }), true);
 });
+
+test('a cap of 0 has no ceiling: no %, and nothing is held (つよ, 2026-11-17)', () => {
+  // The Desktop -> GDrive conversation read 36800% on a 0 cap and would have
+  // stopped its 06:00 wake.
+  assert.equal(logContextElapsedPercent(fullLog(), 'Claude', 0), 0);
+  assert.equal(autoTurnsHeldForLog(fullLog(), { maxConversationLog: 0 }), false);
+  // A small but real cap still fills and still holds.
+  assert.ok(logContextElapsedPercent(fullLog(), 'Claude', 100) >= 100);
+  assert.equal(autoTurnsHeldForLog(fullLog(), { maxConversationLog: 100 }), true);
+});
