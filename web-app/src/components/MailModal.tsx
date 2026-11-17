@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   X, Mail, Loader2, Trash2, Save, RefreshCw, PenLine, Send,
   MailOpen, Archive, AlertTriangle, Check, Reply, FolderOpen, Paperclip,
+  PanelLeft, ChevronLeft, Download,
 } from 'lucide-react';
 import EditableCombo from './EditableCombo';
 import { useT } from '@/lib/i18n';
@@ -88,6 +89,20 @@ export default function MailModal({
   // there are any, so a plain letter takes the same JSON path as before.
   const [cFiles, setCFiles] = useState<File[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  // Layout. On a phone the list and the letter cannot sit side by side, so the
+  // window becomes one pane at a time: picking a letter hides the list, the
+  // back button brings it back. On a wide screen the same toggle simply
+  // collapses the list to give the letter the whole width.
+  const [showList, setShowList] = useState(true);
+  const isNarrow = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+  const openPane = () => { if (isNarrow()) setShowList(false); };
+
+  // Image preview inside the window (a phone has no comfortable "new tab").
+  const [preview, setPreview] = useState<{ src: string; name: string } | null>(null);
+
+  const addFiles = (picked: File[]) => { if (picked.length) setCFiles((prev) => [...prev, ...picked]); };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -114,14 +129,19 @@ export default function MailModal({
     if (open) return;
     setSelectedId(null); setDetail(null); setDirty(false);
     setComposing(false); setConfirmDelete(false); setError(null);
+    setShowList(true); setPreview(null); setDragOver(false);
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      // Escape closes the innermost thing first: the preview, then the window.
+      if (preview) setPreview(null); else onClose();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, onClose, preview]);
 
   // Load one letter's body on selection.
   useEffect(() => {
@@ -213,6 +233,7 @@ export default function MailModal({
     // so Cancel drops straight back to the letter being answered instead of an
     // empty pane.
     setComposing(true);
+    openPane();
   };
 
   const sendWithFiles = async () => {
@@ -282,26 +303,46 @@ export default function MailModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-1 sm:p-4" onClick={onClose}>
       <div
-        className="flex h-[85vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+        className="relative flex h-[96dvh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl sm:h-[85vh] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── header ─────────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 border-b border-border px-5 py-3">
-          <Mail className="h-5 w-5 text-amber-500" />
-          <h2 className="text-base font-semibold text-foreground">{t('mail.title')}</h2>
-          <span className="text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 border-b border-border px-3 py-2 sm:gap-3 sm:px-5 sm:py-3">
+          <button
+            onClick={() => setShowList((v) => !v)}
+            title={t('mail.toggleList')}
+            className={`rounded-lg p-1.5 hover:bg-muted ${showList ? 'text-amber-500' : 'text-muted-foreground'}`}
+          >
+            <PanelLeft className="h-4 w-4" />
+          </button>
+          <Mail className="hidden h-5 w-5 text-amber-500 sm:block" />
+          <h2 className="whitespace-nowrap text-sm font-semibold text-foreground sm:text-base">{t('mail.title')}</h2>
+          <span className="hidden text-xs text-muted-foreground sm:inline">
             {t('mail.count').replace('{n}', String(letters.length))}
             {letters.some((l) => !l.read && !l.archived) &&
               t('mail.unreadSuffix').replace('{n}', String(letters.filter((l) => !l.read && !l.archived).length))}
           </span>
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={() => { setComposing(true); setSelectedId(null); setCFiles([]); }}
-              className="flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-1.5 text-xs font-semibold text-amber-500 hover:bg-amber-500/25"
+          {/* The undeliverable warning used to be a full-width banner that was
+              there nearly every time. It is now one small chip; the sentence is
+              in its tooltip, and every such letter is already marked amber in
+              the list. */}
+          {undeliverable > 0 && (
+            <span
+              title={t('mail.undeliverable').replace('{n}', String(undeliverable))}
+              className="flex shrink-0 items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] text-amber-500"
             >
-              <PenLine className="h-3.5 w-3.5" /> {t('mail.write')}
+              <AlertTriangle className="h-3 w-3" /> {undeliverable}
+            </span>
+          )}
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            <button
+              onClick={() => { setComposing(true); setSelectedId(null); setCFiles([]); openPane(); }}
+              title={t('mail.write')}
+              className="flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-2 py-1.5 text-xs font-semibold text-amber-500 hover:bg-amber-500/25 sm:px-3"
+            >
+              <PenLine className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{t('mail.write')}</span>
             </button>
             <button
               onClick={() => act({ action: 'regenerate' }).then(() => load())}
@@ -319,18 +360,10 @@ export default function MailModal({
         {error && (
           <div className="border-b border-red-500/30 bg-red-500/10 px-5 py-2 text-xs text-red-400">{error}</div>
         )}
-        {undeliverable > 0 && (
-          <div className="flex items-start gap-2 border-b border-amber-500/30 bg-amber-500/10 px-5 py-2 text-xs text-amber-500">
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            {/* One sentence, one key: Japanese has no plural, so the English
-                it/them branching could not survive translation. */}
-            <span>{t('mail.undeliverable').replace('{n}', String(undeliverable))}</span>
-          </div>
-        )}
 
         <div className="flex min-h-0 flex-1">
           {/* ── list ─────────────────────────────────────────────────────── */}
-          <div className="flex w-[45%] min-w-0 flex-col border-r border-border">
+          <div className={`${showList ? 'flex' : 'hidden'} w-full min-w-0 flex-col md:w-[45%] md:border-r md:border-border`}>
             <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
               {(['all', 'unread', 'read', 'archived'] as StateFilter[]).map((s) => (
                 <button
@@ -370,13 +403,13 @@ export default function MailModal({
               {filtered.map((l) => (
                 <button
                   key={l.id}
-                  onClick={() => { setComposing(false); setSelectedId(l.id); }}
+                  onClick={() => { setComposing(false); setSelectedId(l.id); openPane(); }}
                   className={`block w-full border-b border-border/60 px-3 py-2 text-left hover:bg-muted/50 ${
                     selectedId === l.id ? 'bg-muted' : ''
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className={`truncate text-sm ${!l.read && !l.archived ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+                  <div className="flex items-start gap-2">
+                    <span className={`line-clamp-2 break-words text-sm ${!l.read && !l.archived ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
                       {l.title || t('mail.noTitle')}
                     </span>
                     <span className="ml-auto shrink-0">{stateChip(l)}</span>
@@ -395,11 +428,43 @@ export default function MailModal({
           </div>
 
           {/* ── detail / compose ─────────────────────────────────────────── */}
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className={`${showList ? 'hidden md:flex' : 'flex'} min-w-0 flex-1 flex-col`}>
+            {!showList && (
+              <button
+                onClick={() => setShowList(true)}
+                className="flex items-center gap-1 border-b border-border px-3 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted md:hidden"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" /> {t('mail.back')}
+              </button>
+            )}
             {composing ? (
-              <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+              <div
+                className={`relative flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 sm:p-4 ${dragOver ? 'ring-2 ring-inset ring-amber-500/60' : ''}`}
+                onDragOver={(e) => {
+                  if (!Array.from(e.dataTransfer.types).includes('Files')) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'copy';
+                  if (!dragOver) setDragOver(true);
+                }}
+                onDragLeave={(e) => {
+                  // Only when the pointer really leaves the pane, not when it
+                  // crosses into one of its children.
+                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOver(false);
+                }}
+                onDrop={(e) => {
+                  if (!e.dataTransfer.files?.length) return;
+                  e.preventDefault();
+                  setDragOver(false);
+                  addFiles(Array.from(e.dataTransfer.files));
+                }}
+              >
+                {dragOver && (
+                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-amber-500/10 text-sm font-semibold text-amber-500">
+                    {t('mail.attachDrop')}
+                  </div>
+                )}
                 <p className="text-xs leading-relaxed text-muted-foreground">{t('mail.compose.hint')}</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-foreground">{t('mail.from')}</label>
                     <EditableCombo value={cFrom} onChange={setCFrom} options={nameOptions} placeholder={t('mail.senderPlaceholder')} />
@@ -422,6 +487,12 @@ export default function MailModal({
                   <textarea
                     value={cText}
                     onChange={(e) => setCText(e.target.value)}
+                    onPaste={(e) => {
+                      // Pasting a file (a screenshot) attaches it; pasting
+                      // text is left alone.
+                      const files = Array.from(e.clipboardData?.files || []);
+                      if (files.length) { e.preventDefault(); addFiles(files); }
+                    }}
                     className="min-h-[14rem] flex-1 resize-y rounded-lg border border-border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-amber-500/40"
                   />
                 </div>
@@ -432,8 +503,7 @@ export default function MailModal({
                     multiple
                     className="hidden"
                     onChange={(e) => {
-                      const picked = Array.from(e.target.files || []);
-                      if (picked.length) setCFiles((prev) => [...prev, ...picked]);
+                      addFiles(Array.from(e.target.files || []));
                       e.target.value = ''; // so picking the same file again still fires
                     }}
                   />
@@ -471,7 +541,10 @@ export default function MailModal({
                   >
                     <Send className="h-4 w-4" /> {t('mail.deliver')}
                   </button>
-                  <button onClick={() => setComposing(false)} className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                  <button
+                    onClick={() => { setComposing(false); if (!selectedId) setShowList(true); }}
+                    className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+                  >
                     {t('mail.cancel')}
                   </button>
                 </div>
@@ -481,8 +554,10 @@ export default function MailModal({
                 {t('mail.selectHint')}
               </div>
             ) : (
-              <div className="flex min-h-0 flex-1 flex-col">
-                <div className="border-b border-border px-4 py-3">
+              // The whole letter scrolls as one piece: with many attachments the
+              // body used to be squeezed to nothing with no way to reach it.
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                <div className="border-b border-border px-3 py-2 sm:px-4 sm:py-3">
                   <input
                     value={draftTitle}
                     onChange={(e) => { setDraftTitle(e.target.value); setDirty(true); }}
@@ -559,35 +634,62 @@ export default function MailModal({
                 </div>
 
                 {!!detail.attachments?.length && (
-                  <div className="flex flex-wrap items-start gap-2 border-b border-border px-4 py-2">
-                    <span className="text-[11px] text-muted-foreground">
+                  <div className="border-b border-border px-3 py-2 sm:px-4">
+                    <div className="mb-1 text-[11px] text-muted-foreground">
                       {t('mail.attachments').replace('{n}', String(detail.attachments.length))}
-                    </span>
-                    {detail.attachments.map((name) => {
-                      const src = `/api/letters?id=${encodeURIComponent(detail.id)}&file=${encodeURIComponent(name)}`;
-                      return IMAGE_EXT.test(name) ? (
-                        <a key={name} href={src} target="_blank" rel="noreferrer" title={name}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={src} alt={name} className="h-16 max-w-[8rem] rounded border border-border object-cover" />
-                        </a>
-                      ) : (
-                        <a key={name} href={`${src}&download=1`} className="rounded bg-muted px-2 py-1 font-mono text-[11px] hover:underline">
-                          {name}
-                        </a>
-                      );
-                    })}
+                    </div>
+                    {/* One row that scrolls sideways, however many there are. */}
+                    <div className="flex items-start gap-2 overflow-x-auto pb-1">
+                      {detail.attachments.map((name) => {
+                        const src = `/api/letters?id=${encodeURIComponent(detail.id)}&file=${encodeURIComponent(name)}`;
+                        return IMAGE_EXT.test(name) ? (
+                          <button key={name} type="button" onClick={() => setPreview({ src, name })} title={name} className="shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={src} alt={name} className="h-16 w-16 rounded border border-border object-cover" />
+                          </button>
+                        ) : (
+                          <a key={name} href={`${src}&download=1`} className="max-w-[12rem] shrink-0 truncate rounded bg-muted px-2 py-1 font-mono text-[11px] hover:underline">
+                            {name}
+                          </a>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
                 <textarea
                   value={draftText}
                   onChange={(e) => { setDraftText(e.target.value); setDirty(true); }}
-                  className="min-h-0 flex-1 resize-none bg-background p-4 font-mono text-sm leading-relaxed outline-none"
+                  className="min-h-[60dvh] flex-1 shrink-0 resize-none bg-background p-3 font-mono text-sm leading-relaxed outline-none sm:min-h-[16rem] sm:p-4"
                 />
               </div>
             )}
           </div>
         </div>
+
+        {preview && (
+          <div
+            className="absolute inset-0 z-20 flex flex-col bg-black/90"
+            onClick={() => setPreview(null)}
+          >
+            <div className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-300" onClick={(e) => e.stopPropagation()}>
+              <span className="min-w-0 flex-1 truncate font-mono">{preview.name}</span>
+              <a href={preview.src} target="_blank" rel="noreferrer" className="shrink-0 rounded px-2 py-1 hover:bg-white/10">
+                {t('mail.previewOpen')}
+              </a>
+              <a href={`${preview.src}&download=1`} title={preview.name} className="shrink-0 rounded p-1 hover:bg-white/10">
+                <Download className="h-4 w-4" />
+              </a>
+              <button onClick={() => setPreview(null)} title={t('mail.previewClose')} className="shrink-0 rounded p-1 hover:bg-white/10">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex min-h-0 flex-1 items-center justify-center p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={preview.src} alt={preview.name} className="max-h-full max-w-full object-contain" />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
