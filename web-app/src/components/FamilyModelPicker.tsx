@@ -447,6 +447,10 @@ export default function FamilyModelPicker({
             className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm appearance-none cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
           >
             {localModels.length === 0 && <option value="">{t('model.local.none')}</option>}
+            {/* Nothing saved yet: say so. Without this row a <select> shows the
+                first model while the saved value stays '' (the anchor then
+                failed with no-anchor-model while the screen named a Gemma). */}
+            {localModels.length > 0 && !model && <option value="">{t('model.local.choose')}</option>}
             {/* Keep current value selectable even if not in list */}
             {model && !localModels.includes(model) && (
               <option value={model}>{t('model.local.notLoaded').replace('{model}', model)}</option>

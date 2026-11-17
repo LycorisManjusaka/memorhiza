@@ -1709,6 +1709,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   'model.local.label': 'Local Model (from LM Studio)',
   'model.local.refresh': 'refresh',
   'model.local.none': '— no models loaded —',
+  'model.local.choose': '— choose a model —',
   'model.local.notLoaded': '{model} (not loaded)',
   'model.local.ctxLabel': 'Context window (tokens)',
   'model.local.ctxHelp':
@@ -3673,6 +3674,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   'model.local.label': 'ローカルモデル（LM Studio から）',
   'model.local.refresh': '再取得',
   'model.local.none': '— 読み込まれたモデルがありません —',
+  'model.local.choose': '— モデルを選んでください —',
   'model.local.notLoaded': '{model}（未読み込み）',
   'model.local.ctxLabel': '文脈ウィンドウ（トークン）',
   'model.local.ctxHelp':

@@ -8615,7 +8615,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                         onChange={(e) => {
                           const fam = e.target.value;
                           if (fam === 'Local') {
-                            setAnchorSettings((prev) => ({ ...prev, family: fam, model: '' }));
+                            setAnchorSettings((prev) => ({ ...prev, family: fam, model: localModels[0] || '' }));
                             refreshLocalModels();
                           } else {
                             setAnchorSettings((prev) => ({ ...prev, family: fam, model: defaultModelForFamily(fam) }));

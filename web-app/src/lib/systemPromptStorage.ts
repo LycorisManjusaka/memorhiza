@@ -608,9 +608,7 @@ export async function readMainAgent(type: string): Promise<string | null> {
 // selectable updater agent in the UI (the user picks which to run). Returns
 // filename + raw contents, sorted by name. (`_deletion_patterns.txt` is not
 // `.md` so it's naturally excluded; dotfiles are skipped.)
-export async function readAllAgentFiles(type: string): Promise<Array<{ name: string; content: string }>> {
-  if (!type) return [];
-  const dir = await agentTypeDir(type);
+async function readMdDir(dir: string): Promise<Array<{ name: string; content: string }>> {
   let entries: string[] = [];
   try {
     entries = await fs.readdir(dir);
@@ -618,16 +616,32 @@ export async function readAllAgentFiles(type: string): Promise<Array<{ name: str
     if (e?.code === 'ENOENT') return [];
     throw e;
   }
-  const mdFiles = entries
-    .filter((f) => f.endsWith('.md') && !f.startsWith('.'))
-    .sort((a, b) => a.localeCompare(b));
   const out: Array<{ name: string; content: string }> = [];
-  for (const f of mdFiles) {
+  for (const f of entries.filter((f) => f.endsWith('.md') && !f.startsWith('.'))) {
     try {
       out.push({ name: f, content: await fs.readFile(path.join(dir, f), 'utf-8') });
     } catch { /* skip unreadable */ }
   }
   return out;
+}
+
+// An operator override folder (local_data/system_prompt_agents) wins file by
+// file, not wholesale. An override copied before anchor.md / wake.md existed
+// would otherwise hide those files completely, and the anchor, the wake clock
+// and ζ fail with "no prompt" on a house that is fully up to date. A file the
+// override does have always wins over the bundled one.
+export async function readAllAgentFiles(type: string): Promise<Array<{ name: string; content: string }>> {
+  if (!type) return [];
+  const root = await resolveAgentsRoot();
+  const own = await readMdDir(path.join(root, sanitizeAgentType(type)));
+  const merged = [...own];
+  if (root !== BUNDLED_AGENTS_DIR) {
+    const have = new Set(own.map((x) => x.name));
+    for (const b of await readMdDir(path.join(BUNDLED_AGENTS_DIR, sanitizeAgentType(type)))) {
+      if (!have.has(b.name)) merged.push(b);
+    }
+  }
+  return merged.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function readStandardAgent(type: string): Promise<string | null> {
