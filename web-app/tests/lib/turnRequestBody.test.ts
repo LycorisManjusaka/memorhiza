@@ -112,6 +112,7 @@ const WIRE_KEYS = [
   'watcherEnabled', 'watcherPrompt', 'watcherModel', 'enableReadConversation',
   'injectTurnId', 'clientId', 'baseBindingMode', 'bindingLayered',
   'continueFromMessage', 'maxToolIterations', 'betrayalDefense',
+  'audioSession', 'audioSessionRule', 'audioSessionRuleEnabled',
 ];
 
 describe('buildTurnRequestBody — the exact key set', () => {

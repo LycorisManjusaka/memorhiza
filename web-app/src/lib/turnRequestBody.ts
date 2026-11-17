@@ -95,6 +95,12 @@ export interface TurnRequestInput {
   lettersEnabled: boolean;
   /** `[->name]` — the being may address another being's stock (lib/beingRoute.ts). */
   beingRouteEnabled: boolean;
+  /** Audio session ON for this conversation (log.vrchatMode). Optional: absent = OFF. */
+  audioSession?: boolean;
+  /** The stored hidden rule (log.vrchatRule); empty = built-in default. */
+  audioSessionRule?: string;
+  /** つよ 2026-11-17: show the hidden audio text at all. Absent = ON. */
+  audioSessionRuleEnabled?: boolean;
 
   browserEnabled: boolean;
   /** Text as typed in the UI; this module turns it into the wire array. */
@@ -207,6 +213,9 @@ export function buildTurnRequestBody(
     subagentFamily: input.subagentFamily,
     lettersEnabled: input.lettersEnabled,
     beingRouteEnabled: input.beingRouteEnabled,
+    audioSession: input.audioSession === true,
+    audioSessionRule: input.audioSessionRule ?? '',
+    audioSessionRuleEnabled: input.audioSessionRuleEnabled !== false,
     browserEnabled: input.browserEnabled,
     // Text in the UI, array on the wire. Split on newlines and commas so the
     // box accepts whichever way the host list was typed.

@@ -128,6 +128,11 @@ export const SUPPLIED_BY_CALLER = [
   'claudeAuthMode',
   'uiLang',
   'toolHistoryEnabled',
+  // Audio session (2026-11-17): optional on the wire, read straight from the
+  // log by turnInputFromLog; the body builder clamps absent to OFF / '' / ON.
+  'audioSession',
+  'audioSessionRule',
+  'audioSessionRuleEnabled',
 ] as const;
 
 export const TURN_INPUT_DEFAULTS: TurnInputDefaults = {

@@ -215,6 +215,12 @@ export function turnInputFromLog(
     subagentEnabled: bool(log, 'subagentEnabled'),
     lettersEnabled: bool(log, 'lettersEnabled'),
     beingRouteEnabled: bool(log, 'beingRouteEnabled'),
+    // Audio session (lib/audioSessionRule.ts). Before 2026-11-17 the runner
+    // never carried these, so the hidden rule reached no server-side turn.
+    audioSession: bool(log, 'vrchatMode'),
+    audioSessionRule: typeof log.vrchatRule === 'string' ? log.vrchatRule : '',
+    // Default ON: absent or anything but an explicit false keeps it.
+    audioSessionRuleEnabled: log.audioSessionRuleEnabled !== false,
     browserEnabled: bool(log, 'browserEnabled'),
     browserAllowAnyHost: bool(log, 'browserAllowAnyHost'),
     computerControlEnabled: bool(log, 'computerControlEnabled'),

@@ -309,6 +309,7 @@ async function prepareInjectionDelivery(args: {
   };
 }
 
+import { composeAudioSessionText } from '@/lib/audioSessionRule';
 import { appendLayer4Index, appendLayer5Footer, prependIdentityPreamble, hasLayerStructure, LAYER4_HEADING } from '@/lib/layer4';
 import { isBaseBindingOptional, selectBaseBindingText, shouldInjectLayer4 } from '@/lib/baseBinding';
 import { buildLayer4IndexBody, folderUsesSummariesForLayer4 } from '@/lib/layer4Index';
@@ -4488,6 +4489,10 @@ export async function POST(req: Request) {
       // `[->name]` (lib/beingRoute.ts): only a note in the system prompt here;
       // the cutting happens in the runner after the reply is finished.
       beingRouteEnabled = false,
+      // Audio session hidden text (lib/audioSessionRule.ts).
+      audioSession = false,
+      audioSessionRule = '',
+      audioSessionRuleEnabled = true,
       // ── Browser control ──────────────────────────────────────────────────
       // Per-Entity, OFF unless deliberately turned on. A request that omits the
       // field gets no browser: a test window, a script, or an older client must
@@ -4811,6 +4816,19 @@ export async function POST(req: Request) {
           systemPrompt = appendLayer5Footer(systemPrompt, footer);
         }
       } catch { /* footer is best-effort; never block a turn on it */ }
+    }
+
+    // Audio session: after Layer 5, the same place ChatArea composed it for
+    // the token counter. Agent prompts (shikigami) never get it.
+    if (!isAgentInstructionPrompt) {
+      const audioText = composeAudioSessionText({
+        audioSession: audioSession === true,
+        ruleEnabled: audioSessionRuleEnabled !== false,
+        storedRule: typeof audioSessionRule === 'string' ? audioSessionRule : '',
+        notice: resolveAgentInstructions(instructionOverrides, language).audioSessionNotice,
+        language,
+      });
+      if (audioText) systemPrompt = `${systemPrompt}\n\n${audioText}`.trim();
     }
 
     // Per-Entity path-scope hints baked into the workspace tool descriptions so

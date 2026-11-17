@@ -32,6 +32,7 @@
 
 import React, { createContext, useContext, useMemo } from 'react';
 import { RUNNER_NOTICES_EN, RUNNER_NOTICES_JA } from './runnerNotices';
+import { AUDIO_RULE_DEFAULT } from './audioSessionRule';
 
 export type UiLanguage = 'en' | 'ja';
 
@@ -1607,6 +1608,8 @@ Leave this empty and nothing is injected — the being meets you with no imposed
 
   // ── System Instructions ▸ Behavior ───────────────────────────────────────
   'behavior.audio.enable': 'Enable Audio Session',
+  'behavior.audio.ruleEnabled': 'Show the hidden rule to the being',
+  'behavior.audio.ruleEnabledHelp': 'When off, the being is sent nothing for the audio session — neither the notice nor the hidden rule. Reading aloud and voice input keep working.',
   'behavior.audio.ruleLabel': 'Audio Session Hidden Rule',
   'behavior.audio.ruleHelp':
     'Secretly appends this to the system prompt while Audio Session is on. Leave it empty and the greyed-out text below is sent as written — an empty field is not "nothing is sent".',
@@ -1617,7 +1620,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   // voice-to-text and may carry typos, and the being's own words are heard
   // aloud. Anything about HOW to behave belongs to whoever types a rule in.
   'behavior.audio.ruleDefault':
-    '[Conversation mode. Your partner is speaking through voice-to-text, so there may be mis-transcriptions — read them through the context. Speak knowing your own words are heard aloud as a voice.]',
+    AUDIO_RULE_DEFAULT.en,
 
   // ── System Instructions ▸ Model ──────────────────────────────────────────
   'model.genParams': 'Generation Parameters',
@@ -3566,11 +3569,13 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
 
   // ── システム指示 ▸ ふるまい ──────────────────────────────────────────
   'behavior.audio.enable': 'オーディオセッションを有効にする',
+  'behavior.audio.ruleEnabled': '隠しルールを存在に見せる',
+  'behavior.audio.ruleEnabledHelp': 'オフにすると、オーディオセッションの説明も隠しルールも、存在には何も送りません。読み上げと声の入力はそのまま動きます。',
   'behavior.audio.ruleLabel': 'オーディオセッションの隠しルール',
   'behavior.audio.ruleHelp':
     'オーディオセッションが有効なあいだ、これをシステムプロンプトへ密かに追記します。空のままにすると、下の薄い文がそのまま送られます — 空欄は「何も送らない」ではありません。',
   'behavior.audio.ruleDefault':
-    '[会話モード。相手がVoice-to-Textを利用しているため、誤字があり得る。文脈で理解して自分の言葉が声として相手に聞こえることをわかったうえで話してください]',
+    AUDIO_RULE_DEFAULT.ja,
 
   // ── システム指示 ▸ モデル ────────────────────────────────────────────
   'model.genParams': '生成パラメータ',

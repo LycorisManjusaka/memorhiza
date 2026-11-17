@@ -728,6 +728,9 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // An empty box is what makes the placeholder visible, which is the only
   // signal that says "nothing is stored here, this is the built-in text".
   const [vrchatRule, setVrchatRule] = useState(defaultVrchatRule || '');
+  // つよ 2026-11-17: whether the hidden audio text goes to the being at all.
+  // Default ON (absent on disk = ON), so nothing changes until unticked.
+  const [audioRuleEnabled, setAudioRuleEnabled] = useState(true);
   const audioRuleFallback = t('behavior.audio.ruleDefault');
   // Fixed factual notice ("what this mode actually does") composed AHEAD of the
   // per-Entity `vrchatRule` behavioral text everywhere vrchatRule is used below.
@@ -1565,10 +1568,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     let p = systemPrompt || '';
     if (layer4Active) p = appendLayer4Index(p, summaryIndexBody);
     p = appendLayer5Footer(p, footerBody);
-    if (vrchatMode) p = `${p}\n\n${audioSessionRuleText}`.trim();
+    if (vrchatMode && audioRuleEnabled) p = `${p}\n\n${audioSessionRuleText}`.trim();
     p = prependIdentityPreamble(p, effectiveBindingText);
     return p;
-  }, [systemPrompt, layer4Active, summaryIndexBody, footerBody, vrchatMode, audioSessionRuleText, effectiveBindingText]);
+  }, [systemPrompt, layer4Active, summaryIndexBody, footerBody, vrchatMode, audioRuleEnabled, audioSessionRuleText, effectiveBindingText]);
 
   useEffect(() => {
     // `cancelled` guards against an async race: on load this effect fires once
@@ -1815,6 +1818,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         setBaseBindingMode(data.baseBindingMode === 'off' ? 'off' : 'on');
         setVrchatMode(data.vrchatMode !== undefined ? data.vrchatMode : defaultVrchatMode);
         setVrchatRule(data.vrchatRule !== undefined ? data.vrchatRule : defaultVrchatRule);
+        setAudioRuleEnabled(data.audioSessionRuleEnabled !== false);
         setLocalAiName(data.aiName || aiName);
         // A log that carries MESSAGES but neither a marker nor the pending flag
         // is one where every message is original — that is already the default
@@ -1917,6 +1921,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         setDateTimeVisibility(defaultDateTimeVisibility || 'all');
         setVrchatMode(defaultVrchatMode || false);
         setVrchatRule(defaultVrchatRule || '');
+        setAudioRuleEnabled(true);
         setLocalAiName(aiName);
         setFirstOriginalMessageId(null);
         setFirstOriginalIsNext(false);
@@ -2004,8 +2009,8 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // is what keeps the dependency list complete — it caught claudeAuthMode,
   // which the old inline save-effect dep array had silently dropped.
   const buildLogData = useCallback((msgs: unknown[]) => ({
-    id: convoId, folderName, aiName: localAiName, title, messages: msgs, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel,
-  }), [convoId, folderName, localAiName, title, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel]);
+    id: convoId, folderName, aiName: localAiName, title, messages: msgs, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, audioSessionRuleEnabled: audioRuleEnabled, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel,
+  }), [convoId, folderName, localAiName, title, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, audioRuleEnabled, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel]);
 
   useEffect(() => {
     // Skip the disk-save POST WHILE a reply is streaming (loading === true).
@@ -8461,6 +8466,21 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                 </div>
 
                 {vrchatMode && (
+                  <div className="flex items-center gap-2 mb-3 ml-6">
+                    <input
+                      type="checkbox"
+                      id="audioRuleEnabled"
+                      checked={audioRuleEnabled}
+                      onChange={(e) => setAudioRuleEnabled(e.target.checked)}
+                      className="rounded border-border text-indigo-500 focus:ring-indigo-500 bg-background"
+                    />
+                    <label htmlFor="audioRuleEnabled" className="text-sm text-foreground cursor-pointer" title={t('behavior.audio.ruleEnabledHelp')}>
+                      {t('behavior.audio.ruleEnabled')}
+                    </label>
+                  </div>
+                )}
+
+                {vrchatMode && audioRuleEnabled && (
                   <div className="mb-6">
                     <label className="text-sm font-semibold text-foreground mb-1 block">{t('behavior.audio.ruleLabel')}</label>
                     <p className="text-xs text-muted-foreground mb-2">
@@ -9115,7 +9135,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         // this is the one path where the browser really is the authority for
         // the Binding. Same `effectiveBindingText` the token counter uses.
         systemPrompt={prependIdentityPreamble(
-          vrchatMode ? `${systemPrompt}\n\n${audioSessionRuleText}`.trim() : (systemPrompt || ''),
+          vrchatMode && audioRuleEnabled ? `${systemPrompt}\n\n${audioSessionRuleText}`.trim() : (systemPrompt || ''),
           effectiveBindingText,
         )}
         voiceName={defaultLiveSessionVoice || 'Aoede'}
