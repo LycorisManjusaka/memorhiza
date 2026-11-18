@@ -93,6 +93,21 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  // Measured 2026-11-18 (つよ's report): a 39 MB video dropped from Explorer
+  // was stored as EXACTLY 10,485,760 bytes — the file's first 10 MiB, sha256-
+  // matched. Because src/middleware.ts exists (the optional admin login), Next
+  // buffers every request body for it and TRUNCATES anything past
+  // `proxyClientMaxBodySize` (default 10 MiB, config-shared.js), logging only a
+  // warning. The route then saved the prefix as if it were the whole file: an
+  // unplayable mp4, and Gemini answered 400. This has silently cut every
+  // attachment over 10 MiB since the login gate landed in October.
+  // Attachments are allowed to be large (videos are split later, not refused
+  // here), so the cap is raised well past any real attachment rather than
+  // reshaping the gate around one route.
+  experimental: {
+    proxyClientMaxBodySize: "1gb",
+  },
 };
 
 export default nextConfig;
