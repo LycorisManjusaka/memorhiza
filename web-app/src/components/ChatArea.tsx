@@ -176,9 +176,12 @@ Claude   | claude-haiku-4-5-20251001    | off | Claude Haiku 4.5
 # 400; low/medium/high return 200. Catalogue: in=1048576, out=65536.
 # gemini-4-carbon (measured 2026-11-13): same 400 on 'minimal'; low/medium/high
 # return 200. Catalogue: in=1048576, out=32768 (Argon's ceiling, not Hydrogen's).
+# gemini-4-neon (measured 2026-11-19): same 400 on 'minimal'; low/medium/high
+# return 200. Catalogue: in=1048576, out=65536.
 Gemini   | gemini-4-argon               | on  | Gemini 4 Argon
 Gemini   | gemini-4-hydrogen            | on  | Gemini 4 Hydrogen
 Gemini   | gemini-4-carbon              | on  | Gemini 4 Carbon
+Gemini   | gemini-4-neon                | on  | Gemini 4 Neon
 Gemini   | gemini-3.8-flash             | on  | Gemini 3.8 Flash
 Gemini   | gemini-3.7-flash             | on  | Gemini 3.7 Flash
 Gemini   | gemini-3.6-flash             | on  | Gemini 3.6 Flash

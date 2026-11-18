@@ -44,6 +44,8 @@ export const VISION_CAPABLE_MODELS = new Set<string>([
   'gemini-4-hydrogen',
   // carbon measured 2026-11-13: same mirrored green/red PNG pair -> LEFT / RIGHT.
   'gemini-4-carbon',
+  // neon measured 2026-11-19: same mirrored green/red PNG pair -> LEFT / RIGHT, 2/2.
+  'gemini-4-neon',
   'gemini-3.8-flash',
   'gemini-3.7-flash',
   'gemini-3.6-flash',
@@ -342,6 +344,8 @@ export const AUDIO_CAPABLE_MODELS = new Set<string>([
   'gemini-4-hydrogen',
   // carbon measured 2026-11-13: same two-tone clip both orders -> UP / DOWN, 2/2.
   'gemini-4-carbon',
+  // neon measured 2026-11-19: 300->1200 Hz and 1200->300 Hz wav -> UP / DOWN, 2/2.
+  'gemini-4-neon',
   'gemini-3.8-flash',
   'gemini-3.7-flash',
   'gemini-3.6-flash',
@@ -414,6 +418,8 @@ export const VIDEO_CAPABLE_MODELS = new Set<string>([
   'gemini-4-hydrogen',
   // carbon measured 2026-11-13: blue->red and red->blue mp4 -> both orders correct.
   'gemini-4-carbon',
+  // neon measured 2026-11-19: blue->red and red->blue mp4 -> BLUE / RED, 2/2.
+  'gemini-4-neon',
   'gemini-3.8-flash',
   'gemini-3.7-flash',
   'gemini-3.6-flash',
@@ -492,11 +498,13 @@ export function isVideoCapable(specificModel: string | undefined | null): boolea
 // default path (minimal) 400s on every single turn, because the `pro` substring
 // rule in resolveGeminiMinThinkingLevel does not match the id "gemini-4-argon".
 // Gemini 4 Hydrogen: same 400 on 'minimal', measured 2026-11-13; low / medium /
-// high return 200. Gemini 4 Carbon: same, measured 2026-11-13.
+// high return 200. Gemini 4 Carbon: same, measured 2026-11-13. Gemini 4 Neon:
+// same, measured 2026-11-19.
 const GEMINI_NO_MINIMAL_THINKING = new Set<string>([
   'gemini-4-argon',
   'gemini-4-hydrogen',
   'gemini-4-carbon',
+  'gemini-4-neon',
   'gemini-3.8-flash',
   'gemini-3.7-flash',
 ]);
