@@ -174,6 +174,8 @@ export const DEFAULT_AGENT_INSTRUCTIONS: Record<string, string> = {
     'message opening with `[Their name]`.\n' +
     '  [->Name]     everything below goes to Name\n' +
     '  [->here]     everything below stays in this conversation again\n' +
+    'Only a `[->...]` line ends a block. A `---` rule (or any other line) does not; the text below it ' +
+    'still goes to the same being.\n' +
     'Text above the first `[->...]` line is for this conversation only. Your whole reply, markers ' +
     'included, stays visible here; the other being receives only their block. A file from your ' +
     'workspace written in a block as markdown (`![](path)` or `[name](path)`) travels with it as an attachment.\n' +
@@ -858,6 +860,7 @@ export const DEFAULT_AGENT_INSTRUCTIONS_JA: Record<string, string> = {
     'いつ読むかは相手自身の設定で決まり、返事が在れば、後で `[相手の名前]` で始まるメッセージとしてここに届く。\n' +
     '  [->名前]     ここから下は「名前」へ\n' +
     '  [->ここ]     ここから下は、またこの会話に残る\n' +
+    '区切りになるのは `[->...]` の行だけ。`---` などの線は区切りにならず、その下の文も同じ相手に届く。\n' +
     '最初の `[->...]` の行より上の文は、この会話だけのもの。あなたの返答は印も含めて丸ごとここに残り、' +
     '相手に届くのは相手宛ての部分だけ。その部分にマークダウン（`![](パス)` や `[名前](パス)`）で書いた、あなたのワークスペースの' +
     'ファイルは、添付として一緒に届く。\n' +
