@@ -330,138 +330,6 @@ try { $dpiOk = [NxDpi]::SetProcessDpiAwarenessContext([IntPtr]::new(-4)) } catch
 if (-not $dpiOk) { try { [void][NxDpi]::SetProcessDPIAware() } catch {} }
 `;
 
-// Draws a red outline DIRECTLY ONTO THE SCREEN DC — no window is ever created.
-//
-// This is deliberate, and it is the second iteration. The first version showed
-// a borderless always-on-top Form. That was wrong for two measured reasons:
-//   1. Creating a window between mouse_down and mouse_up steals activation from
-//      the target application, which drops its mouse capture — so drags died
-//      and only the mouse_up coordinate registered. (Kiko's report.)
-//   2. A Form costs a WinForms load + message pump; drawing on the screen DC is
-//      immediate, so a click marker actually lands at the moment of the click.
-// Draw() snapshots the pixels it is about to cover and Clear() blits them back,
-// because "just ask everyone to repaint" leaves fragments behind on surfaces
-// that repaint lazily — Lizard-kun saw exactly that: leftover pieces of the
-// border sitting there until the cursor passed over them.
-const GDI_HELPER = `
-$gdiSig = @'
-using System;
-using System.Runtime.InteropServices;
-public class NxGdi {
-  [DllImport("user32.dll")] public static extern IntPtr GetDC(IntPtr h);
-  [DllImport("user32.dll")] public static extern int ReleaseDC(IntPtr h, IntPtr dc);
-  [DllImport("user32.dll")] public static extern int GetSystemMetrics(int i);
-  [DllImport("user32.dll")] public static extern bool RedrawWindow(IntPtr h, IntPtr r, IntPtr rg, uint f);
-  [DllImport("user32.dll")] public static extern bool InvalidateRect(IntPtr h, IntPtr r, bool erase);
-  [DllImport("gdi32.dll")] public static extern IntPtr CreatePen(int s, int w, uint c);
-  [DllImport("gdi32.dll")] public static extern IntPtr SelectObject(IntPtr dc, IntPtr o);
-  [DllImport("gdi32.dll")] public static extern bool DeleteObject(IntPtr o);
-  [DllImport("gdi32.dll")] public static extern IntPtr GetStockObject(int i);
-  [DllImport("gdi32.dll")] public static extern bool Ellipse(IntPtr dc,int l,int t,int r,int b);
-  [DllImport("gdi32.dll")] public static extern bool Rectangle(IntPtr dc,int l,int t,int r,int b);
-  [DllImport("gdi32.dll")] public static extern IntPtr CreateCompatibleDC(IntPtr dc);
-  [DllImport("gdi32.dll")] public static extern IntPtr CreateCompatibleBitmap(IntPtr dc,int w,int h);
-  [DllImport("gdi32.dll")] public static extern bool BitBlt(IntPtr d,int dx,int dy,int w,int h,IntPtr s,int sx,int sy,uint rop);
-  [DllImport("gdi32.dll")] public static extern bool DeleteDC(IntPtr dc);
-  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int l, t, r, b; }
-  [DllImport("gdi32.dll")] public static extern int GetClipBox(IntPtr dc, out RECT r);
-
-  class Saved { public IntPtr dc; public IntPtr bmp; public IntPtr old; public int x,y,w,h; }
-  static System.Collections.Generic.List<Saved> saved = new System.Collections.Generic.List<Saved>();
-
-  // Copy a strip of the live screen into an off-screen bitmap so Clear() can put
-  // the exact original pixels back. Repainting alone is not enough: parts of the
-  // mark land on surfaces that only repaint when something else forces them to
-  // (desktop, taskbar, idle windows), so the paint survives until the cursor
-  // happens to pass over it.
-  static void Save(IntPtr dc, int x, int y, int w, int h){
-    if (w <= 0 || h <= 0) return;
-    Saved s = new Saved();
-    s.dc = CreateCompatibleDC(dc);
-    s.bmp = CreateCompatibleBitmap(dc, w, h);
-    if (s.dc == IntPtr.Zero || s.bmp == IntPtr.Zero) return;
-    s.old = SelectObject(s.dc, s.bmp);
-    s.x = x; s.y = y; s.w = w; s.h = h;
-    BitBlt(s.dc, 0, 0, w, h, dc, x, y, 0x00CC0020);
-    saved.Add(s);
-  }
-
-  public static void Draw(int l,int t,int r,int b,bool circle,int width){
-    IntPtr dc = GetDC(IntPtr.Zero);
-    if (dc == IntPtr.Zero) return;
-    // WHERE IS THIS DC'S (0,0)? Ask the DC; do not assume.
-    //
-    // RETRACTED 2026-11-11. From 11-10 to 11-11 this function subtracted
-    // SM_X/YVIRTUALSCREEN, on a comment that said "MEASURED: GetDC(NULL) is
-    // relative to the top-left of the virtual screen, so everything lands
-    // 1080 px too far left". That claim is FALSE on the machine it was written
-    // on. A frame-by-frame recording of the whole desktop (two independent
-    // grabbers: GDI for the full virtual screen, Desktop Duplication per
-    // monitor; they agree) showed, on the 4-monitor desk with a portrait
-    // monitor at x=-1080:
-    //
-    //   with the subtraction    -> every monitor's frame landed exactly 1080 px
-    //                              too far RIGHT (the "fix" was the bug)
-    //   without the subtraction -> all four frames sit on their monitor's edges
-    //
-    // and the DC says so itself: GetClipBox(GetDC(NULL)) returns
-    // (-1080,0,9600,2160), i.e. its coordinates ARE absolute virtual-desktop
-    // coordinates and negative x is simply valid. Why the 11-10 probes read the
-    // opposite sign is not known; they were single still captures, not a
-    // recording.
-    //
-    // So no constant is assumed here. The DC's own clip box is compared with the
-    // virtual-screen origin: when they match (the measured case) the offset is
-    // 0; if some configuration ever hands out a DC whose (0,0) is the virtual
-    // top-left, the same line produces the shift that case needs.
-    RECT cb;
-    if (GetClipBox(dc, out cb) != 0) {
-      int ox = cb.l - GetSystemMetrics(76), oy = cb.t - GetSystemMetrics(77); // SM_X/YVIRTUALSCREEN
-      l += ox; t += oy; r += ox; b += oy;
-    }
-    int pad = width / 2 + 2;
-    int thick = width + 4;
-    if (circle) {
-      Save(dc, l - pad, t - pad, (r - l) + pad * 2 + 1, (b - t) + pad * 2 + 1);
-    } else {
-      // Four edge strips, not the whole rectangle: restoring a monitor-sized
-      // snapshot 650 ms later would smear stale pixels over everything inside.
-      int fw = (r - l) + pad * 2 + 1;
-      int fh = (b - t) + pad * 2 + 1;
-      Save(dc, l - pad, t - pad, fw, thick);
-      Save(dc, l - pad, b - pad, fw, thick);
-      Save(dc, l - pad, t - pad, thick, fh);
-      Save(dc, r - pad, t - pad, thick, fh);
-    }
-    IntPtr pen = CreatePen(0, width, 0x000000FF);
-    IntPtr oldPen = SelectObject(dc, pen);
-    IntPtr oldBr = SelectObject(dc, GetStockObject(5));
-    if (circle) Ellipse(dc,l,t,r,b); else Rectangle(dc,l,t,r,b);
-    SelectObject(dc, oldPen); SelectObject(dc, oldBr);
-    DeleteObject(pen); ReleaseDC(IntPtr.Zero, dc);
-  }
-
-  public static bool HasMarks(){ return saved.Count > 0; }
-
-  public static void Clear(){
-    IntPtr dc = GetDC(IntPtr.Zero);
-    if (dc != IntPtr.Zero) {
-      for (int i = saved.Count - 1; i >= 0; i--) {
-        Saved s = saved[i];
-        BitBlt(dc, s.x, s.y, s.w, s.h, s.dc, 0, 0, 0x00CC0020);
-        SelectObject(s.dc, s.old); DeleteObject(s.bmp); DeleteDC(s.dc);
-      }
-      ReleaseDC(IntPtr.Zero, dc);
-    }
-    saved.Clear();
-    // Backstop for anything that repainted underneath us while the mark was up.
-    InvalidateRect(IntPtr.Zero, IntPtr.Zero, true);
-    RedrawWindow(IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 0x0585);
-  }
-}
-'@
-Add-Type -TypeDefinition $gdiSig -ErrorAction SilentlyContinue
-`;
 
 // ── the monitor frame: real windows, not paint on the screen DC ─────────────
 //
@@ -483,8 +351,14 @@ Add-Type -TypeDefinition $gdiSig -ErrorAction SilentlyContinue
 // its monitor: nothing spills onto the neighbour. Coordinates are absolute
 // virtual-desktop pixels; the process is per-monitor DPI aware (DPI_PREFIX).
 //
-// The click marker still uses NxGdi.Draw: it must appear between mouse_down
-// and mouse_up, and it has the same blind spot over GPU-composited surfaces.
+// The click marker (Ring) is the same kind of window. Until 2026-11-19 it was
+// still paint on GetDC(NULL), and a recording showed the same two faults the
+// frame had: a click over a browser left no circle at all, and the position
+// depended on where that DC's (0,0) was (on the company PC a click on a 100%
+// landscape monitor showed its circle on the neighbouring portrait one).
+// Showing a WS_EX_NOACTIVATE window between mouse_down and mouse_up does not
+// take activation, so drags keep their capture (the reason the very first
+// marker, an activating WinForms Form, broke them).
 const FRAME_HELPER = `
 $frameSig = @'
 using System;
@@ -511,7 +385,18 @@ public class NxFrame {
 
   static System.Collections.Generic.List<IntPtr> wins = new System.Collections.Generic.List<IntPtr>();
 
+  const int RED = unchecked((int)0xFFFF0000); // opaque red, premultiplied BGRA
+
   static void Strip(int x, int y, int w, int h){
+    if (w <= 0 || h <= 0) return;
+    int[] px = new int[w * h];
+    for (int i = 0; i < px.Length; i++) px[i] = RED;
+    Layer(x, y, w, h, px);
+  }
+
+  // One top-most, click-through, never-activated window showing px (premultiplied
+  // BGRA, row-major, w*h). Fully transparent pixels (0) let clicks and sight through.
+  static void Layer(int x, int y, int w, int h, int[] px){
     if (w <= 0 || h <= 0) return;
     // WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
     int ex = 0x00080000 | 0x00000020 | 0x00000008 | 0x00000080 | 0x08000000;
@@ -522,8 +407,7 @@ public class NxFrame {
     BIH bi = new BIH(); bi.size = 40; bi.width = w; bi.height = -h; bi.planes = 1; bi.bits = 32;
     IntPtr bits; IntPtr bmp = CreateDIBSection(mem, ref bi, 0, out bits, IntPtr.Zero, 0);
     if (bmp != IntPtr.Zero && bits != IntPtr.Zero) {
-      int n = w * h; int red = unchecked((int)0xFFFF0000); // opaque red, premultiplied BGRA
-      for (int i = 0; i < n; i++) Marshal.WriteInt32(bits, i * 4, red);
+      Marshal.Copy(px, 0, bits, w * h);
       IntPtr old = SelectObject(mem, bmp);
       PT dst = new PT(); dst.x = x; dst.y = y; PT src = new PT(); SZ sz = new SZ(); sz.w = w; sz.h = h;
       BF bf = new BF(); bf.op = 0; bf.flags = 0; bf.alpha = 255; bf.fmt = 1; // AC_SRC_OVER, AC_SRC_ALPHA
@@ -543,6 +427,27 @@ public class NxFrame {
     Strip(l, t, pen, h);
     Strip(r - pen + 1, t, pen, h);
   }
+
+  // A red ring of the given radius centred on (cx,cy), absolute virtual-desktop
+  // px — the click marker. Same kind of window as the frame strips, so it is
+  // visible over browsers and other GPU-composited surfaces, and it is placed in
+  // absolute coordinates (the screen DC's origin is never consulted).
+  public static void Ring(int cx, int cy, int radius, int pen){
+    int half = radius + pen;
+    int size = half * 2 + 1;
+    int[] px = new int[size * size];
+    double inner = radius - pen / 2.0, outer = radius + pen / 2.0;
+    for (int y = 0; y < size; y++) {
+      for (int x = 0; x < size; x++) {
+        double dx = x - half, dy = y - half;
+        double d = Math.Sqrt(dx * dx + dy * dy);
+        if (d >= inner && d <= outer) px[y * size + x] = RED;
+      }
+    }
+    Layer(cx - half, cy - half, size, size, px);
+  }
+
+  public static bool HasWindows(){ return wins.Count > 0; }
 
   public static void Hide(){
     foreach (IntPtr w in wins) DestroyWindow(w);
@@ -1380,13 +1285,13 @@ Add-Type -TypeDefinition $inSig -ErrorAction SilentlyContinue
 
 function buildInputScript(cmds: ResolvedCommand[]): string {
   const json = JSON.stringify(cmds);
-  return DPI_PREFIX + INPUT_HELPER + GDI_HELPER + `
+  return DPI_PREFIX + INPUT_HELPER + FRAME_HELPER + `
 $cmds = ${psQuote(json)} | ConvertFrom-Json
 $results = New-Object System.Collections.ArrayList
 function Mark-Cursor {
   $mp = New-Object NxInput+POINT
   [void][NxInput]::GetCursorPos([ref]$mp)
-  [NxGdi]::Draw($mp.X - 25, $mp.Y - 25, $mp.X + 25, $mp.Y + 25, $true, 6)
+  [NxFrame]::Ring($mp.X, $mp.Y, 25, 6)
 }
 foreach ($c in $cmds) {
   $d = @{ t = $c.t }
@@ -1455,9 +1360,9 @@ foreach ($c in $cmds) {
 $fg = [NxInput]::ForegroundTitle()
 $fgPriv = [NxInput]::PrivilegeInfo()
 [void]$results.Add(@{ t = 'foreground'; title = $fg; priv = $fgPriv })
-if ([NxGdi]::HasMarks()) {
+if ([NxFrame]::HasWindows()) {
   Start-Sleep -Milliseconds 350
-  [NxGdi]::Clear()
+  [NxFrame]::Hide()
 }
 $results | ConvertTo-Json -Compress
 `.trim();
