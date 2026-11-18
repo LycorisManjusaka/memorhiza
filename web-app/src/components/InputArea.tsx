@@ -5,7 +5,6 @@ import { Send, Paperclip, X, FileText, Image as ImageIcon, Music, Video, File, S
 import { v4 as uuidv4 } from 'uuid';
 import { uploadAttachment, dataUrlToBlob } from '@/lib/attachmentUrl';
 import { SNIFF_BYTES, TEXT_MAX_BYTES, MEDIA_EXT, looksLikeText } from '@/lib/textSniff';
-import { dropUrlCandidates, ownFileSourceFromDrop } from '@/lib/ownFileDrop';
 import { useT } from '@/lib/i18n';
 import { useDevice } from './DeviceProvider';
 
@@ -663,29 +662,7 @@ const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenera
     e.preventDefault();
     setIsDragging(false);
     if (disabled || !e.dataTransfer.files) return;
-    const dropped = Array.from(e.dataTransfer.files);
-    // A player dragged out of a bubble arrives as a PARTIAL file (only what the
-    // browser buffered) — refetch it whole. See lib/ownFileDrop.ts.
-    if (dropped.length <= 1) {
-      const dt = e.dataTransfer;
-      const src = dropUrlCandidates(t => { try { return dt.getData(t); } catch { return ''; } })
-        .map(c => ownFileSourceFromDrop(c, window.location.origin))
-        .find(Boolean);
-      if (src) {
-        try {
-          const res = await fetch(src.url);
-          if (res.ok) {
-            const blob = await res.blob();
-            const name = src.name || dropped[0]?.name || 'file';
-            const type = blob.type || dropped[0]?.type || '';
-            await processFiles([new globalThis.File([blob], name, { type })]);
-            return;
-          }
-        } catch { /* fall back to the dropped file */ }
-      }
-    }
-    if (dropped.length === 0) return;
-    await processFiles(dropped);
+    await processFiles(Array.from(e.dataTransfer.files));
   };
 
   const removeAttachment = (id: string) => {
