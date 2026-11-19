@@ -45,7 +45,11 @@ import { messageAnchorId, absoluteDeepLink } from '@/lib/deepLink';
 import { copyText } from '@/lib/clipboard';
 import { dedupeMessageIds } from '@/lib/messageIds';
 import { applyTurnSaved, type TurnSavedEvent } from '@/lib/turnSaved';
-import { applyAnchorLive, type AnchorLiveView } from '@/lib/anchorLive';
+import { applyAnchorLive, normaliseAnchorLive, type AnchorLiveView } from '@/lib/anchorLive';
+import { readAnchorSse } from '@/lib/anchorSse';
+import { readAnchorVerdict } from '@/lib/anchorAct';
+import { extractAnchorLang } from '@/lib/anchorRewrite';
+import { AnchorCost } from '@/components/AnchorCost';
 import { placeAnnouncedUser } from '@/lib/announcedUser';
 import { retiredModelLabel } from '@/lib/retiredModels';
 import { parseSnapshot, viewWindow, weekPace, type ClaudeUsageSnapshot, type WindowView } from '@/lib/claudeUsage';
@@ -5494,9 +5498,18 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         body: JSON.stringify({
           folder: folderName, convoId, messageId: msgId,
           settings: anchorSettings, lang: uiLanguage === 'ja' ? 'ja' : 'en',
+          stream: true,
         }),
       });
-      const data = await res.json().catch(() => ({}));
+      // Streamed like the automatic anchor (つよ, 2026-11-19): the same live
+      // panel fills in while the judge works. Errors before the stream opens
+      // (no model, blocked being) still come back as JSON.
+      const data: any = res.ok && (res.headers.get('content-type') || '').includes('text/event-stream')
+        ? await readAnchorSse(res, 'anchor_report', (d) => {
+          const f = normaliseAnchorLive(d);
+          if (f) setAnchorLive(prev => applyAnchorLive(prev, f));
+        })
+        : await res.json().catch(() => ({}));
       report = data && data.report
         ? data.report
         : { at: Date.now(), family: anchorSettings.family, model: anchorSettings.model, thought: '', output: '', error: String(data?.error || `HTTP ${res.status}`) };
@@ -5504,6 +5517,50 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       report = { at: Date.now(), family: anchorSettings.family, model: anchorSettings.model, thought: '', output: '', error: e?.message || String(e) };
     }
     setMessages(prev => prev.map(m => (m.id === msgId ? { ...m, anchorReport: report } : m)));
+    setAnchorLive(prev => (prev && prev.assistantId === msgId ? null : prev));
+    setAnchorBusyId('');
+  };
+
+  // The REWRITE writer, by hand, on a reply whose manual anchor report said
+  // REWRITE (つよ, 2026-11-19: fixing an old message took the zombie maker).
+  // The server runs the same writer and builds the same record as the
+  // automatic one; the new text is stored here through the ordinary save.
+  // The being is not told: this is a past message, often long before its
+  // present turn.
+  const handleAnchorRewrite = async (msgId: string, convLang: string) => {
+    if (anchorBusyId) return;
+    setAnchorBusyId(msgId);
+    try {
+      const res = await fetch('/api/anchor/rewrite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          folder: folderName, convoId, messageId: msgId, convLang,
+          settings: anchorSettings, lang: uiLanguage === 'ja' ? 'ja' : 'en',
+        }),
+      });
+      const data: any = res.ok && (res.headers.get('content-type') || '').includes('text/event-stream')
+        ? await readAnchorSse(res, 'anchor_rewrite', (d) => {
+          const f = normaliseAnchorLive(d);
+          if (f) setAnchorLive(prev => applyAnchorLive(prev, f));
+        })
+        : await res.json().catch(() => ({}));
+      if (data && data.record) {
+        const after = typeof data.after === 'string' ? data.after : null;
+        setMessages(prev => prev.map(m => (m.id === msgId
+          ? { ...m, ...(after !== null ? { content: after } : {}), anchorRewrite: data.record }
+          : m)));
+      } else {
+        setMessages(prev => prev.map(m => (m.id === msgId
+          ? { ...m, anchorRewrite: { at: Date.now(), lang: convLang, model: anchorSettings.model, ok: false, reason: 'call-failed', pairs: 0, applied: 0, dropped: 0, problems: [String(data?.error || `HTTP ${res.status}`)] } }
+          : m)));
+      }
+    } catch (e: any) {
+      setMessages(prev => prev.map(m => (m.id === msgId
+        ? { ...m, anchorRewrite: { at: Date.now(), lang: convLang, model: anchorSettings.model, ok: false, reason: 'call-failed', pairs: 0, applied: 0, dropped: 0, problems: [e?.message || String(e)] } }
+        : m)));
+    }
+    setAnchorLive(prev => (prev && prev.assistantId === msgId ? null : prev));
     setAnchorBusyId('');
   };
   // Stable identity for the memo'd bubble; the id comes back as an argument.
@@ -6659,6 +6716,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                       <Anchor size={12} />
                       <span>{head}</span>
                     </summary>
+                    <AnchorCost usage={rw.usage} ms={rw.ms} model={String(rw.model || '')} family={anchorSettings.family} at={rw.at} />
                     {Array.isArray(rw.problems) && rw.problems.length > 0 && (
                       <div className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">{rw.problems.join('\n')}</div>
                     )}
@@ -6780,6 +6838,27 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                       {!msg.anchorReport.output && !msg.anchorReport.error ? (
                         <div className="mt-1 text-xs text-muted-foreground">{t('anchor.report.empty')}</div>
                       ) : null}
+                      <AnchorCost usage={msg.anchorReport.usage} ms={msg.anchorReport.ms} model={msg.anchorReport.model} family={msg.anchorReport.family} at={msg.anchorReport.at} />
+                      {/* REWRITE said by a manual run: run the writer on THIS
+                          reply, past or present (つよ, 2026-11-19). */}
+                      {(() => {
+                        const out = String(msg.anchorReport.output || '');
+                        if (readAnchorVerdict(out) !== 'REWRITE') return null;
+                        const rl = extractAnchorLang(out);
+                        if (!rl) return null;
+                        return (
+                          <div className="mt-2 border-t border-sky-500/20 pt-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleAnchorRewrite(msg.id, rl)}
+                              disabled={!!anchorBusyId}
+                              className="text-[11px] px-2 py-0.5 rounded border border-amber-500/50 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 disabled:opacity-50"
+                            >
+                              {t('anchor.rewrite.run').replace('{lang}', rl)}
+                            </button>
+                          </div>
+                        );
+                      })()}
                       {/* Save this run as a fixture for 謡's offline test bench.
                           Developer-only (NEXUS_BINDING_OPTIONAL): an ordinary install
                           has no anchor lab, so the button would point nowhere. */}

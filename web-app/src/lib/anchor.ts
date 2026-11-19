@@ -92,6 +92,21 @@ export interface AnchorReport {
   output: string;
   /** Set instead of (or beside) output when the call failed. */
   error?: string;
+  /** The provider's usage for this call (priced on screen like a reply's). Absent on reports saved before 2026-11-19. */
+  usage?: AnchorUsage | null;
+  /** Wall time of the call, ms. */
+  ms?: number;
+}
+
+/** Same buckets as a reply's cacheUsage (lib/turnEvents TurnCacheUsage). */
+export interface AnchorUsage {
+  cachedInputTokens: number;
+  uncachedInputTokens: number;
+  totalInputTokens: number;
+  outputTokens: number;
+  cacheCreationTokens: number;
+  providerHint: string;
+  reportedUsd?: number;
 }
 
 export interface AnchorMessage {

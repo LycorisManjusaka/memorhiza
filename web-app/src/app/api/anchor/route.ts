@@ -6,6 +6,8 @@ import { beingLogsDir } from '@/lib/beingPaths';
 import { beingIsBlockedHere, blockedResponseBody } from '@/lib/blockedBeings';
 import { parseAnchorSettings, type AnchorReport, type AnchorLang } from '@/lib/anchor';
 import { execAnchor, ANCHOR_FILE } from '@/lib/anchorExec';
+import { createAnchorLiveEmitter } from '@/lib/anchorLive';
+import { anchorSseResponse } from '@/lib/anchorSse';
 
 // The anchor (錨), manual run. Every rule is in lib/anchor.ts; this file reads
 // two things from disk, makes one model call, bills it, and returns.
@@ -53,10 +55,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'conversation-not-found' }, { status: 404 });
     }
 
+    const messages = Array.isArray(log?.messages) ? log.messages : [];
+    const origin = new URL(req.url).origin;
+
+    // `stream: true` (the tab since 2026-11-19): the same run, but the judge's
+    // thinking and output arrive as `anchor_live` frames while it works, and
+    // the report is the last frame. The JSON answer below stays for any
+    // older tab still asking the old way.
+    if (body.stream === true) {
+      return anchorSseResponse(async (send) => {
+        const em = createAnchorLiveEmitter({
+          assistantId: messageId, stage: 'judge', model: settings.model, emit: send, now: Date.now,
+        });
+        let r;
+        try {
+          r = await execAnchor({ messages, targetId: messageId, folder, convoId, lang, settings, origin, chatPost, signal: req.signal, onDelta: em.push });
+        } finally { em.end(); }
+        if (!r.ok) send({ type: 'anchor_report', error: r.error });
+        else send({ type: 'anchor_report', report: r.report });
+      });
+    }
+
     const r = await execAnchor({
-      messages: Array.isArray(log?.messages) ? log.messages : [],
-      targetId: messageId, folder, convoId, lang, settings,
-      origin: new URL(req.url).origin, chatPost, signal: req.signal,
+      messages, targetId: messageId, folder, convoId, lang, settings,
+      origin, chatPost, signal: req.signal,
     });
     if (!r.ok) {
       // Not saved yet, or not a reply: said plainly — judging the nearest

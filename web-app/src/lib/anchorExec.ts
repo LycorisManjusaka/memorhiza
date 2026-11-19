@@ -53,6 +53,7 @@ export async function execAnchor(a: {
   const systemPrompt = extractAgentSystemPrompt(agents.find((x) => x.name === (a.promptFile || ANCHOR_FILE))?.content || '');
   if (!systemPrompt) return { ok: false, error: 'no-anchor-prompt' };
 
+  const t0 = Date.now();
   const res = await a.chatPost(new Request(`${a.origin}/api/chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -79,6 +80,8 @@ export async function execAnchor(a: {
       thought: drained.thought.trim(),
       output: drained.text.trim(),
       ...(drained.error ? { error: drained.error } : {}),
+      usage: drained.usage,
+      ms: Date.now() - t0,
     },
   };
 }

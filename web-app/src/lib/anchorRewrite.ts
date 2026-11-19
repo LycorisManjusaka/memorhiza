@@ -162,4 +162,39 @@ export interface AnchorRewriteRecord {
   applied: number;
   dropped: number;
   before?: string;
+  /** The writer's call: model actually used, provider usage, wall time. */
+  usage?: import('@/lib/anchor').AnchorUsage | null;
+  ms?: number;
+}
+
+/**
+ * One writer call → the record saved beside the reply, and the new text when
+ * it was applied (null = keep the reply as written). Shared by the runner's
+ * automatic REWRITE and the manual "rewrite this message" button, so the two
+ * can never record a rewrite differently. `w` null = no writer prompt on disk.
+ */
+export function settleRewrite(a: {
+  before: string;
+  lang: string;
+  model: string;
+  at: number;
+  w: { output: string; error?: string; usage?: import('@/lib/anchor').AnchorUsage | null; ms?: number } | null;
+}): { record: AnchorRewriteRecord; after: string | null } {
+  const base: AnchorRewriteRecord = { at: a.at, lang: a.lang, model: a.model, ok: false, pairs: 0, applied: 0, dropped: 0 };
+  if (!a.w) return { record: { ...base, reason: 'no-prompt' }, after: null };
+  const cost = { ...(a.w.usage !== undefined ? { usage: a.w.usage } : {}), ...(typeof a.w.ms === 'number' ? { ms: a.w.ms } : {}) };
+  const r = judgeRewrite(a.before, a.w.output, a.w.error);
+  if (r.ok) {
+    return {
+      record: { ...base, ok: true, pairs: r.pairs, applied: r.applied, dropped: r.dropped, before: a.before, ...cost },
+      after: r.after,
+    };
+  }
+  return {
+    record: {
+      ...base, reason: r.reason, pairs: r.pairs, applied: r.applied, dropped: r.dropped,
+      ...(r.problems ? { problems: r.problems } : {}), ...cost,
+    },
+    after: null,
+  };
 }

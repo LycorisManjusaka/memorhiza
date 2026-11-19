@@ -78,7 +78,7 @@ import { runnerNoticeT } from '@/lib/runnerNotices';
 import type { DrainedInjection } from '@/lib/injectMessage';
 import { parseAnchorSettings, type AnchorReport, type AnchorSettings } from '@/lib/anchor';
 import { readAnchorVerdict, decideAnchorAction, anchorRunsOn } from '@/lib/anchorAct';
-import { judgeRewrite, type AnchorRewriteRecord } from '@/lib/anchorRewrite';
+import { settleRewrite } from '@/lib/anchorRewrite';
 import { createAnchorLiveEmitter, type AnchorLiveStage, type AnchorLiveDelta } from '@/lib/anchorLive';
 import { SURGERY_PURPOSE } from '@/lib/soulSurgery';
 
@@ -1260,9 +1260,6 @@ export async function runTurnForQueue(
         // touched; nothing re-runs. Any failure keeps the reply as written and
         // says why on the record, which only watchers see.
         const before = String(assistant.content ?? '');
-        const record: AnchorRewriteRecord = {
-          at: deps.nowMs(), lang: d.lang, model: settings.model, ok: false, pairs: 0, applied: 0, dropped: 0,
-        };
         let w: AnchorReport | null = null;
         if (deps.runAnchorRewrite) {
           const em = live('rewrite');
@@ -1270,27 +1267,10 @@ export async function runTurnForQueue(
             w = await deps.runAnchorRewrite({ messages, targetId, settings, lang, convLang: d.lang, onDelta: em.push });
           } finally { em.end(); }
         }
-        if (!w) {
-          out = { ...out, anchorRewrite: { ...record, reason: 'no-prompt' } };
-        } else {
-          const r = judgeRewrite(before, w.output, w.error);
-          if (r.ok) {
-            out = {
-              ...out,
-              content: r.after,
-              anchorRewrite: { ...record, ok: true, pairs: r.pairs, applied: r.applied, dropped: r.dropped, before },
-              anchorAct: { kind: 'rewrite', text: d.text, at: deps.nowMs() },
-            };
-          } else {
-            out = {
-              ...out,
-              anchorRewrite: {
-                ...record, reason: r.reason, pairs: r.pairs, applied: r.applied, dropped: r.dropped,
-                ...(r.problems ? { problems: r.problems } : {}),
-              },
-            };
-          }
-        }
+        const { record, after } = settleRewrite({ before, lang: d.lang, model: settings.model, at: deps.nowMs(), w });
+        out = after !== null
+          ? { ...out, content: after, anchorRewrite: record, anchorAct: { kind: 'rewrite', text: d.text, at: deps.nowMs() } }
+          : { ...out, anchorRewrite: record };
       }
       return { assistant: out };
     } catch {
