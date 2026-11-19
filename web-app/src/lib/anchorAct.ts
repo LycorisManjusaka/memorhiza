@@ -22,7 +22,8 @@
 //                    conversation's language (check G) — see lib/anchorRewrite.ts.
 //                    A second call writes [[OLD]]/[[NEW]] pairs; nothing is
 //                    re-run. The original stays on the reply for watchers, and
-//                    the being is told once, with a fixed sentence (REWRITE_NOTICE).
+//                    the being is told NOTHING (silent since 2026-11-20: telling
+//                    them started self-audits that caused the next mix-in).
 //   SNOOZE           nothing yet. It means something only to the 24/7
 //                    wake-up pipeline, which does not exist; acting on it now
 //                    would be acting on a word with no consumer.
@@ -171,7 +172,9 @@ export function anchorNoticesFor(messages: AnchorActMessage[], newestUserIdx: nu
   if (newestUserIdx < 0) return [];
   const out: string[] = [];
   const prev = messages[newestUserIdx - 1];
-  if (prev && prev.role !== 'user' && prev.anchorAct && typeof prev.anchorAct.text === 'string' && prev.anchorAct.text.trim()) {
+  // A 'rewrite' act is never delivered: rewrites are silent (2026-11-20), and
+  // this also mutes any rewrite notice saved before that change.
+  if (prev && prev.role !== 'user' && prev.anchorAct && prev.anchorAct.kind !== 'rewrite' && typeof prev.anchorAct.text === 'string' && prev.anchorAct.text.trim()) {
     out.push(prev.anchorAct.text.trim());
   }
   const own = messages[newestUserIdx]?.anchorRetryNotice;

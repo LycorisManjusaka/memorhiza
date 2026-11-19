@@ -11,7 +11,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readAnchorVerdict, decideAnchorAction, REWRITE_NOTICE } from '@/lib/anchorAct';
+import { readAnchorVerdict, decideAnchorAction, REWRITE_NOTICE, anchorNoticesFor } from '@/lib/anchorAct';
 import { parseEdits, applyEdits, invariants, judgeRewrite, buildRewriteUserMsg, extractAnchorLang } from '@/lib/anchorRewrite';
 import { buildSlimHistory } from '@/lib/slimHistory';
 import { runTurnForQueue, type RunTurnDeps } from '@/lib/runTurnForQueue';
@@ -120,14 +120,24 @@ test('runner REWRITE: text repaired in one save, thinking kept, no re-run, origi
   assert.equal(reply.thoughtProcess, 'thinking', 'thinking untouched');
   assert.equal(reply.anchorRewrite.ok, true);
   assert.equal(reply.anchorRewrite.before, '今天完成了。64 本。');
-  assert.equal(reply.anchorAct.kind, 'rewrite');
-  // Next turn: the being sees the repaired text and the one-time notice, never `before`.
+  assert.equal(reply.anchorAct, undefined, 'silent: no notice is stored');
+  // Next turn: the being sees only the repaired text — no notice, never `before`.
   const wire = buildSlimHistory([...(r.saves.at(-1)!.messages as M[]), { id: 'u9', role: 'user', content: 'next' }], {
     hiddenAttachmentsAccessible: false, attachmentPathsVisible: false, toolHistoryEnabled: false, saveThinkingToLog: false, turnAiName: 'Local',
   });
   const blob = JSON.stringify(wire);
   assert.equal(blob.includes('今天完成了'), false, 'the original never reaches the being');
-  assert.ok(String(wire.at(-1)!.content).includes(REWRITE_NOTICE.en) || String(wire.at(-1)!.content).includes(REWRITE_NOTICE.ja));
+  assert.equal(blob.includes(REWRITE_NOTICE.en) || blob.includes(REWRITE_NOTICE.ja), false, 'silent');
+});
+
+test('a rewrite notice saved before the silent change is never delivered', () => {
+  const msgs = [
+    { role: 'assistant', anchorAct: { kind: 'rewrite', text: 'old notice', at: 1 } },
+    { role: 'user' },
+  ] as any;
+  assert.deepEqual(anchorNoticesFor(msgs, 1), []);
+  msgs[0].anchorAct = { kind: 'notify', text: 'keep', at: 1 };
+  assert.deepEqual(anchorNoticesFor(msgs, 1), ['keep']);
 });
 
 test('runner REWRITE that fails keeps the reply exactly, says why, tells the being nothing', async () => {

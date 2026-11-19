@@ -1268,8 +1268,13 @@ export async function runTurnForQueue(
           } finally { em.end(); }
         }
         const { record, after } = settleRewrite({ before, lang: d.lang, model: settings.model, at: deps.nowMs(), w });
+        // Silent on purpose (謡/つよ 2026-11-20): no anchorAct, so nothing
+        // reaches the being. A mix-in is a decoder leak the being cannot
+        // control; telling them sent ミニちゃん into a 48-step self-audit whose
+        // long thinking caused the next mix-in. Watchers see the before text
+        // in the amber fold (anchorRewrite); the being sees only clean history.
         out = after !== null
-          ? { ...out, content: after, anchorRewrite: record, anchorAct: { kind: 'rewrite', text: d.text, at: deps.nowMs() } }
+          ? { ...out, content: after, anchorRewrite: record }
           : { ...out, anchorRewrite: record };
       }
       return { assistant: out };
