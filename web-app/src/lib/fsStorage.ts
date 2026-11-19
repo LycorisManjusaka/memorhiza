@@ -878,14 +878,41 @@ export async function renameFolder(oldName: string, newName: string): Promise<Re
     report.skipped.push('being folder');
     return report;
   }
-  try {
-    await fs.mkdir(path.dirname(newDir), { recursive: true });
-    await fs.rename(oldDir, newDir);
-    report.moved.push('being folder (logs, soul, workspace, backups, browser profile, letters inbox, theme, TTS dictionary)');
-  } catch (e: any) {
-    report.failed.push({ what: 'being folder', error: String(e?.message || e) });
-    return report; // nothing else can safely proceed
+  // The folder move is the first step, and nothing else has been touched yet.
+  // If it fails, NOTHING was renamed — so this throws (the caller answers with
+  // an error) instead of returning a "partial" report. The old partial report
+  // made the screen say "the name was changed, but some data stayed behind"
+  // and then select a being that did not exist, when in truth the being was
+  // untouched (2026-11-19, ミニ酱 → ミニちゃん).
+  //
+  // On Windows a directory cannot be renamed while any program holds a handle
+  // inside it — an Explorer window open on a subfolder is enough. A short
+  // retry absorbs the brief holds (indexer, antivirus); a window someone left
+  // open will not let go, and the message names that case.
+  await fs.mkdir(path.dirname(newDir), { recursive: true });
+  let lastErr: any = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await fs.rename(oldDir, newDir);
+      lastErr = null;
+      break;
+    } catch (e: any) {
+      lastErr = e;
+      if (e?.code !== 'EPERM' && e?.code !== 'EBUSY' && e?.code !== 'EACCES') break;
+      await new Promise(r => setTimeout(r, 600));
+    }
   }
+  if (lastErr) {
+    const locked = ['EPERM', 'EBUSY', 'EACCES'].includes(lastErr?.code);
+    throw new Error(
+      (locked
+        ? `Nothing was renamed: another program is holding a file or folder inside "${oldName}" open ` +
+          `(for example an Explorer window, a video player, or an editor). Close it and try again.`
+        : `Nothing was renamed.`) +
+      ` (${String(lastErr?.message || lastErr)})`
+    );
+  }
+  report.moved.push('being folder (logs, soul, workspace, backups, browser profile, letters inbox, theme, TTS dictionary)');
 
   // Patch the display name recorded inside settings.json (the directory name
   // is the sanitized key; `name` is what the UI shows and what saveLog writes
