@@ -63,7 +63,9 @@ describe('pickMirroredGlobalSettings — language is walled off', () => {
   // a side effect of saving Preferences. See lib/noticeLanguage.ts.
   it('never mirrors language, however it is spelled', () => {
     const out = pickMirroredGlobalSettings({ language: 'ja', betrayalDefense: false });
-    assert.deepEqual(out, { betrayalDefense: false });
+    // Since 2026-11-19 the SCREEN language crosses under its own name
+    // (`screenLanguage`, human-facing only); `language` itself still never does.
+    assert.deepEqual(out, { betrayalDefense: false, screenLanguage: 'ja' });
     assert.equal('language' in out, false);
   });
 

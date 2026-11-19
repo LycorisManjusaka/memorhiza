@@ -61,12 +61,16 @@ function normalise(tag: unknown): NoticeLang | null {
  */
 export function noticeLanguage(
   items: readonly NoticeLangSource[] | null | undefined,
-  storedSettings: { language?: string } | null | undefined,
+  storedSettings: { language?: string; screenLanguage?: string } | null | undefined,
 ): NoticeLang {
   for (const it of items ?? []) {
     const picked = normalise(it?.uiLang);
     if (picked) return picked;
   }
+  // The screen language the browser mirrors (lib/serverGlobalSettings.ts,
+  // added 2026-11-19) — the honest answer for a batch nobody typed.
+  const screen = normalise(storedSettings?.screenLanguage);
+  if (screen) return screen;
   // No screen behind this batch. The stored setting is empty in practice (see
   // the header), so this is almost always 'en' — kept because it is the only
   // honest answer available and because an install that DOES write the field

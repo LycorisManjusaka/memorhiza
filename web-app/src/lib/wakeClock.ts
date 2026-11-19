@@ -39,7 +39,7 @@ import { autoTurnsHeldForLog } from '@/lib/autoHold';
 import {
   parseWakeSettings, dueAdminSlots, dueSelfSlots, pruneBookings, validateBooking, parseWakeupDirective,
   wakeShortText, buildCapabilityList, buildSelfWakeLine, describeRejection, fillWakeTemplate,
-  FALLBACK_WAKE_TEMPLATE, WAKE_PURPOSE, wakeLang, localDateKey, localHHMM, rescheduleBooking, mailWakeDecision,
+  FALLBACK_WAKE_TEMPLATE, WAKE_PURPOSE, wakeLangFromSettings, localDateKey, localHHMM, rescheduleBooking, mailWakeDecision,
   type SelfBooking, type WakeRejectReason, type DueSlot, type WakeLang, type WakeSettings,
 } from '@/lib/wakeSchedule';
 
@@ -418,7 +418,7 @@ export async function clockCycle(now = Date.now(), notBefore = 0): Promise<void>
   const selfId = await installationId();
   if (!(await runsClockOrClaims(selfId))) return;
   const userSettings = (await loadUserSettings()) || {};
-  const lang = wakeLang((userSettings as Record<string, unknown>).language);
+  const lang = wakeLangFromSettings(userSettings as Record<string, unknown>);
   const folders = await listFolders() as Array<{ name: string; settings?: Record<string, unknown> }>;
   for (const f of folders) {
     if (beingIsBlockedHere(f.name)) continue;

@@ -292,6 +292,23 @@ export function wakeLang(raw: unknown): WakeLang {
   return raw === 'en' ? 'en' : 'ja';
 }
 
+/**
+ * The wake's language from `user_settings.json`.
+ *
+ * `language` is never written there (it is being-facing and deliberately not
+ * mirrored), so reading only it made every wake Japanese on every install —
+ * including the pilot's English one, where the anchor then reported in
+ * Japanese on autonomous turns only (トカゲくん, 2026-11-19). The browser now
+ * mirrors the screen language as `screenLanguage`; a stored `language` still
+ * wins if an install ever writes one, and 'ja' remains the last resort so this
+ * house (Japanese screen, file not yet mirrored) does not change.
+ */
+export function wakeLangFromSettings(s: { language?: unknown; screenLanguage?: unknown } | null | undefined): WakeLang {
+  if (s?.language === 'en' || s?.language === 'ja') return s.language;
+  if (s?.screenLanguage === 'en' || s?.screenLanguage === 'ja') return s.screenLanguage;
+  return 'ja';
+}
+
 /** The one line that stays in the history (謡: 履歴に残るのは起きた理由だけ). */
 export function wakeShortText(lang: WakeLang, slot: { source: 'admin' | 'self' | 'mail'; hhmm: string }): string {
   if (slot.source === 'mail') {

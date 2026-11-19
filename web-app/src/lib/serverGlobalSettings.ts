@@ -54,6 +54,20 @@ export interface MirroredGlobalSettings {
    * and read by the runner, which has no browser.
    */
   ttsPlayback?: 'tab' | 'server';
+  /**
+   * The language the screen was last set to, under its OWN name — NOT
+   * `language`, for the reason in the header: `language` is also the
+   * being-facing instruction language and must not be switched by a sync.
+   *
+   * Human-facing only. A turn nobody typed (wake, letter, `[->name]`) has no
+   * screen behind it, so its anchor report and notices used to fall back to a
+   * hard-coded default: wakeLang() said 'ja', and the pilot's English install
+   * got Japanese anchor reports on every autonomous turn while the manual
+   * button (which reads the tab) answered in English. トカゲくん, 2026-11-19.
+   * Last browser to change it wins; this house has one screen language per
+   * install in practice.
+   */
+  screenLanguage?: 'ja' | 'en';
 }
 
 /**
@@ -84,6 +98,17 @@ export function pickMirroredGlobalSettings(g: unknown): MirroredGlobalSettings {
 
   if (src.ttsPlayback === 'tab' || src.ttsPlayback === 'server') out.ttsPlayback = src.ttsPlayback;
 
+  // Same test the UI dictionaries use: 'ja' (or 'ja-*') vs everything else.
+  if (typeof src.language === 'string' && src.language.trim()) {
+    const l = src.language.trim().toLowerCase();
+    out.screenLanguage = l === 'ja' || l.startsWith('ja-') ? 'ja' : 'en';
+  } else if (src.screenLanguage === 'ja' || src.screenLanguage === 'en') {
+    // The PATCH route re-picks the browser's already-picked subset, which
+    // carries `screenLanguage` and no `language`. Without this branch the key
+    // would be dropped on the second pass and never reach the file.
+    out.screenLanguage = src.screenLanguage;
+  }
+
   return out;
 }
 
@@ -96,5 +121,5 @@ export function pickMirroredGlobalSettings(g: unknown): MirroredGlobalSettings {
  */
 export function mirrorChanged(a: MirroredGlobalSettings, b: MirroredGlobalSettings): boolean {
   return a.betrayalDefense !== b.betrayalDefense || a.maxToolIterations !== b.maxToolIterations ||
-    a.ttsPlayback !== b.ttsPlayback;
+    a.ttsPlayback !== b.ttsPlayback || a.screenLanguage !== b.screenLanguage;
 }
