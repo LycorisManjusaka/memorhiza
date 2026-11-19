@@ -3,8 +3,8 @@
 // anchorSse is the stream the manual routes answer with.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { settleRewrite } from '../../src/lib/anchorRewrite.ts';
-import { anchorSseResponse, readAnchorSse } from '../../src/lib/anchorSse.ts';
+import { settleRewrite } from '@/lib/anchorRewrite';
+import { anchorSseResponse, readAnchorSse } from '@/lib/anchorSse';
 
 const usage = { cachedInputTokens: 10, uncachedInputTokens: 90, totalInputTokens: 100, outputTokens: 7, cacheCreationTokens: 0, providerHint: 'deepseek' };
 
