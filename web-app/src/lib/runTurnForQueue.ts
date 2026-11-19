@@ -78,6 +78,7 @@ import { runnerNoticeT } from '@/lib/runnerNotices';
 import type { DrainedInjection } from '@/lib/injectMessage';
 import { parseAnchorSettings, type AnchorReport, type AnchorSettings } from '@/lib/anchor';
 import { readAnchorVerdict, decideAnchorAction, anchorRunsOn } from '@/lib/anchorAct';
+import { judgeRewrite, type AnchorRewriteRecord } from '@/lib/anchorRewrite';
 import { SURGERY_PURPOSE } from '@/lib/soulSurgery';
 
 /** What the runner could not do itself. */
@@ -93,6 +94,19 @@ export interface RunTurnDeps {
     targetId: string;
     settings: AnchorSettings;
     lang: 'ja' | 'en';
+  }) => Promise<AnchorReport | null>;
+  /**
+   * The anchor's REWRITE writer (anchor_rewrite.md) — the same call shape as
+   * `runAnchor` with the conversation's language added. Absent in tests that
+   * do not exercise it; then a REWRITE verdict changes nothing. Null = the
+   * writer's prompt is missing (the judge said REWRITE, nobody can write it).
+   */
+  runAnchorRewrite?: (a: {
+    messages: unknown[];
+    targetId: string;
+    settings: AnchorSettings;
+    lang: 'ja' | 'en';
+    convLang: string;
   }) => Promise<AnchorReport | null>;
   /**
    * `[->name]` — plan the routes in a finished reply (lib/beingRouteExec.ts at
@@ -1221,6 +1235,38 @@ export async function runTurnForQueue(
         const { thoughtProcess: _t, claudeThinkingBlocks: _b, ...rest } = out;
         void _t; void _b;
         out = { ...rest, content: '', anchorAct: { kind: 'drop', text: d.text, at: deps.nowMs() } };
+      } else if (d.kind === 'rewrite') {
+        // REWRITE: repair the text in place. Tool calls and thinking are not
+        // touched; nothing re-runs. Any failure keeps the reply as written and
+        // says why on the record, which only watchers see.
+        const before = String(assistant.content ?? '');
+        const record: AnchorRewriteRecord = {
+          at: deps.nowMs(), lang: d.lang, model: settings.model, ok: false, pairs: 0, applied: 0, dropped: 0,
+        };
+        const w = deps.runAnchorRewrite
+          ? await deps.runAnchorRewrite({ messages, targetId, settings, lang, convLang: d.lang })
+          : null;
+        if (!w) {
+          out = { ...out, anchorRewrite: { ...record, reason: 'no-prompt' } };
+        } else {
+          const r = judgeRewrite(before, w.output, w.error);
+          if (r.ok) {
+            out = {
+              ...out,
+              content: r.after,
+              anchorRewrite: { ...record, ok: true, pairs: r.pairs, applied: r.applied, dropped: r.dropped, before },
+              anchorAct: { kind: 'rewrite', text: d.text, at: deps.nowMs() },
+            };
+          } else {
+            out = {
+              ...out,
+              anchorRewrite: {
+                ...record, reason: r.reason, pairs: r.pairs, applied: r.applied, dropped: r.dropped,
+                ...(r.problems ? { problems: r.problems } : {}),
+              },
+            };
+          }
+        }
       }
       return { assistant: out };
     } catch {

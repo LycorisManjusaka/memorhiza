@@ -18,6 +18,11 @@
 //                    user turn: a second RETRY on the same user turn is acted
 //                    on as NOTIFY, or the anchor and the vessel could loop
 //                    forever on a hand that never moves.
+//   REWRITE          the reply's text is repaired IN PLACE where it left the
+//                    conversation's language (check G) — see lib/anchorRewrite.ts.
+//                    A second call writes [[OLD]]/[[NEW]] pairs; nothing is
+//                    re-run. The original stays on the reply for watchers, and
+//                    the being is told once, with a fixed sentence (REWRITE_NOTICE).
 //   SNOOZE           nothing yet. It means something only to the 24/7
 //                    wake-up pipeline, which does not exist; acting on it now
 //                    would be acting on a word with no consumer.
@@ -33,10 +38,12 @@
 // newest one. One turn later it is gone from the wire with no deletion step,
 // the same rule as a [NEXUS] turn's long text.
 
-export type AnchorVerdict = 'OK' | 'NOTIFY' | 'INTERCEPT_DROP' | 'INTERCEPT_RETRY' | 'SNOOZE';
+import { extractAnchorLang } from '@/lib/anchorRewrite';
+
+export type AnchorVerdict = 'OK' | 'NOTIFY' | 'REWRITE' | 'INTERCEPT_DROP' | 'INTERCEPT_RETRY' | 'SNOOZE';
 export type AnchorReadVerdict = AnchorVerdict | 'UNREADABLE';
 
-const VERDICTS: AnchorVerdict[] = ['INTERCEPT_RETRY', 'INTERCEPT_DROP', 'NOTIFY', 'SNOOZE', 'OK'];
+const VERDICTS: AnchorVerdict[] = ['INTERCEPT_RETRY', 'INTERCEPT_DROP', 'REWRITE', 'NOTIFY', 'SNOOZE', 'OK'];
 
 /**
  * The verdict on the first non-blank line. Markdown decoration a vessel adds
@@ -89,9 +96,19 @@ export const RETRY_PREFIX: Record<AnchorLangCode, string> = {
   en: '(This notice is about the previous attempt, which has been replaced.)',
 };
 
+/**
+ * What the being reads after a REWRITE was applied. 謡's draft (2026-11-19),
+ * carried the same way as DROP_NOTICE. Says what changed and what did not;
+ * names no language, so the notice itself cannot pull the drift back in.
+ */
+export const REWRITE_NOTICE: Record<AnchorLangCode, string> = {
+  ja: '直前の返答は、会話の言語から外れていた箇所だけを NEXUS が書き直して保存しました。あなたが手で行った作業はそのままです。',
+  en: 'In your previous reply, NEXUS rewrote only the places that had left the language of the conversation, and saved it that way. The work you did with your own hands is unchanged.',
+};
+
 /** Stored on the judged reply when the anchor acted. */
 export interface AnchorAct {
-  kind: 'notify' | 'drop';
+  kind: 'notify' | 'drop' | 'rewrite';
   /** What the being is handed, already in the anchor's voice. */
   text: string;
   at: number;
@@ -101,7 +118,9 @@ export type AnchorDecision =
   | { kind: 'none' }
   | { kind: 'notify'; text: string }
   | { kind: 'drop'; text: string }
-  | { kind: 'retry'; text: string };
+  | { kind: 'retry'; text: string }
+  /** `text` is what the being is told IF the rewrite is applied; `lang` is what the judge named. */
+  | { kind: 'rewrite'; text: string; lang: string };
 
 /**
  * Turn a verdict into an action.
@@ -125,6 +144,11 @@ export function decideAnchorAction(a: {
       if (!notice) return { kind: 'none' };
       if (a.retryAllowed) return { kind: 'retry', text: `${voice}\n${RETRY_PREFIX[a.lang]}\n${notice}` };
       return { kind: 'notify', text: `${voice}\n${notice}` };
+    case 'REWRITE': {
+      // No language named = nothing to rewrite INTO; the writer is not guessed at.
+      const lang = extractAnchorLang(a.output);
+      return lang ? { kind: 'rewrite', text: `${voice}\n${REWRITE_NOTICE[a.lang]}`, lang } : { kind: 'none' };
+    }
     case 'NOTIFY':
       return notice ? { kind: 'notify', text: `${voice}\n${notice}` } : { kind: 'none' };
     default:

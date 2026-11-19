@@ -6622,6 +6622,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                 if (!text.trim()) return null;
                 const label = act?.kind === 'drop'
                   ? t('anchor.act.drop')
+                  : act?.kind === 'rewrite' ? t('anchor.act.rewrite')
                   : act ? t('anchor.act.notify') : t('anchor.act.retry');
                 return (
                   <details className={`mt-2 max-w-2xl rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 ${msg.role === 'user' ? 'ml-auto mr-2' : 'ml-2'}`}>
@@ -6630,6 +6631,35 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                       <span>{label}</span>
                     </summary>
                     <div className="mt-1 text-xs text-foreground whitespace-pre-wrap">{text}</div>
+                  </details>
+                );
+              })()}
+              {/* REWRITE: what the anchor's writer did to this reply. When it
+                  was applied, the ORIGINAL text is here so anyone watching can
+                  compare (謡's principle 4); it is never sent to the being.
+                  When it was not applied, the reason — the reply above is
+                  then exactly as the being wrote it. */}
+              {(() => {
+                const rw = msg.role !== 'user' ? (msg as any).anchorRewrite : null;
+                if (!rw || typeof rw !== 'object') return null;
+                const head = rw.ok
+                  ? t('anchor.rewrite.applied').replace('{n}', String(rw.applied ?? 0)).replace('{lang}', String(rw.lang || ''))
+                  : t('anchor.rewrite.kept').replace('{reason}', t(`anchor.rewrite.reason.${rw.reason || 'call-failed'}`));
+                return (
+                  <details className="mt-2 ml-2 max-w-2xl rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2">
+                    <summary className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 cursor-pointer select-none">
+                      <Anchor size={12} />
+                      <span>{head}</span>
+                    </summary>
+                    {Array.isArray(rw.problems) && rw.problems.length > 0 && (
+                      <div className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">{rw.problems.join('\n')}</div>
+                    )}
+                    {rw.ok && typeof rw.before === 'string' && (
+                      <>
+                        <div className="mt-1 text-[11px] text-muted-foreground">{t('anchor.rewrite.before')}</div>
+                        <div className="mt-1 max-h-96 overflow-y-auto rounded border border-border/60 bg-background/60 p-2 text-xs text-foreground whitespace-pre-wrap">{rw.before}</div>
+                      </>
+                    )}
                   </details>
                 );
               })()}

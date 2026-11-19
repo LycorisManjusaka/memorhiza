@@ -16,6 +16,8 @@ import {
 import { drainAnchorCall } from '@/lib/anchorRun';
 
 export const ANCHOR_FILE = 'anchor.md';
+/** The REWRITE writer's prompt (謡's). A separate call; see lib/anchorRewrite.ts. */
+export const ANCHOR_REWRITE_FILE = 'anchor_rewrite.md';
 
 export type AnchorExecResult =
   | { ok: true; report: AnchorReport }
@@ -31,16 +33,22 @@ export async function execAnchor(a: {
   origin: string;
   chatPost: (req: Request) => Promise<Response>;
   signal?: AbortSignal;
+  /** Which prompt file. Default the judge's. */
+  promptFile?: string;
+  /** Turns the judge's message into this call's message (the REWRITE writer puts the language on top). */
+  wrapUserMsg?: (anchorUserMsg: string) => string;
 }): Promise<AnchorExecResult> {
   if (!a.settings.model) return { ok: false, error: 'no-anchor-model' };
-  const userMsg = buildAnchorUserMsg({
+  const judgeMsg = buildAnchorUserMsg({
     messages: a.messages, targetId: a.targetId, beingName: a.folder, lang: a.lang,
   });
+  // The writer gets the SAME material the judge saw, byte for byte, plus its header.
+  const userMsg = judgeMsg && a.wrapUserMsg ? a.wrapUserMsg(judgeMsg) : judgeMsg;
   if (!userMsg) return { ok: false, error: 'message-not-found' };
 
   // Read on every run, so editing anchor.md takes effect on the next run.
   const agents = await readAllAgentFiles(a.lang);
-  const systemPrompt = extractAgentSystemPrompt(agents.find((x) => x.name === ANCHOR_FILE)?.content || '');
+  const systemPrompt = extractAgentSystemPrompt(agents.find((x) => x.name === (a.promptFile || ANCHOR_FILE))?.content || '');
   if (!systemPrompt) return { ok: false, error: 'no-anchor-prompt' };
 
   const res = await a.chatPost(new Request(`${a.origin}/api/chat`, {

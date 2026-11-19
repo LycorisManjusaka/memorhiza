@@ -23,7 +23,8 @@ import { loadLog, saveLog, listFolders, loadUserSettings } from '@/lib/fsStorage
 // itself. The cost is that this one line is untestable (next/server cannot
 // load outside Next's runtime), which is why every rule lives in lib.
 import { POST as chatPost } from '@/app/api/chat/route';
-import { execAnchor } from '@/lib/anchorExec';
+import { execAnchor, ANCHOR_REWRITE_FILE } from '@/lib/anchorExec';
+import { buildRewriteUserMsg } from '@/lib/anchorRewrite';
 import { planBeingRoutes } from '@/lib/beingRouteExec';
 import { recordSelfWakeFromReply, ensureWakeClock } from '@/lib/wakeClock';
 import type { AnchorMessage } from '@/lib/anchor';
@@ -400,6 +401,21 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
               settings: a.settings,
               origin: opts.origin,
               chatPost,
+            });
+            return r.ok ? r.report : null;
+          },
+          runAnchorRewrite: async (a) => {
+            const r = await execAnchor({
+              messages: a.messages as AnchorMessage[],
+              targetId: a.targetId,
+              folder: t.being,
+              convoId: t.convoId,
+              lang: a.lang,
+              settings: a.settings,
+              origin: opts.origin,
+              chatPost,
+              promptFile: ANCHOR_REWRITE_FILE,
+              wrapUserMsg: (m) => buildRewriteUserMsg(m, a.convLang, a.lang),
             });
             return r.ok ? r.report : null;
           },
