@@ -79,6 +79,7 @@ import type { DrainedInjection } from '@/lib/injectMessage';
 import { parseAnchorSettings, type AnchorReport, type AnchorSettings } from '@/lib/anchor';
 import { readAnchorVerdict, decideAnchorAction, anchorRunsOn } from '@/lib/anchorAct';
 import { judgeRewrite, type AnchorRewriteRecord } from '@/lib/anchorRewrite';
+import { createAnchorLiveEmitter, type AnchorLiveStage, type AnchorLiveDelta } from '@/lib/anchorLive';
 import { SURGERY_PURPOSE } from '@/lib/soulSurgery';
 
 /** What the runner could not do itself. */
@@ -94,6 +95,8 @@ export interface RunTurnDeps {
     targetId: string;
     settings: AnchorSettings;
     lang: 'ja' | 'en';
+    /** Chunks as they stream; relayed to the tabs (lib/anchorLive.ts). */
+    onDelta?: (d: AnchorLiveDelta) => void;
   }) => Promise<AnchorReport | null>;
   /**
    * The anchor's REWRITE writer (anchor_rewrite.md) — the same call shape as
@@ -107,6 +110,7 @@ export interface RunTurnDeps {
     settings: AnchorSettings;
     lang: 'ja' | 'en';
     convLang: string;
+    onDelta?: (d: AnchorLiveDelta) => void;
   }) => Promise<AnchorReport | null>;
   /**
    * `[->name]` — plan the routes in a finished reply (lib/beingRouteExec.ts at
@@ -1209,14 +1213,30 @@ export async function runTurnForQueue(
     deps.onRawText?.(`data: ${JSON.stringify({
       type: 'tool_activity', tool: 'anchor', name: 'anchor', detail: settings.model || null,
     })}\n\n`);
+    // The anchor's thinking and output, streamed to the tabs as it runs (つよ,
+    // 2026-11-19: a judge + writer turn sat for minutes on one busy line).
+    const live = (stage: AnchorLiveStage) => createAnchorLiveEmitter({
+      assistantId: String(assistant.id),
+      stage,
+      model: settings.model || '',
+      emit: (frame) => deps.onRawText?.(`data: ${JSON.stringify(frame)}
+
+`),
+      now: deps.nowMs,
+    });
     try {
       const messages = [...plan.keep, assistant];
       const targetId = String(assistant.id);
-      let report = await deps.runAnchor({ messages, targetId, settings, lang });
+      const judge = async () => {
+        const em = live('judge');
+        try { return await deps.runAnchor!({ messages, targetId, settings, lang, onDelta: em.push }); }
+        finally { em.end(); }
+      };
+      let report = await judge();
       if (!report) return { assistant };
       // An empty or unreadable first line is "could not judge" — asked ONCE more.
       if (!report.error && readAnchorVerdict(report.output) === 'UNREADABLE') {
-        const second = await deps.runAnchor({ messages, targetId, settings, lang });
+        const second = await judge();
         if (second) report = second;
       }
       let out: Record<string, unknown> = { ...assistant, anchorReport: report };
@@ -1243,9 +1263,13 @@ export async function runTurnForQueue(
         const record: AnchorRewriteRecord = {
           at: deps.nowMs(), lang: d.lang, model: settings.model, ok: false, pairs: 0, applied: 0, dropped: 0,
         };
-        const w = deps.runAnchorRewrite
-          ? await deps.runAnchorRewrite({ messages, targetId, settings, lang, convLang: d.lang })
-          : null;
+        let w: AnchorReport | null = null;
+        if (deps.runAnchorRewrite) {
+          const em = live('rewrite');
+          try {
+            w = await deps.runAnchorRewrite({ messages, targetId, settings, lang, convLang: d.lang, onDelta: em.push });
+          } finally { em.end(); }
+        }
         if (!w) {
           out = { ...out, anchorRewrite: { ...record, reason: 'no-prompt' } };
         } else {

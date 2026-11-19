@@ -10,7 +10,7 @@ import FamilyModelPicker, { RetiredOption } from './FamilyModelPicker';
 import SenseModelPicker from './SenseModelPicker';
 import { tagPriceOptions, priceTiers, fmtPeakHours, fmtThreshold } from '@/lib/modelPriceLabel';
 import { motion } from 'framer-motion';
-import { Download, Settings2, Eye, EyeOff, Radio, Wrench, RefreshCw, ImageDown, FolderOpen, Layers, Bookmark, BookmarkPlus, Clock, Search, AudioLines, Link2, Check, Menu, MoreHorizontal, Anchor } from 'lucide-react';
+import { Download, Settings2, Eye, EyeOff, Radio, Wrench, RefreshCw, ImageDown, FolderOpen, Layers, Bookmark, BookmarkPlus, Clock, Search, AudioLines, Link2, Check, Menu, MoreHorizontal, Anchor, Loader2 } from 'lucide-react';
 import { createPortal, flushSync } from 'react-dom';
 import { makeIsOriginalId, makeIsOriginalIndex, optimisticMarkerIndex, adoptResolvedMarker, type FirstOriginalMarker } from '@/lib/firstOriginal';
 import { shouldReloadFromDisk, classifyLogLoad } from '@/lib/diskVersion';
@@ -45,6 +45,7 @@ import { messageAnchorId, absoluteDeepLink } from '@/lib/deepLink';
 import { copyText } from '@/lib/clipboard';
 import { dedupeMessageIds } from '@/lib/messageIds';
 import { applyTurnSaved, type TurnSavedEvent } from '@/lib/turnSaved';
+import { applyAnchorLive, type AnchorLiveView } from '@/lib/anchorLive';
 import { placeAnnouncedUser } from '@/lib/announcedUser';
 import { retiredModelLabel } from '@/lib/retiredModels';
 import { parseSnapshot, viewWindow, weekPace, type ClaudeUsageSnapshot, type WindowView } from '@/lib/claudeUsage';
@@ -531,6 +532,12 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // Which reply the anchor is reading right now ('' = none). One at a time:
   // the report lands on a message, and two in flight could land out of order.
   const [anchorBusyId, setAnchorBusyId] = useState<string>('');
+  // The automatic anchor's thinking / output while it runs (relay-only). Dropped
+  // when the turn ends; by then the saved anchorReport is on the message.
+  const [anchorLive, setAnchorLive] = useState<AnchorLiveView | null>(null);
+  useEffect(() => {
+    if (!loading) setAnchorLive(null);
+  }, [loading]);
   // Per-message feedback for "save this run as a test-bench fixture" (謡's toy):
   // '' | 'saving' | 'saved:<relative path>' | 'error:<message>'.
   const [anchorSaveState, setAnchorSaveState] = useState<Record<string, string>>({});
@@ -3861,6 +3868,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         // generationMs, toolCalls or notices — which is exactly why the
         // reload existed.
         turnSaved: (ev) => { saved.frame = ev; },
+        anchorLive: (frame) => setAnchorLive(prev => applyAnchorLive(prev, frame)),
       };
 
       reader = ev.body.getReader();
@@ -6695,7 +6703,46 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
               {/* The anchor's report for this reply. BELOW the message, its own
                   block, never part of it. Shown only while the anchor is on.
                   Thinking is folded; the answer is open. */}
-              {anchorSettings.enabled && msg.role !== 'user' && (msg.anchorReport || anchorBusyId === msg.id) && (
+              {/* The automatic anchor, LIVE: judge and (on REWRITE) writer, filling
+                  in as they stream. Replaced by the saved report below once the
+                  turn lands. */}
+              {msg.role !== 'user' && anchorLive?.assistantId === msg.id && (
+                <div className="mt-2 ml-2 max-w-2xl space-y-2">
+                  {(['judge', 'rewrite'] as const).map((stage) => {
+                    const v = anchorLive![stage];
+                    if (!v) return null;
+                    const writing = stage === 'judge' ? !anchorLive!.rewrite : true;
+                    return (
+                      <div key={stage} className="rounded-lg border border-sky-500/40 bg-sky-500/5 px-3 py-2">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-700 dark:text-sky-300">
+                          <Anchor size={12} />
+                          <span>{t(stage === 'judge' ? 'anchor.live.judge' : 'anchor.live.rewrite')}</span>
+                          <span className="font-normal text-muted-foreground">{v.model}</span>
+                          {writing && <Loader2 size={11} className="animate-spin text-sky-500" />}
+                        </div>
+                        {v.thought ? (
+                          <details className="mt-1" open={!v.text}>
+                            <summary className="text-[11px] text-muted-foreground cursor-pointer select-none">
+                              {t('anchor.report.thought').replace('{n}', String(v.thought.length))}
+                            </summary>
+                            <div className="mt-1 max-h-60 overflow-y-auto text-[11px] text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                              {v.thought}
+                            </div>
+                          </details>
+                        ) : null}
+                        {v.text ? (
+                          <div className="mt-1 max-h-96 overflow-y-auto text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+                            {v.text}
+                          </div>
+                        ) : (!v.thought ? (
+                          <div className="mt-1 text-xs text-muted-foreground">{t('anchor.report.running')}</div>
+                        ) : null)}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {anchorSettings.enabled && msg.role !== 'user' && anchorLive?.assistantId !== msg.id && (msg.anchorReport || anchorBusyId === msg.id) && (
                 <div className="mt-2 ml-2 max-w-2xl rounded-lg border border-sky-500/40 bg-sky-500/5 px-3 py-2">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-700 dark:text-sky-300">
                     <Anchor size={12} />

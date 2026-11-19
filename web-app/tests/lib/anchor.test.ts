@@ -134,7 +134,9 @@ test('the report never reaches the being: slimHistory does not carry anchorRepor
 test('wiring: button and report exist only behind the Behaviour switch; picker is the shared one', () => {
   const chat = read('src/components/ChatArea.tsx');
   assert.match(chat, /onAnchor=\{anchorSettings\.enabled && msg\.role !== 'user' \? onAnchorStable : undefined\}/);
-  assert.match(chat, /\{anchorSettings\.enabled && msg\.role !== 'user' && \(msg\.anchorReport \|\| anchorBusyId === msg\.id\)/);
+  // The live panel (2026-11-19) takes the saved report's place while that
+  // reply's anchor is streaming; the gate in front is unchanged.
+  assert.match(chat, /\{anchorSettings\.enabled && msg\.role !== 'user' && anchorLive\?\.assistantId !== msg\.id && \(msg\.anchorReport \|\| anchorBusyId === msg\.id\)/);
   // Model tab + anchor + subagent (2026-11-14); the sense seats use it via SenseModelPicker.
   assert.equal(chat.split('<FamilyModelPicker').length - 1, 3, 'Model tab + anchor + subagent, one component');
   assert.equal(chat.split('<SenseModelPicker').length - 1, 3, 'eyes + ears + watcher');

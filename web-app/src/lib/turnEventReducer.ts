@@ -59,6 +59,7 @@ import {
 import { stripAllTimestamps } from '@/lib/timestampStrip';
 import { applyOutputFilter } from '@/lib/outputFilter';
 import { normaliseTurnSaved, type TurnSavedEvent } from '@/lib/turnSaved';
+import { normaliseAnchorLive, type AnchorLiveFrame } from '@/lib/anchorLive';
 
 /**
  * Turn-scoped values the chain writes that are NOT part of the accumulator.
@@ -171,6 +172,12 @@ export interface TurnEventSink {
    * source of truth about one save.
    */
   turnSaved(ev: TurnSavedEvent): void;
+  /**
+   * The anchor's thinking / output while it runs (relay-only, never saved).
+   * Same house test: drop it and the screen shows only a busy line until the
+   * save lands. The runner produced it and implements it as a no-op.
+   */
+  anchorLive(frame: AnchorLiveFrame): void;
 }
 
 /**
@@ -273,6 +280,9 @@ export function applyTurnEvent(
     acc.notices.length = 0;
     flags.sawOutput = false;
     sink.requestFlush();
+  } else if (data.type === 'anchor_live') {
+    const f = normaliseAnchorLive(data);
+    if (f) sink.anchorLive(f);
   } else if (data.type === 'turn_saved') {
     // Also relay-only, and the mirror image of `turn_plan`: that one says
     // where the reply is ABOUT to go, this one says what landed. Rejected

@@ -401,6 +401,7 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
               settings: a.settings,
               origin: opts.origin,
               chatPost,
+              onDelta: a.onDelta,
             });
             return r.ok ? r.report : null;
           },
@@ -416,6 +417,7 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
               chatPost,
               promptFile: ANCHOR_REWRITE_FILE,
               wrapUserMsg: (m) => buildRewriteUserMsg(m, a.convLang, a.lang),
+              onDelta: a.onDelta,
             });
             return r.ok ? r.report : null;
           },

@@ -21,7 +21,11 @@ export interface AnchorDrain {
   error: string;
 }
 
-export async function drainAnchorCall(res: Response): Promise<AnchorDrain> {
+export async function drainAnchorCall(
+  res: Response,
+  /** Each text / thought chunk as it arrives (lib/anchorLive.ts streams it to the tabs). */
+  onDelta?: (d: { thought?: string; text?: string }) => void,
+): Promise<AnchorDrain> {
   const out: AnchorDrain = { text: '', thought: '', usage: null, error: '' };
   if (!res.ok || !res.body) {
     const errText = await res.text().catch(() => '');
@@ -41,8 +45,13 @@ export async function drainAnchorCall(res: Response): Promise<AnchorDrain> {
       if (isSseDone(payload)) continue;
       let d: Record<string, unknown>;
       try { d = JSON.parse(payload); } catch { continue; }
-      if (d.type === 'text' && typeof d.content === 'string') out.text += d.content;
-      else if (d.type === 'thought' && typeof d.content === 'string') out.thought += d.content;
+      if (d.type === 'text' && typeof d.content === 'string') {
+        out.text += d.content;
+        onDelta?.({ text: d.content });
+      } else if (d.type === 'thought' && typeof d.content === 'string') {
+        out.thought += d.content;
+        onDelta?.({ thought: d.content });
+      }
       else if (d.type === 'cache_usage') out.usage = addCacheUsage(out.usage, normaliseCacheUsage(d));
       if (typeof d.error === 'string' && d.error && !out.error) out.error = d.error;
     }

@@ -37,6 +37,8 @@ export async function execAnchor(a: {
   promptFile?: string;
   /** Turns the judge's message into this call's message (the REWRITE writer puts the language on top). */
   wrapUserMsg?: (anchorUserMsg: string) => string;
+  /** Text / thought chunks as they stream (the runner relays them to the tabs). */
+  onDelta?: (d: { thought?: string; text?: string }) => void;
 }): Promise<AnchorExecResult> {
   if (!a.settings.model) return { ok: false, error: 'no-anchor-model' };
   const judgeMsg = buildAnchorUserMsg({
@@ -57,7 +59,7 @@ export async function execAnchor(a: {
     body: JSON.stringify(buildAnchorChatBody({ systemPrompt, userMsg, folderName: a.folder, settings: a.settings })),
     ...(a.signal ? { signal: a.signal } : {}),
   }));
-  const drained = await drainAnchorCall(res);
+  const drained = await drainAnchorCall(res, a.onDelta);
 
   // Billed even when the call errored after spending tokens. Never throws.
   await recordAuxBilling({ being: a.folder, convoId: a.convoId }, {

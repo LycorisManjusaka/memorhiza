@@ -53,6 +53,7 @@ export const SINK_METHODS = [
   'attachmentDescribed',
   'turnPlan',
   'turnSaved',
+  'anchorLive',
 ] as const;
 
 /**
@@ -131,6 +132,9 @@ export function createRunnerSink(into?: TurnEventPayload[]): RunnerSink {
     turnSaved(): void {
       // Same: published by the runner, after its own write. There is no
       // "apply" for the writer.
+    },
+    anchorLive(): void {
+      // Published by the runner too; only a screen has anything to paint.
     },
   };
 }

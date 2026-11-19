@@ -43,6 +43,7 @@ export function recordingSink() {
     attachmentDescribed: log('attachmentDescribed'),
     turnPlan: log('turnPlan'),
     turnSaved: log('turnSaved'),
+    anchorLive: log('anchorLive'),
   };
   return { sink, calls, names: () => calls.map(c => c.m) };
 }

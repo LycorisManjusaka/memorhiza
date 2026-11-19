@@ -148,3 +148,47 @@ test('runner REWRITE with no writer prompt: reply kept, reason no-prompt', async
   assert.equal(reply.content, '今天完成了。64 本。');
   assert.equal(reply.anchorRewrite.reason, 'no-prompt');
 });
+
+// ── Live stream (つよ, 2026-11-19): judge and writer visible while they run ──
+import { createAnchorLiveEmitter, applyAnchorLive, normaliseAnchorLive, type AnchorLiveFrame, type AnchorLiveView } from '@/lib/anchorLive';
+
+test('live: the emitter coalesces deltas, starts each call, and flushes the tail', () => {
+  const out: AnchorLiveFrame[] = [];
+  let now = 0;
+  const em = createAnchorLiveEmitter({ assistantId: 'a1', stage: 'judge', model: 'm', emit: (f) => out.push(f), now: () => now, intervalMs: 100 });
+  em.push({ thought: 'ab' }); em.push({ thought: 'c' });
+  now = 150; em.push({ text: 'RE' });
+  em.push({ text: 'WRITE' });
+  em.end();
+  assert.equal(out[0].start, true);
+  const view = out.reduce<AnchorLiveView | null>((v, f) => applyAnchorLive(v, normaliseAnchorLive(f as unknown as Record<string, unknown>)!), null)!;
+  assert.deepEqual(view.judge, { model: 'm', thought: 'abc', text: 'REWRITE' }, 'nothing lost, nothing doubled');
+  assert.equal(out.length, 3, 'start, one coalesced frame, the tail');
+});
+
+test('live: a re-asked judge starts over and drops a stale writer view', () => {
+  const f = (o: Partial<AnchorLiveFrame>) => ({ type: 'anchor_live', assistantId: 'a1', stage: 'judge', model: 'm', ...o }) as AnchorLiveFrame;
+  let v = applyAnchorLive(null, f({ start: true, text: 'x' }));
+  v = applyAnchorLive(v, f({ stage: 'rewrite', start: true, text: 'w' }));
+  v = applyAnchorLive(v, f({ start: true }));
+  v = applyAnchorLive(v, f({ text: 'y' }));
+  assert.equal(v.judge!.text, 'y');
+  assert.equal(v.rewrite, undefined);
+});
+
+test('runner REWRITE streams both anchors to the relay, labelled by stage and reply', async () => {
+  const r = rig(JUDGE, '[[OLD]]\n今天完成了\n[[NEW]]\n今日は完成した\n[[END]]');
+  const raw: string[] = [];
+  r.deps.onRawText = (s: string) => { raw.push(s); };
+  r.deps.runAnchor = async (x) => { x.onDelta?.({ thought: '見る' }); x.onDelta?.({ text: JUDGE }); return { at: 1, family: 'DeepSeek', model: 'deepseek-flash', thought: '見る', output: JUDGE }; };
+  const inner = r.deps.runAnchorRewrite!;
+  r.deps.runAnchorRewrite = async (x) => { x.onDelta?.({ text: '[[OLD]]' }); return inner(x); };
+  await runTurnForQueue('ミニ酱', 'c1', [item('hi')], r.deps);
+  const frames = raw.flatMap((s) => s.split('\n')).filter((l) => l.startsWith('data: ')).map((l) => { try { return JSON.parse(l.slice(6)); } catch { return null; } }).filter((d) => d?.type === 'anchor_live');
+  const id = lastReply(r).id;
+  const view = frames.reduce<AnchorLiveView | null>((v, d) => applyAnchorLive(v, normaliseAnchorLive(d)!), null)!;
+  assert.equal(view.assistantId, id, 'painted on the reply being judged');
+  assert.equal(view.judge!.thought, '見る');
+  assert.equal(view.judge!.text, JUDGE);
+  assert.equal(view.rewrite!.text, '[[OLD]]');
+});
