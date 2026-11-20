@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { runRecordHolds, type RunLiveness } from '../src/lib/soulUpdateHold.ts';
-import { splitRecipientNames } from '../src/lib/letters.ts';
+import { runRecordHolds, type RunLiveness } from '../src/lib/soulUpdateHold';
+import { splitRecipientNames } from '../src/lib/letters';
 
 const live = (over: Partial<RunLiveness> = {}): RunLiveness => ({
   isGone: () => false,
