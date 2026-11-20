@@ -1161,6 +1161,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'input.speakerTitle':
     'Who is speaking — shared by every open conversation, and by the voice changer',
   'input.noCharacters': '— no characters —',
+  'input.chooseSpeaker': '— choose who is speaking —',
   'input.styleTitle':
     'Speaking style for this session. Switching identity clears it.',
   'input.styleDefault': '— default style —',
@@ -3192,6 +3193,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'input.speakerTitle':
     '現在の話者 — 開いているすべての会話とボイスチェンジャーで共有されます',
   'input.noCharacters': '— キャラクターがありません —',
+  'input.chooseSpeaker': '— 話し手を選んでください —',
   'input.styleTitle':
     'このセッションの話し方（スタイル）。人格を切り替えると解除されます。',
   'input.styleDefault': '— 既定のスタイル —',

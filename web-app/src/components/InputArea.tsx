@@ -145,16 +145,29 @@ const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenera
     // shared file's current fallback — and that's a one-time bootstrap, not an
     // ongoing subscription: nothing here writes the shared file just for
     // having loaded it.
+    //
+    // ⚠ CHANGED 2026-11-20 (Аналитик, Pilot's house): this bootstrap used to run
+    // ONCE. If that single fetch failed (server restarting, phone waking on a
+    // dropped connection) the name stayed '' for the life of the page, and every
+    // message was saved with name: null — 12 of them in a row on the 20th. The
+    // dropdown hid it too: with '' matching no option, the browser DISPLAYED the
+    // first option ("Anonymous") while the state was empty. Now a page with no
+    // name retries on every focus until it gets one, and the dropdown shows an
+    // explicit "choose" row while empty (see the <select> below).
+    const bootstrap = () => {
+      if (readLocalIdentity()) return;
+      fetch('/api/chara/current').then(r => (r.ok ? r.json() : null)).then(data => {
+        const name = typeof data?.name === 'string' ? data.name : '';
+        const style = typeof data?.style === 'string' ? data.style : '';
+        if (name && !readLocalIdentity()) { setUserName(name); setActiveStyle(style); writeLocalIdentity(name, style); }
+      }).catch(() => {});
+    };
     const local = readLocalIdentity();
     if (local) {
       setUserName(local.name);
       setActiveStyle(local.style);
     } else {
-      fetch('/api/chara/current').then(r => r.json()).then(data => {
-        const name = typeof data?.name === 'string' ? data.name : '';
-        const style = typeof data?.style === 'string' ? data.style : '';
-        if (name) { setUserName(name); setActiveStyle(style); writeLocalIdentity(name, style); }
-      }).catch(() => {});
+      bootstrap();
     }
     // Populate the speaker dropdown from character_map.json — shared registry,
     // not per-browser state, so this one still comes straight from the server.
@@ -188,7 +201,7 @@ const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenera
     // the cheap trigger is affordable. Deliberately NOT on the <select>'s own
     // focus: that lands while the native popup is already open on Windows, where
     // replacing <option> children mid-popup is a visible glitch.
-    const reloadList = () => { void loadCharaList(); };
+    const reloadList = () => { void loadCharaList(); bootstrap(); };
     window.addEventListener('nx-chara-map-changed', reloadList);
     window.addEventListener('focus', reloadList);
     return () => {
@@ -878,6 +891,12 @@ const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenera
                   theme colors explicitly via CSS variables so it's always legible. */}
               {charaList.length === 0 && (
                 <option value="" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>{t('input.noCharacters')}</option>
+              )}
+              {/* No name yet: show that honestly. Without this row the browser
+                  displays the first identity while the state is '' (the
+                  <select> trap), and messages go out with no name. */}
+              {charaList.length > 0 && !userName && (
+                <option value="" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>{t('input.chooseSpeaker')}</option>
               )}
               {/* Keep the current name visible even if it's not in the map. */}
               {userName && !charaList.some(c => c.name === userName) && (
