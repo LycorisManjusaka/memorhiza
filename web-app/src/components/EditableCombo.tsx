@@ -78,7 +78,8 @@ export default function EditableCombo({
     // the two together is what was actually wanted. We only give up when the
     // input itself has left the viewport, where there is nothing to point at.
     const onReposition = (e?: Event) => {
-      if (e && listRef.current && listRef.current.contains(e.target as Node)) return;
+      // A resize event's target is the Window, which is not a Node; contains() throws on it.
+      if (e && e.target instanceof Node && listRef.current && listRef.current.contains(e.target)) return;
       const el = inputRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
