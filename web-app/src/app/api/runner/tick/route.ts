@@ -31,6 +31,42 @@ import type { AnchorMessage } from '@/lib/anchor';
 import { serverSpeech, speechModeFromSettings } from '@/lib/serverSpeech';
 import { assistantSpeechSentences } from '@/lib/ttsSentences';
 import { autoTurnsHeldForLog, isWakeItem, passIsUnattended } from '@/lib/autoHold';
+import { soulUpdateRunning } from '@/lib/soulUpdateHold';
+
+// ── Held by a soul update: rerun when it ends (2026-11-20) ───────────────────
+// A pass that found the being mid soul update left the items in the stock.
+// Something has to come back for them, and nobody is watching: the update may
+// have been started from another tab, another installation, or a phone. So
+// the process that held them polls the run record and reruns the SAME pass
+// (same auto/wake flags, so the stock checkbox and the 100% hold still apply)
+// once it is over. Process-local: if this server dies, the items simply stay
+// in the stock, where "run it now" still reaches them.
+const SOUL_HOLD_POLL_MS = 5000;
+const soulHoldWatch: Map<string, PassOpts> =
+  ((globalThis as Record<string, unknown>).__nexusSoulHoldWatch as Map<string, PassOpts>) ||
+  ((globalThis as Record<string, unknown>).__nexusSoulHoldWatch = new Map<string, PassOpts>());
+
+function watchSoulHold(being: string, convoId: string, opts: PassOpts): void {
+  const key = `${being}\u0000${convoId}`;
+  const prev = soulHoldWatch.get(key);
+  // A non-auto pass outranks an auto one: if a person's send was held, the
+  // rerun must not then be refused by the stock checkbox.
+  if (prev && !prev.auto) return;
+  const first = !prev;
+  soulHoldWatch.set(key, { ...opts, oneBeing: being, oneConvo: convoId, assistantMsgId: '', proposedTurnId: '', relayConvoId: null });
+  if (!first) return;
+  const tick = async () => {
+    try {
+      if (await soulUpdateRunning(being)) { setTimeout(tick, SOUL_HOLD_POLL_MS); return; }
+    } catch { setTimeout(tick, SOUL_HOLD_POLL_MS); return; }
+    const o = soulHoldWatch.get(key);
+    soulHoldWatch.delete(key);
+    if (!o) return;
+    console.log(`[runner] soul update over for ${being}/${convoId} — running what waited`);
+    void runPass(o).catch((e) => console.warn('[runner] post-soul-update pass failed:', e));
+  };
+  setTimeout(tick, SOUL_HOLD_POLL_MS);
+}
 
 // One pass of the server-side runner (phase 4b-5, 2026-10-29).
 //
@@ -100,7 +136,7 @@ type Outcome = {
   // installation CAN run it and this one should say so, while 'blocked-here'
   // means this installation is forbidden to, which is a property of the
   // launcher and not of the queue.
-  skipped?: 'busy' | 'empty' | 'elsewhere' | 'auto-trigger-off' | 'claim-failed' | 'blocked-here' | 'context-full';
+  skipped?: 'busy' | 'empty' | 'elsewhere' | 'auto-trigger-off' | 'claim-failed' | 'blocked-here' | 'context-full' | 'soul-update';
   result?: RunTurnResult;
 };
 
@@ -239,6 +275,19 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
         outcomes.push({ being: t.being, convoId: t.convoId, ran: false, skipped: 'context-full' });
         console.log(`[runner] held ${t.being}/${t.convoId}: context is at 100%, automatic turns wait`);
         closeRelay(t.convoId, { type: 'notice', content: 'Automatic turns are waiting: this conversation is at 100% of its log cap.' });
+        continue;
+      }
+
+      // A soul update is running for this being → NOTHING starts, a person's
+      // send included (トカゲくん, 2026-11-20). Before the claim, so the items
+      // stay in the stock; watchSoulHold comes back for them. See
+      // lib/soulUpdateHold.ts for what counts as "running".
+      const soulRun = await soulUpdateRunning(t.being);
+      if (soulRun) {
+        outcomes.push({ being: t.being, convoId: t.convoId, ran: false, skipped: 'soul-update' });
+        console.log(`[runner] held ${t.being}/${t.convoId}: soul update ${soulRun.label} is running`);
+        closeRelay(t.convoId, { type: 'notice', content: 'The soul is being updated. The message waits in the stock and runs when the update ends.' });
+        watchSoulHold(t.being, t.convoId, opts);
         continue;
       }
 

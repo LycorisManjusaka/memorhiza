@@ -164,6 +164,7 @@ export async function runSpuAction(
     attempts: 0,
     vessel: { aiName: args.aiName, specificModel: args.specificModel },
     host: deps.host,
+    pid: process.pid,
     ...over,
   });
 

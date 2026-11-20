@@ -123,6 +123,13 @@ export interface SpuRunRecord {
    * instead of offering a bare "a run is already in progress".
    */
   host: string;
+  /**
+   * The server process that runs it (2026-11-20). Lets the soul-update hold
+   * tell a live run from a record a crashed process left saying `running` —
+   * without it, one crash would stop that being's turns forever. Absent on
+   * records written before this field existed; those never hold anything.
+   */
+  pid?: number;
 }
 
 /**

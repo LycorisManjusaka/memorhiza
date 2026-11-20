@@ -258,6 +258,29 @@ export async function readSpuRunRecord(
   }
 }
 
+/**
+ * Every run record in a being's spu_work folder, parsed. Unreadable ones are
+ * skipped. Used by the soul-update hold (lib/soulUpdateHold.ts), which has to
+ * ask "is ANY soul update running for this being", not one named generation.
+ */
+export async function listSpuRunRecords(folderName: string): Promise<unknown[]> {
+  let names: string[];
+  try {
+    names = await fs.readdir(spuWorkDir(folderName));
+  } catch (e: unknown) {
+    if (isEnoent(e)) return [];
+    throw e;
+  }
+  const out: unknown[] = [];
+  for (const n of names) {
+    if (!n.endsWith('_run.json')) continue;
+    try {
+      out.push(JSON.parse(await fs.readFile(path.join(spuWorkDir(folderName), n), 'utf-8')));
+    } catch { /* corrupt or vanished mid-read — not a running record */ }
+  }
+  return out;
+}
+
 export async function writeSpuRunRecord(
   folderName: string,
   label: string,

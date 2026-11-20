@@ -3233,6 +3233,13 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     stockReturned: stock?.returned ?? 0,
   });
 
+  // The soul update holding this being's turns, from the same stock poll
+  // (2026-11-20). null = nothing holds. Cleared on any successful poll that
+  // reports nothing, so every open tab returns to normal on its next read.
+  const [soulUpdate, setSoulUpdate] = useState<{ label: string; action: string; startedAt: number } | null>(null);
+  const soulUpdateRef = useRef(soulUpdate);
+  soulUpdateRef.current = soulUpdate;
+
   const refreshStock = useCallback(async () => {
     if (!folderName || !convoId) return;
     try {
@@ -3242,6 +3249,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       if (!res.ok) return;
       const d = await res.json();
       const items: StockItem[] = Array.isArray(d?.items) ? d.items : [];
+      const su = d?.soulUpdate;
+      setSoulUpdate(su && typeof su.label === 'string'
+        ? { label: su.label, action: typeof su.action === 'string' ? su.action : '', startedAt: Number(su.startedAt) || 0 }
+        : null);
       setStock({
         count: d?.count || 0,
         // Fall back to `count` for `waiting` so an older server (no split)
@@ -4304,6 +4315,12 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     // Unless the sender explicitly picked 'stock' in the mode menu, in which
     // case it goes to the stock to be run as the NEXT turn. The default stays
     // the interjection: it is the emergency brake (see InputArea).
+    // A soul update is running → nothing may start a turn, so every send goes
+    // to the stock (トカゲくん, 2026-11-20). Also covers the VRChat auto-send,
+    // which never passes a mode. Read from a ref: this callback can be older
+    // than the last stock poll.
+    if (soulUpdateRef.current) opts = { ...(opts || {}), mode: 'stock' };
+
     if (injectTurnId) {
       if (opts?.mode === 'stock') {
         await enqueueToStock(text, attachments, opts.from || '');
@@ -7473,7 +7490,12 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                 ) : null}
               </div>
             ) : null}
-            <InputArea ref={inputApiRef} onSend={handleSend} onStop={handleStop} isGenerating={loading} disabled={false} aiName={localAiName} vrchatMode={vrchatMode} globalSettings={globalSettings} convoId={convoId} />
+            {soulUpdate ? (
+              <div className="mb-2 px-3 py-1.5 rounded-lg border border-sky-500/40 bg-sky-500/10 text-xs text-sky-700 dark:text-sky-300">
+                {t('chat.soulUpdating')}
+              </div>
+            ) : null}
+            <InputArea ref={inputApiRef} onSend={handleSend} onStop={handleStop} isGenerating={loading} disabled={false} aiName={localAiName} vrchatMode={vrchatMode} globalSettings={globalSettings} convoId={convoId} stockOnly={!!soulUpdate} />
           </div>
         </div>
       </div>

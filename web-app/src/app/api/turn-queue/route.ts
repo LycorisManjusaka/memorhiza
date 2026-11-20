@@ -7,6 +7,7 @@ import {
 import { installationId, runnerHostStatus } from '@/lib/runnerHost';
 import { liveTurnStatus } from '@/lib/turnBus';
 import { beingIsBlockedHere, blockedResponseBody } from '@/lib/blockedBeings';
+import { soulUpdateRunning } from '@/lib/soulUpdateHold';
 import { pastConversationRefusalFor } from '@/lib/pastConversationGate';
 
 // The stock a being's turns are fed from (phase 4a, 2026-10-27).
@@ -100,7 +101,14 @@ export async function GET(req: Request) {
     const lease = await readLease(being, convoId);
     const split = splitByLease(items, lease);
     const claimedSet = new Set(split.claimed.map((i) => i.id));
+    const soulRun = await soulUpdateRunning(being);
     return NextResponse.json({
+      /**
+       * A soul update is running for this being (2026-11-20). While it is,
+       * no turn starts — the screen locks the send button to "stock" and says
+       * why. null when nothing holds. See lib/soulUpdateHold.ts.
+       */
+      soulUpdate: soulRun ? { label: soulRun.label, action: soulRun.action, startedAt: soulRun.startedAt } : null,
       // `count` is every file on disk and is kept for callers that only want a
       // "is there anything at all" answer. It is deliberately NOT the number to
       // show a human: see waiting/claimed.

@@ -31,7 +31,7 @@ function writeLocalIdentity(name: string, style: string) {
   try { localStorage.setItem(CURRENT_IDENTITY_KEY, JSON.stringify({ name, style })); } catch { /* ignore */ }
 }
 
-const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenerating, disabled, aiName, vrchatMode, globalSettings, convoId }: any, ref: any) {
+const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenerating, disabled, aiName, vrchatMode, globalSettings, convoId, stockOnly }: any, ref: any) {
   const t = useT();
   // Enter means different things on the two layouts — see handleKeyDown.
   const { isMobile } = useDevice();
@@ -738,7 +738,10 @@ const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenera
   }, [isGenerating]);
   type SendMode = 'interject' | 'send' | 'stock';
   const defaultMode: SendMode = isGenerating ? 'interject' : 'send';
-  const effectiveMode: SendMode = stockPicked ? 'stock' : defaultMode;
+  // A soul update is running (2026-11-20, トカゲくん): no turn may start, so the
+  // only thing the button can do is stock — and the picker is hidden rather
+  // than offering a choice the server would refuse.
+  const effectiveMode: SendMode = (stockOnly || stockPicked) ? 'stock' : defaultMode;
   const modeLabelKey = (m: SendMode) => `input.mode.${m}`;
   const modeIcon = (m: SendMode, size: number, tinted: boolean) =>
     m === 'interject' ? <MessageSquare size={size} className={tinted ? 'text-amber-500' : undefined} />
@@ -965,7 +968,7 @@ const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenera
         <div className="flex flex-col items-center gap-1">
           {/* The picker is offered in both states since 2026-11-12: idle it
               chooses between starting a turn and only stocking the message. */}
-          {!disabled && (
+          {!disabled && !stockOnly && (
             <button
               onClick={(e) => {
                 if (modeMenuAt) { setModeMenuAt(null); return; }
@@ -989,7 +992,7 @@ const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenera
             // title saying "send as a message" would imply there is one. (This
             // button had no title at all before 2026-10-27; the mode label got
             // applied to both states by the same edit that added it.)
-            title={t(modeLabelKey(effectiveMode))}
+            title={stockOnly ? t('input.mode.soulUpdating') : t(modeLabelKey(effectiveMode))}
             className={`p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity shadow-sm ${
               effectiveMode === 'interject'
                 ? 'bg-amber-500 text-white'

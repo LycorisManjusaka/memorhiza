@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   X, Mail, Loader2, Trash2, Save, RefreshCw, PenLine, Send,
   MailOpen, Archive, AlertTriangle, Check, Reply, FolderOpen, Paperclip,
-  PanelLeft, ChevronLeft, Download,
+  PanelLeft, ChevronLeft, Download, Plus,
 } from 'lucide-react';
 import EditableCombo from './EditableCombo';
 import { useT } from '@/lib/i18n';
@@ -83,6 +83,18 @@ export default function MailModal({
   const [composing, setComposing] = useState(false);
   const [cFrom, setCFrom] = useState('');
   const [cTo, setCTo] = useState('');
+  // Recipients already added as chips (2026-11-20). `cTo` stays the field
+  // being typed into; whatever is still in it at send time is added too, so
+  // the old one-name flow works unchanged.
+  const [cToList, setCToList] = useState<string[]>([]);
+  const splitNames = (s: string) => s.split(/[,，、\n]/).map((x) => x.trim()).filter(Boolean);
+  const allRecipients = () => [...new Set([...cToList, ...splitNames(cTo)])];
+  const addRecipient = () => {
+    const add = splitNames(cTo);
+    if (!add.length) return;
+    setCToList((prev) => [...new Set([...prev, ...add])]);
+    setCTo('');
+  };
   const [cTitle, setCTitle] = useState('');
   const [cText, setCText] = useState('');
   // Files picked for the letter being composed. Sent as multipart only when
@@ -226,6 +238,7 @@ export default function MailModal({
   const startReply = (l: Letter) => {
     setCFrom(l.to);
     setCTo(l.from);
+    setCToList([]);
     setCTitle(replyTitle(l.title));
     setCText('');
     setCFiles([]);
@@ -243,7 +256,7 @@ export default function MailModal({
       const fd = new FormData();
       fd.append('action', 'create');
       fd.append('from', cFrom);
-      fd.append('to', cTo);
+      for (const name of allRecipients()) fd.append('to', name);
       fd.append('title', cTitle);
       fd.append('text', cText);
       for (const f of cFiles) fd.append('files', f, f.name);
@@ -262,12 +275,17 @@ export default function MailModal({
   const send = async () => {
     const r = cFiles.length
       ? await sendWithFiles()
-      : await act({ action: 'create', from: cFrom, to: cTo, title: cTitle, text: cText });
+      : await act({ action: 'create', from: cFrom, to: allRecipients(), title: cTitle, text: cText });
     if (r?.ok) {
       setComposing(false);
-      setCTitle(''); setCText(''); setCFiles([]);
+      setCTitle(''); setCText(''); setCFiles([]); setCToList([]); setCTo('');
       await load();
       setSelectedId(r.id);
+      // Some names delivered, some not: say which, instead of a silent success.
+      // After load(), which clears the error line.
+      if (Array.isArray(r.failed) && r.failed.length) {
+        setError(`${t('mail.someFailed')} ${r.failed.join('; ')}`);
+      }
     }
   };
 
@@ -338,7 +356,7 @@ export default function MailModal({
           )}
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             <button
-              onClick={() => { setComposing(true); setSelectedId(null); setCFiles([]); openPane(); }}
+              onClick={() => { setComposing(true); setSelectedId(null); setCFiles([]); setCToList([]); openPane(); }}
               title={t('mail.write')}
               className="flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-2 py-1.5 text-xs font-semibold text-amber-500 hover:bg-amber-500/25 sm:px-3"
             >
@@ -471,7 +489,39 @@ export default function MailModal({
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-foreground">{t('mail.to')}</label>
-                    <EditableCombo value={cTo} onChange={setCTo} options={nameOptions} placeholder={t('mail.recipientPlaceholder')} />
+                    {cToList.length > 0 && (
+                      <div className="mb-1.5 flex flex-wrap gap-1">
+                        {cToList.map((n) => (
+                          <span key={n} className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs">
+                            {n}
+                            <button
+                              type="button"
+                              onClick={() => setCToList((prev) => prev.filter((x) => x !== n))}
+                              className="text-muted-foreground hover:text-foreground"
+                              title={t('mail.removeRecipient')}
+                              aria-label={t('mail.removeRecipient')}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <div className="min-w-0 flex-1">
+                        <EditableCombo value={cTo} onChange={setCTo} options={nameOptions} placeholder={t('mail.recipientPlaceholder')} />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addRecipient}
+                        disabled={!cTo.trim()}
+                        className="shrink-0 rounded-lg border border-border px-2 py-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
+                        title={t('mail.addRecipient')}
+                        aria-label={t('mail.addRecipient')}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -542,7 +592,7 @@ export default function MailModal({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={send}
-                    disabled={busy || !cFrom.trim() || !cTo.trim() || !cTitle.trim() || !cText.trim()}
+                    disabled={busy || !cFrom.trim() || allRecipients().length === 0 || !cTitle.trim() || !cText.trim()}
                     className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-black disabled:opacity-40"
                   >
                     <Send className="h-4 w-4" /> {t('mail.deliver')}

@@ -610,6 +610,45 @@ export interface WriteLetterResult { ok: boolean; error?: string; id?: string; t
  * folder and must never come from a tool argument — otherwise any entity could
  * write mail signed as someone else.
  */
+/**
+ * One letter to several people: one copy per recipient, each recording the
+ * others in `alsoTo`. The single loop behind both the being's write_letter
+ * and the Mail Manager (2026-11-20 — before that the admin could only write
+ * to one name, and "A, B" in the field was delivered to a person called
+ * "A, B").
+ */
+export async function writeLetterToMany(
+  from: string,
+  targets: string[],
+  title: string,
+  text: string,
+  files: LetterFile[] = [],
+): Promise<{ delivered: string[]; failed: string[]; firstId: string }> {
+  const delivered: string[] = [];
+  const failed: string[] = [];
+  let firstId = '';
+  for (const target of targets) {
+    const others = targets.filter((t) => t !== target);
+    const r = await writeLetter(from, target, title, text, others, files);
+    if (r.ok) { delivered.push(r.to || target); if (!firstId) firstId = r.id || ''; }
+    else failed.push(`${target} (${r.error})`);
+  }
+  return { delivered, failed, firstId };
+}
+
+/**
+ * Recipients typed by a person: separate names, or one field holding several
+ * split on commas (半角・全角・読点) and newlines. Trimmed, empties dropped,
+ * duplicates kept once in first-seen order.
+ */
+export function splitRecipientNames(input: unknown): string[] {
+  const parts = (Array.isArray(input) ? input : [input])
+    .flatMap((v) => String(v ?? '').split(/[,，、\n]/))
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return [...new Set(parts)];
+}
+
 export async function writeLetter(
   from: string,
   to: string,
@@ -1174,15 +1213,7 @@ export async function runLetterTool(name: string, args: any, ctx: LetterToolCtx)
           files = loaded.files;
         }
 
-        const delivered: string[] = [];
-        const failed: string[] = [];
-        let firstId = '';
-        for (const target of targets) {
-          const others = targets.filter((t) => t !== target);
-          const r = await writeLetter(me, target, title, text, others, files);
-          if (r.ok) { delivered.push(r.to || target); if (!firstId) firstId = r.id || ''; }
-          else failed.push(`${target} (${r.error})`);
-        }
+        const { delivered, failed, firstId } = await writeLetterToMany(me, targets, title, text, files);
         if (delivered.length === 0) return `Error: ${failed.join('; ') || 'delivery failed'}`;
 
         const confirm = fillTokens(

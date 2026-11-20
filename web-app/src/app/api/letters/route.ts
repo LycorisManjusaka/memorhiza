@@ -9,7 +9,9 @@ import {
   setLetterFlags,
   updateLetter,
   deleteLetter,
-  writeLetter,
+  writeLetterToMany,
+  splitRecipientNames,
+  MAX_RECIPIENTS,
   correspondentNames,
   knownIdentities,
   regenerateStatus,
@@ -77,6 +79,35 @@ export async function GET(req: Request) {
   }
 }
 
+// Several recipients from the Mail Manager (2026-11-20, トカゲくん). `to` may be
+// one string holding "A, B" or a list; each name gets its own copy that names
+// the others, through the same loop the beings' write_letter uses. Unlike the
+// being's tool, the sender is NOT dropped from the list: the admin writes as
+// anyone, and writing to oneself is their call.
+type ComposeResult =
+  | { ok: true; id: string; delivered: string[]; failed: string[] }
+  | { ok: false; error: string };
+
+async function composeToMany(
+  from: string, to: unknown, title: string, text: string,
+  files: Parameters<typeof writeLetterToMany>[4] = [],
+): Promise<ComposeResult> {
+  const targets = splitRecipientNames(to);
+  if (targets.length === 0) return { ok: false, error: 'A recipient is required.' };
+  if (targets.length > MAX_RECIPIENTS) {
+    return { ok: false, error: `Too many recipients (${targets.length}). One letter may go to at most ${MAX_RECIPIENTS}.` };
+  }
+  const r = await writeLetterToMany(from, targets, title, text, files);
+  if (r.delivered.length === 0) return { ok: false, error: r.failed.join('; ') || 'delivery failed' };
+  return { ok: true, id: r.firstId, delivered: r.delivered, failed: r.failed };
+}
+
+function composeAnswer(r: ComposeResult) {
+  return r.ok
+    ? NextResponse.json({ ok: true, id: r.id, delivered: r.delivered, failed: r.failed })
+    : NextResponse.json({ error: r.error }, { status: 400 });
+}
+
 /** POST → one action. */
 export async function POST(req: Request) {
   try {
@@ -93,17 +124,13 @@ export async function POST(req: Request) {
       })));
       const prep = prepareUploadedFiles(raw);
       if ('error' in prep) return NextResponse.json({ error: prep.error }, { status: 400 });
-      const r = await writeLetter(
+      return composeAnswer(await composeToMany(
         String(form.get('from') || '').trim(),
-        String(form.get('to') || '').trim(),
+        form.getAll('to'),
         String(form.get('title') || '').trim(),
         String(form.get('text') || ''),
-        [],
         prep.files,
-      );
-      return r.ok
-        ? NextResponse.json({ ok: true, id: r.id })
-        : NextResponse.json({ error: r.error }, { status: 400 });
+      ));
     }
 
     const body = await req.json();
@@ -113,15 +140,12 @@ export async function POST(req: Request) {
       // Composing as any sender, to any recipient — including names that exist
       // nowhere yet. Same delivery path the entities use, so a hand-written
       // letter is indistinguishable from one an entity wrote.
-      const r = await writeLetter(
+      return composeAnswer(await composeToMany(
         String(body.from || '').trim(),
-        String(body.to || '').trim(),
+        body.to,
         String(body.title || '').trim(),
         String(body.text || ''),
-      );
-      return r.ok
-        ? NextResponse.json({ ok: true, id: r.id })
-        : NextResponse.json({ error: r.error }, { status: 400 });
+      ));
     }
 
     // Regenerating the overview is about the WHOLE store, so it must be handled
