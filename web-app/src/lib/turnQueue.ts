@@ -1014,6 +1014,49 @@ export async function readdressPendingItem(
 }
 
 /**
+ * Carry waiting items from one conversation's stock to another's (2026-11-20).
+ *
+ * The one caller is the automatic soul update: the messages that were waiting
+ * when the being went to sleep belong to the conversation it wakes up in. Each
+ * item keeps its file name, so the order is exactly what it was — and an item
+ * lands in the new stock BEFORE it leaves the old one, so a crash in between
+ * shows it twice rather than losing it.
+ *
+ * Refused while a live lease holds the source: those items may be mid-turn.
+ * `pick` decides which items travel; `map` may rewrite one on the way (the
+ * "this start was delayed" line on a NEXUS item).
+ */
+export async function movePendingItems(
+  being: string,
+  fromConvoId: string,
+  toConvoId: string,
+  o: { pick: (it: QueueItem) => boolean; map?: (it: QueueItem) => QueueItem },
+  opts?: Opts
+): Promise<{ ok: true; moved: string[] } | { ok: false; reason: 'busy' | 'same' }> {
+  if (fromConvoId === toConvoId) return { ok: false, reason: 'same' };
+  const lease = await readLease(being, fromConvoId, opts);
+  if (lease && !holderIsGone(lease.pid)) return { ok: false, reason: 'busy' };
+  const fromDir = queueDir(being, fromConvoId, opts);
+  const toDir = queueDir(being, toConvoId, opts);
+  const items = (await pending(being, fromConvoId, opts)).filter(o.pick);
+  if (items.length === 0) return { ok: true, moved: [] };
+  await fs.mkdir(toDir, { recursive: true });
+  const moved: string[] = [];
+  for (const it of items) {
+    const name = itemFileName(it.at, it.id);
+    const next = o.map ? o.map(it) : it;
+    await atomicWriteFile(path.join(toDir, name), JSON.stringify(next));
+    try {
+      await fs.unlink(path.join(fromDir, name));
+    } catch (e) {
+      if (errCode(e) !== 'ENOENT') throw e;
+    }
+    moved.push(it.id);
+  }
+  return { ok: true, moved };
+}
+
+/**
  * Every conversation of this being that has anything queued or a live lease.
  * This is what a poller iterates; it deliberately returns the conversation
  * IDS only, so the caller decides what (if anything) to load.

@@ -36,6 +36,7 @@ import { beingIsBlockedHere } from '@/lib/blockedBeings';
 import { conversationToolsEnabled } from '@/lib/agentCapabilities';
 import { unreadFor } from '@/lib/letters';
 import { autoTurnsHeldForLog } from '@/lib/autoHold';
+import { autoSoulUpdateEnabled } from '@/lib/autoSoulUpdate';
 import {
   parseWakeSettings, dueAdminSlots, dueSelfSlots, pruneBookings, validateBooking, parseWakeupDirective,
   wakeShortText, buildCapabilityList, buildSelfWakeLine, describeRejection, fillWakeTemplate,
@@ -297,7 +298,10 @@ async function fireSlot(being: string, w: WakeSettings, slot: DueSlot, selfId: s
     try {
       beingSettings = (await listFolders() as Array<{ name: string; settings?: Record<string, unknown> }>).find(x => x.name === being)?.settings;
     } catch {}
-    if (autoTurnsHeldForLog(log, beingSettings)) {
+    // …unless the conversation sleeps by itself at 100% (2026-11-20): then the
+    // wake IS queued — it is what starts the soul update, and it runs in the
+    // new conversation afterwards (lib/autoSoulUpdate.ts).
+    if (!autoSoulUpdateEnabled(log.autoSoulUpdate) && autoTurnsHeldForLog(log, beingSettings)) {
       s.history.push({ at: now, kind: 'context-full', hhmm: slot.hhmm, source: slot.source, convoId });
       await writeWakeState(being, s);
       return null;

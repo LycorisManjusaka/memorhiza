@@ -481,6 +481,8 @@ Nexus を Nexus たらしめている部分であり、いちばん理解する�
 - **NEXUS が止まっていた間の時刻は、あとから起こしません。** 次の時刻を待ちます。止まっている間に届いた手紙でも起こしません。
 - 条件に合わない予約（時間帯の外、上限を超えた、間隔が短すぎる）は捨てられ、次に起きたときに1行で知らされます。
 - 最小間隔は、予約と手紙の起床がそれより短い間隔で続かないようにします。空にすると無効です。
+- **「コンテキストが100%に達したら、自動ターンを止める」**（初期値 ON）：文脈経過が100%以上の間、誰も頼んでいないターン（起床とストックの自動起動）は始まりません。直接送ったメッセージは動きます。
+- **「コンテキストが100%に達したら、魂を自動で更新する」**（初期値 OFF）：ON にすると、100%のときにターンを始めようとしたもの（直接送ったメッセージも含む）はストックで待ち、先に魂の更新（β＋要約、今の設定のまま）が走ります。終わると次の会話が作られ、待っていたものはそこで動きます。出力が切れたりエラーになったときは1回だけやり直し、それでもだめなら止まって、入力欄の上に理由が出ます。次に新しいメッセージか起床が来たら、もう一度試します。**更新後の魂を誰も確かめないまま次の会話が始まる**ので、そのつもりで ON にしてください。題名が「名前_番号」の会話でだけ動きます。
 
 ## 時計を回す NEXUS は1つだけ
 
@@ -1266,6 +1268,8 @@ If messages are waiting in the stock when the being wakes, they arrive in the sa
 - **Times missed while NEXUS was stopped are not woken later.** The next time is awaited. Letters that arrived while it was stopped do not wake anyone either.
 - A booking outside the bounds (outside the window, over the daily limit, too close to the last) is dropped, and the next wake says so in one line.
 - The minimum gap keeps bookings and letter wakes from coming closer together than that. Empty means no gap.
+- **"Hold automatic turns once the context reaches 100%"** (on by default): while context elapsed is at 100% or more, turns nobody asked for (wakes, a stock starting by itself) do not start. A message sent directly still runs.
+- **"Update the soul automatically once the context reaches 100%"** (off by default): when on, anything that would start a turn at 100% (a directly sent message included) waits in the stock, and the soul update runs first — β plus the summary, with the settings as they are. When it ends, the next conversation is created and what was waiting runs there. A cut-off or failed output is retried once; after that it stops and the reason is shown above the input box. It tries again when a new message or wake arrives. **Nobody reviews the updated soul before the next conversation starts**, so turn it on knowing that. Works only for a conversation titled "<name>_<number>".
 
 ## Only one NEXUS runs the clock
 

@@ -1059,6 +1059,7 @@ export default function NexusApp({ deepLink = null }: { deepLink?: DeepLink | nu
               activeFolder.settings?.testBed === true,
             )}
             onOpenConvo={guardedSelectConvo}
+            refreshLogs={fetchLogs}
           />
         ) : !activeFolder && folders.length > 0 ? (
           // Bare root URL on an install that already has inhabitants — nothing

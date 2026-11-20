@@ -32,6 +32,109 @@ import { serverSpeech, speechModeFromSettings } from '@/lib/serverSpeech';
 import { assistantSpeechSentences } from '@/lib/ttsSentences';
 import { autoTurnsHeldForLog, isWakeItem, passIsUnattended } from '@/lib/autoHold';
 import { soulUpdateRunning } from '@/lib/soulUpdateHold';
+import { movePendingItems, readLease, holderIsGone } from '@/lib/turnQueue';
+import { runSpuAction } from '@/lib/runSpuAction';
+import { spuRelayKey } from '@/lib/spuRun';
+import { writeSpuRunRecord, writeSpuBillingEntry } from '@/lib/systemPromptStorage';
+import { autoSoulUpdateDue, runAutoSoulUpdate, withDelayedStartNote, type AutoSoulResult } from '@/lib/autoSoulUpdate';
+import { realAutoSoulIo, writeAutoSoulStatus, readAutoSoulStatus, hasNewReason } from '@/lib/autoSoulUpdateIo';
+import { autoSoulRun, beginAutoSoulRun, endAutoSoulRun, strongerPass } from '@/lib/autoSoulRuns';
+import { wakeLangFromSettings, localHHMM } from '@/lib/wakeSchedule';
+
+// ── Automatic soul update (トカゲくん, 2026-11-20) ────────────────────────────
+// A conversation at 100% with the switch on does not take the turn: what was
+// about to start it stays in the stock, β + the summary run, the next
+// conversation is created, the stock is carried into it, and the pass that was
+// held runs THERE. Rules in lib/autoSoulUpdate.ts; this is only the wiring that
+// needs the chat route and the relay.
+
+/** What can start an automatic update: a message, or a wake. Not ζ, not a command. */
+function startsAutoSoul(it: QueueItem): boolean {
+  return it.kind === 'user_message' || isWakeItem(it);
+}
+
+function startAutoSoulUpdate(being: string, convoId: string, opts: PassOpts): void {
+  const clean = (o: PassOpts): PassOpts => ({ ...o, oneBeing: being, assistantMsgId: '', proposedTurnId: '', relayConvoId: null });
+  beginAutoSoulRun<PassOpts>(being, { convoId, startedAt: Date.now(), opts: clean(opts) });
+  const accept = (it: QueueItem) => itemIsForThisInstallation(it, opts.selfId, opts.hostStatus === 'host');
+  void (async () => {
+    let r: AutoSoulResult;
+    try {
+      const lang = wakeLangFromSettings(await loadUserSettings());
+      r = await runAutoSoulUpdate({ being, convoId, lang }, realAutoSoulIo(async (call) => {
+        // A relay per call, like /api/spu-run: it is what lets the panel watch,
+        // lets Stop reach the call, and what the soul-update hold reads as
+        // "running" for a record written by this very process.
+        const relayKey = spuRelayKey(being, call.label);
+        const turnId = newTurnId();
+        beginTurn(relayKey, turnId);
+        let stopped = false;
+        const offStop = onStop(relayKey, turnId, () => { stopped = true; });
+        try {
+          const res = await runSpuAction(
+            {
+              folder: being, label: call.label, action: call.action, convoId: call.convoId,
+              userMsg: call.userMsg, agentSystemPrompt: call.agentSystemPrompt, lang: call.lang,
+              resumeText: '', aiName: call.vessel.aiName, specificModel: call.vessel.specificModel,
+              authMode: call.vessel.authMode, modelParams: call.modelParams,
+              maxContinuations: call.maxContinuations, relayKey, turnId,
+            },
+            {
+              chatPost,
+              writeRecord: writeSpuRunRecord,
+              writeBilling: writeSpuBillingEntry,
+              onRawText: (text) => publishTurnText(relayKey, text),
+              isAborted: () => stopped,
+              nowMs: () => Date.now(),
+              newId: () => crypto.randomUUID(),
+              origin: opts.origin,
+              host: opts.selfId,
+            },
+          );
+          endTurn(relayKey, res.ok ? undefined : { type: 'error', error: res.reason });
+          return res;
+        } catch (e) {
+          endTurn(relayKey, { type: 'error', error: String((e as Error)?.message || e) });
+          throw e;
+        } finally {
+          offStop();
+        }
+      }));
+    } catch (e) {
+      r = { ok: false, stage: 'finalize', reason: String((e as Error)?.message || e), retried: false };
+    }
+
+    // Carried while this being is still marked as updating, so no pass can
+    // look at the old stock between "the update is over" and "the stock moved".
+    if (r.ok) {
+      console.log(`[auto-soul] ${being}: ${convoId} → ${r.newTitle} (${r.newConvoId})${r.retried ? ', after one retry' : ''}`);
+      try {
+        const hhmm = localHHMM(new Date());
+        const mv = await movePendingItems(being, convoId, r.newConvoId, {
+          pick: (it) => accept(it) && startsAutoSoul(it),
+          map: (it) => (isWakeItem(it) ? withDelayedStartNote(it, hhmm) : it),
+        });
+        if (!mv.ok) console.warn(`[auto-soul] could not carry the stock of ${being}/${convoId}: ${mv.reason}`);
+      } catch (e) {
+        console.warn(`[auto-soul] carrying the stock of ${being}/${convoId} failed:`, e);
+      }
+    }
+    let waitingIds: string[] = [];
+    try { waitingIds = (await pending(being, convoId)).filter((it) => accept(it) && startsAutoSoul(it)).map((it) => it.id); } catch { /* an empty list only means the next pass may try again */ }
+    await writeAutoSoulStatus(being, convoId, r, Date.now(), waitingIds);
+    const held = endAutoSoulRun<PassOpts>(being);
+
+    if (!r.ok) {
+      // Stops here. The items stay in the stock; the same items do not start
+      // another attempt (hasNewReason), a new one does.
+      console.warn(`[auto-soul] FAILED ${being}/${convoId} at ${r.stage}${r.retried ? ' (after one retry)' : ''}: ${r.reason}`);
+      return;
+    }
+    const o = held?.opts || clean(opts);
+    void runPass({ ...o, oneBeing: being, oneConvo: r.newConvoId })
+      .catch((e) => console.warn('[auto-soul] the pass in the new conversation failed:', e));
+  })();
+}
 
 // ── Held by a soul update: rerun when it ends (2026-11-20) ───────────────────
 // A pass that found the being mid soul update left the items in the stock.
@@ -265,6 +368,35 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
         outcomes.push({ being: t.being, convoId: t.convoId, ran: false, skipped: 'auto-trigger-off' });
         closeRelay(t.convoId, { type: 'notice', content: 'This conversation does not start by itself.' });
         continue;
+      }
+
+      // An automatic soul update is under way for this being (this process
+      // started it): wait, and let the strongest waiting pass be the one that
+      // runs in the new conversation.
+      const autoRun = autoSoulRun<PassOpts>(t.being);
+      if (autoRun) {
+        autoRun.opts = strongerPass(autoRun.opts, { ...opts, oneBeing: t.being, assistantMsgId: '', proposedTurnId: '', relayConvoId: null });
+        outcomes.push({ being: t.being, convoId: t.convoId, ran: false, skipped: 'soul-update' });
+        closeRelay(t.convoId, { type: 'notice', content: 'The soul is being updated. The message waits in the stock and runs in the new conversation when the update ends.' });
+        continue;
+      }
+
+      // Due to sleep by itself (switch on, context at 100%) and something that
+      // can start a turn is waiting → update instead of taking the turn. Not
+      // while a manual update runs (that hold is below), not while a turn is
+      // mid-flight here, and not for the same items a failed attempt already
+      // saw — only a NEW reason tries again.
+      if (autoSoulUpdateDue(log as Record<string, unknown> | null, t.settings) && !beingIsBlockedHere(t.being) && !(await soulUpdateRunning(t.being))) {
+        const lease = await readLease(t.being, t.convoId);
+        const busy = !!lease && !holderIsGone(lease.pid);
+        const waiting = busy ? [] : (await pending(t.being, t.convoId)).filter((it) => accept(it) && startsAutoSoul(it)).map((it) => it.id);
+        if (hasNewReason(await readAutoSoulStatus(t.being), t.convoId, waiting)) {
+          console.log(`[runner] ${t.being}/${t.convoId} is at 100% with automatic soul update on — updating before any turn`);
+          startAutoSoulUpdate(t.being, t.convoId, opts);
+          outcomes.push({ being: t.being, convoId: t.convoId, ran: false, skipped: 'soul-update' });
+          closeRelay(t.convoId, { type: 'notice', content: 'This conversation is at 100% of its log cap: the soul is being updated first. The message waits in the stock and runs in the new conversation.' });
+          continue;
+        }
       }
 
       // Context at 100% → turns nobody asked for wait (つよ, 2026-11-17). Before

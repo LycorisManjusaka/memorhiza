@@ -17,40 +17,13 @@ import { escapeForRegExp } from '@/lib/convoNaming';
 import { resolveSoulGeneration, type SoulGeneration } from '@/lib/soulGeneration';
 import { createSseReader, isSseDone } from '@/lib/sseFrames';
 import { notifySummariesChanged } from '@/lib/summariesChanged';
+import { AGENT_FILE_UPDATE, assembleLayers123, splitOffLogs, splitOffChangelog, UPDATER_MODELS, DEFAULT_UPDATER_MODEL_KEY, DEFAULT_UPDATER_MODEL, SUMMARY_MIMO_MODEL } from '@/lib/spuPost';
 
 // The title→generation parser used to live here as a "client-side mirror of
 // the lib". It is now `@/lib/soulGeneration` (imported above) — one copy, and
 // it answers the hyphenated labels a split archive brings in. A mirror is how
 // the two drifted: the lib's reader for the handover chain gained an order rule
 // on 2026-10-24 while this copy still required digits at the end of the title.
-
-// ── Layer parsing (only used to extract Layers 1-3 as identity context for the
-// summary writer — the main updater now works on the RAW combined text). ─────
-const LAYER_HEADER_RE = /^#{2,3}\s*\*\*Layer\s*(\d+)\s*[:：]\s*(.+?)(?:\*\*)?\s*$/gm;
-interface Layer { index: number; name: string; content: string; }
-function parseLayers(text: string): Layer[] {
-  const matches: Array<{ idx: number; name: string; start: number; bodyStart: number }> = [];
-  let m: RegExpExecArray | null;
-  LAYER_HEADER_RE.lastIndex = 0;
-  while ((m = LAYER_HEADER_RE.exec(text)) !== null) {
-    matches.push({ idx: parseInt(m[1], 10), name: m[2].replace(/\*+$/, '').trim(), start: m.index, bodyStart: m.index + m[0].length });
-  }
-  const layers: Layer[] = [];
-  for (let i = 0; i < matches.length; i++) {
-    const cur = matches[i];
-    const next = matches[i + 1];
-    const body = text.slice(cur.bodyStart, next ? next.start : text.length);
-    layers.push({ index: cur.idx, name: cur.name, content: body.replace(/^\n/, '').replace(/\s+$/, '') });
-  }
-  return layers;
-}
-// Re-emit only Layers 1-3 in canonical form (used as identity context for the summary writer).
-function assembleLayers123(text: string): string {
-  return parseLayers(text)
-    .filter((l) => l.index >= 1 && l.index <= 3)
-    .map((l) => `## **Layer ${l.index}: ${l.name}**\n${l.content}`)
-    .join('\n\n');
-}
 
 // ── Run lifecycle indicator chip ────────────────────────────────────────────
 type RunStatus =
@@ -146,33 +119,6 @@ function formatBackupLabel(b: SoulBackupInfo): string {
   const m = b.stamp.match(/^(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})-(\d{2})/);
   const ts = m ? `${m[1]} ${m[2]}:${m[3]}:${m[4]}` : b.stamp;
   return `${b.fromTitle} → ${b.toTitle} · ${ts}`;
-}
-
-// The agent ends its output with bookkeeping log sections (the format file
-// defines "## [Abbreviations log]" and "## [Deletions log]"). We split those off
-// the actual layer content so they can be shown read-only and kept OUT of the
-// next conversation's system prompt. Tolerant of EN/JP labels and `##`/`###`.
-const LOG_SECTION_RE =
-  /^#{2,3}\s*\[?\s*(?:Abbreviations?\s*log|Deletions?\s*log|省略ログ|削除ログ)\s*\]?\s*$/im;
-function splitOffLogs(text: string): { layers: string; logs: string } {
-  const m = text.match(LOG_SECTION_RE);
-  if (!m || m.index === undefined) return { layers: text.trim(), logs: '' };
-  return {
-    layers: text.slice(0, m.index).replace(/\s+$/, ''),
-    logs: text.slice(m.index).trim(),
-  };
-}
-
-// Split the agent output at the first "## Layer 1" heading. Everything ABOVE it
-// is the changelog (the agent's account of what it changed); everything from the
-// heading onward is the core identity (Layers 1-3). Tolerant of `##`/`###`, an
-// optional `**`, and EN/JP colon. If Layer 1 is missing or already at the very
-// start, there's no changelog (return the whole text as core — don't lose data).
-const LAYER1_HEADER_RE = /^#{2,3}\s*\*{0,2}\s*Layer\s*1\b\s*[:：]/im;
-function splitOffChangelog(text: string): { changelog: string; core: string } {
-  const m = text.match(LAYER1_HEADER_RE);
-  if (!m || m.index === undefined || m.index === 0) return { changelog: '', core: text };
-  return { changelog: text.slice(0, m.index).trim(), core: text.slice(m.index) };
 }
 
 // ── Layer 4 split + entry parsing (redistribute mode only) ──────────────────
@@ -300,7 +246,6 @@ interface IndexReport {
 // under local_data/system_prompt_agents/<Type>/ now carries exactly these four
 // canonical files, and each button is wired to its own fixed name: there is no
 // file selector left to point at the wrong one.
-const AGENT_FILE_UPDATE = 'updater.md';                       // "Update from Conversation"
 const AGENT_FILE_REORGANIZE = 'defragmenter.md';              // "Reorganize (No Conversation)"
 const AGENT_FILE_REDISTRIBUTE = 'interlayer_redistributor.md'; // "Redistribute Layer 4 → 1-3"
 const AGENT_FILE_GENESIS = 'genesis_extractor.md';            // "Genesis (Build From Scratch)"
@@ -351,37 +296,6 @@ const SIGIL_STYLE = { fontFamily: '"Segoe UI", Tahoma, Arial, Helvetica, sans-se
 function Sigil({ letter, tone }: { letter: string; tone: string }) {
   return <span className={`${SIGIL_CLS} ${tone}`} style={SIGIL_STYLE}>{letter}</span>;
 }
-
-// ── Soul-packer model shortlist ──────────────────────────────────────────────
-// Only these four families produce usable system-prompt updates; the others
-// either flatten the Layer structure or paraphrase the identity away. Kept as a
-// fixed list rather than the full model table so the choice stays a deliberate
-// one. `authMode` is Claude-only — it picks the billing path (see the chat
-// route's resolvedClaudeAuthMode); everything else leaves it undefined and gets
-// the route's usual 'auto'.
-interface UpdaterModelDef {
-  key: string;
-  label: string;
-  /** Family label — the chat route matches this case-insensitively. */
-  aiName: string;
-  model: string;
-  authMode?: 'oauth' | 'api-key';
-}
-const UPDATER_MODELS: UpdaterModelDef[] = [
-  { key: 'claude-opus-5-5-oauth', label: 'Claude Opus 5.5 (OAuth path)', aiName: 'Claude', model: 'claude-opus-5-5',   authMode: 'oauth' },
-  { key: 'claude-opus-5-oauth', label: 'Claude Opus 5 (OAuth path)', aiName: 'Claude',   model: 'claude-opus-5',       authMode: 'oauth' },
-  { key: 'kimi-k3',             label: 'Kimi K3',                    aiName: 'Kimi',     model: 'moonshotai/Kimi-K3' },
-  { key: 'kimi-k3.1-pro',       label: 'Kimi K3.1 Pro',              aiName: 'Kimi',     model: 'moonshotai/Kimi-K3.1-Pro' },
-  { key: 'glm-5.3',             label: 'GLM 5.3',                    aiName: 'GLM',      model: 'glm-5.3' },
-  { key: 'glm-5.3-flash',       label: 'GLM 5.3 Flash',              aiName: 'GLM',      model: 'glm-5.3-flash' },
-  { key: 'glm-5.2',             label: 'GLM 5.2',                    aiName: 'GLM',      model: 'glm-5.2' },
-  { key: 'glm-5.2-digitalocean', label: 'GLM 5.2 (DigitalOcean)',    aiName: 'GLM',      model: 'digitalocean/glm-5.2' },
-  { key: 'deepseek-v4-pro',     label: 'DeepSeek V4 Pro',            aiName: 'DeepSeek', model: 'deepseek-v4-pro' },
-  { key: 'deepseek-flash',      label: 'DeepSeek V4.1 Flash',        aiName: 'DeepSeek', model: 'deepseek-flash' },
-];
-const DEFAULT_UPDATER_MODEL_KEY = 'deepseek-v4-pro';
-const DEFAULT_UPDATER_MODEL =
-  UPDATER_MODELS.find(m => m.key === DEFAULT_UPDATER_MODEL_KEY) as UpdaterModelDef;
 
 // ── Main modal ──────────────────────────────────────────────────────────────
 interface Props {
@@ -874,7 +788,6 @@ export default function SystemPromptUpdater({
   // stores only the boolean, never the id. That is what makes this a one-line
   // migration for every being already using it: 先輩's folder carries
   // `forceMimoForSummary: true` and nothing else, so it follows this constant.
-  const SUMMARY_MIMO_MODEL = 'mimo-v2.6-pro';
   const [forceMimoForSummary, setForceMimoForSummary] = useState<boolean>(false);
   const summaryAiName = forceMimoForSummary ? 'MiMo' : effectiveAiName;
   const summarySpecificModel = forceMimoForSummary ? SUMMARY_MIMO_MODEL : effectiveSpecificModel;

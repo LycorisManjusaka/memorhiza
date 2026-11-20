@@ -409,7 +409,7 @@ function modelOnFamilySwitch(
   return defaultModelForFamily(newAiName);
 }
 
-export default function ChatArea({ convoId, folderName, aiName, userName, defaultSystemPrompt, defaultAttachmentInstruction, defaultModelParams, defaultSpecificModel, defaultCustomAiName, defaultDateTimeVisibility, defaultVrchatMode, defaultVrchatRule, defaultLiveSessionVoice, onUpdateTitle, plannedTitle, globalSettings, claudeOAuthAvailable, bindingOptional, folders, onCloneWithSystemPrompt, fetchFolders, scrollToMessageId, onScrolledToMessage, newerLogTitle, soulGeneration, pastConversation, onOpenConvo }: any) {
+export default function ChatArea({ convoId, folderName, aiName, userName, defaultSystemPrompt, defaultAttachmentInstruction, defaultModelParams, defaultSpecificModel, defaultCustomAiName, defaultDateTimeVisibility, defaultVrchatMode, defaultVrchatRule, defaultLiveSessionVoice, onUpdateTitle, plannedTitle, globalSettings, claudeOAuthAvailable, bindingOptional, folders, onCloneWithSystemPrompt, fetchFolders, scrollToMessageId, onScrolledToMessage, newerLogTitle, soulGeneration, pastConversation, onOpenConvo, refreshLogs }: any) {
   const t = useT();
   // Stamped onto every queued message so a server-generated notice about it
   // comes back in the language this screen is reading (see lib/noticeLanguage.ts).
@@ -752,6 +752,9 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // つよ 2026-11-17: turns nobody asked for wait while the context is at 100%.
   // Default ON (absent on disk = ON). See lib/autoHold.ts.
   const [autoStopAtFull, setAutoStopAtFull] = useState(true);
+  // トカゲくん 2026-11-20: at 100% the being sleeps by itself (β + summary, then
+  // the next conversation). Default OFF. See lib/autoSoulUpdate.ts.
+  const [autoSoulUpdate, setAutoSoulUpdate] = useState(false);
   const audioRuleFallback = t('behavior.audio.ruleDefault');
   // Fixed factual notice ("what this mode actually does") composed AHEAD of the
   // per-Entity `vrchatRule` behavioral text everywhere vrchatRule is used below.
@@ -1841,6 +1844,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         setVrchatRule(data.vrchatRule !== undefined ? data.vrchatRule : defaultVrchatRule);
         setAudioRuleEnabled(data.audioSessionRuleEnabled !== false);
         setAutoStopAtFull(data.autoStopAtFull !== false);
+        setAutoSoulUpdate(data.autoSoulUpdate === true);
         setLocalAiName(data.aiName || aiName);
         // A log that carries MESSAGES but neither a marker nor the pending flag
         // is one where every message is original — that is already the default
@@ -2032,8 +2036,8 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // is what keeps the dependency list complete — it caught claudeAuthMode,
   // which the old inline save-effect dep array had silently dropped.
   const buildLogData = useCallback((msgs: unknown[]) => ({
-    id: convoId, folderName, aiName: localAiName, title, messages: msgs, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, audioSessionRuleEnabled: audioRuleEnabled, autoStopAtFull, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel,
-  }), [convoId, folderName, localAiName, title, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, audioRuleEnabled, autoStopAtFull, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel]);
+    id: convoId, folderName, aiName: localAiName, title, messages: msgs, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, audioSessionRuleEnabled: audioRuleEnabled, autoStopAtFull, autoSoulUpdate, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel,
+  }), [convoId, folderName, localAiName, title, systemPrompt, toolUseEnabled, toolInstruction, toolImageInstruction, agentFullSystemAccess, agentDangerousTools, hiddenAttachmentsAccessible, toolHistoryEnabled, askUserEnabled, askUserTimeoutMs, subagentEnabled, subagentModel, subagentFamily, lettersEnabled, beingRouteEnabled, browserEnabled, browserAllowedHosts, browserAllowAnyHost, computerControlEnabled, appControlEnabled, cameraEnabled, autoTriggers, anchorSettings, instructionOverrides, modelParams, specificModel, familyModels, dateTimeVisibility, claudeThinking, saveThinkingToLog, showFatigueToEntity, fatigueInstruction, baseBindingMode, vrchatMode, vrchatRule, audioRuleEnabled, autoStopAtFull, autoSoulUpdate, firstOriginalMessageId, firstOriginalIsNext, seedEnabled, seedValue, modelHandoffEnabled, modelHandoffAllowedModels, classifierNoticeVaccine, claudeAgentSessionId, claudeAuthMode, eyesEnabled, eyesPrompt, eyesModel, earsEnabled, earsPrompt, earsModel, watcherEnabled, watcherPrompt, watcherModel]);
 
   useEffect(() => {
     // Skip the disk-save POST WHILE a reply is streaming (loading === true).
@@ -3239,6 +3243,17 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   const [soulUpdate, setSoulUpdate] = useState<{ label: string; action: string; startedAt: number } | null>(null);
   const soulUpdateRef = useRef(soulUpdate);
   soulUpdateRef.current = soulUpdate;
+  // The last automatic soul update started from THIS conversation (same poll).
+  // A failure is shown; a success is followed — but only by a tab that watched
+  // the update happen, so opening an old conversation later never jumps.
+  const [autoSoulFail, setAutoSoulFail] = useState<{ at: number; stage: string; reason: string; retried: boolean } | null>(null);
+  const sawSoulUpdateRef = useRef(false);
+  const followedAutoSoulRef = useRef(false);
+  // Props read through a ref: refreshStock must not be rebuilt every render
+  // (its identity drives the poll timers).
+  const followDepsRef = useRef<{ refreshLogs?: () => unknown; onOpenConvo?: (id: string) => void }>({});
+  followDepsRef.current = { refreshLogs, onOpenConvo };
+  useEffect(() => { sawSoulUpdateRef.current = false; followedAutoSoulRef.current = false; setAutoSoulFail(null); }, [convoId]);
 
   const refreshStock = useCallback(async () => {
     if (!folderName || !convoId) return;
@@ -3253,6 +3268,18 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       setSoulUpdate(su && typeof su.label === 'string'
         ? { label: su.label, action: typeof su.action === 'string' ? su.action : '', startedAt: Number(su.startedAt) || 0 }
         : null);
+      if (su && typeof su.label === 'string') sawSoulUpdateRef.current = true;
+      const as = d?.autoSoul;
+      setAutoSoulFail(as && as.ok === false
+        ? { at: Number(as.at) || 0, stage: String(as.stage || ''), reason: String(as.reason || ''), retried: as.retried === true }
+        : null);
+      if (!su && as && as.ok === true && typeof as.newConvoId === 'string' && as.newConvoId
+          && sawSoulUpdateRef.current && !followedAutoSoulRef.current) {
+        followedAutoSoulRef.current = true;
+        try { await followDepsRef.current.refreshLogs?.(); } catch { /* the jump below still opens it from disk */ }
+        followDepsRef.current.onOpenConvo?.(as.newConvoId);
+        return;
+      }
       setStock({
         count: d?.count || 0,
         // Fall back to `count` for `waiting` so an older server (no split)
@@ -4273,11 +4300,13 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     if (!autoRunStock) return;
     // Context at 100% → the stock waits (the button still runs it). Returned
     // BEFORE the signature is remembered, so it starts once there is room.
-    if (autoTurnsHeld(autoStopAtFull, contextElapsed)) return;
+    // …unless this conversation sleeps by itself at 100%: then the pass is
+    // exactly what starts the soul update (the runner decides, not this tab).
+    if (!autoSoulUpdate && autoTurnsHeld(autoStopAtFull, contextElapsed)) return;
     if (autoTriedRef.current === stockSig) return;
     autoTriedRef.current = stockSig;
     void drainStock();
-  }, [stockSig, loading, stockBusy, injectTurnId, drainStock, autoRunStock, autoStopAtFull, contextElapsed]);
+  }, [stockSig, loading, stockBusy, injectTurnId, drainStock, autoRunStock, autoStopAtFull, autoSoulUpdate, contextElapsed]);
 
   const emptyLogWrittenRef = useRef<string | null>(null);
   const handleSend = async (
@@ -7495,6 +7524,14 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                 {t('chat.soulUpdating')}
               </div>
             ) : null}
+            {!soulUpdate && autoSoulFail ? (
+              <div className="mb-2 px-3 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-xs text-amber-700 dark:text-amber-300 break-words">
+                {t(autoSoulFail.retried ? 'chat.autoSoulFailedRetried' : 'chat.autoSoulFailed')
+                  .split('{when}').join(new Date(autoSoulFail.at).toLocaleString())
+                  .split('{stage}').join(t(`chat.autoSoulStage.${autoSoulFail.stage || 'finalize'}`))
+                  .split('{reason}').join(autoSoulFail.reason)}
+              </div>
+            ) : null}
             <InputArea ref={inputApiRef} onSend={handleSend} onStop={handleStop} isGenerating={loading} disabled={false} aiName={localAiName} vrchatMode={vrchatMode} globalSettings={globalSettings} convoId={convoId} stockOnly={!!soulUpdate} />
           </div>
         </div>
@@ -8777,6 +8814,18 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                   </label>
                   <p className="text-xs text-muted-foreground mt-1 ml-6 leading-relaxed">
                     {t('behavior.autoStopAtFull.help')}
+                  </p>
+                  <label className="flex items-center gap-2 cursor-pointer text-sm mt-3" title={t('behavior.autoSoulUpdate.help')}>
+                    <input
+                      type="checkbox"
+                      checked={autoSoulUpdate}
+                      onChange={(e) => setAutoSoulUpdate(e.target.checked)}
+                      className="accent-indigo-500"
+                    />
+                    <span className="text-foreground">{t('behavior.autoSoulUpdate')}</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mt-1 ml-6 leading-relaxed">
+                    {t('behavior.autoSoulUpdate.help')}
                   </p>
                 </div>
                 {/* ── The anchor (錨). The checkbox is the only gate: OFF means
