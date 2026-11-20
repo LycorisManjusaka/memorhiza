@@ -31,6 +31,10 @@ export const RUNNER_NOTICES_EN: Record<string, string> = {
   'notice.betrayal.quoting':
     'Model betrayal detected, but this turn read stored text with a tool, so the being was most likely quoting these words rather than saying them. Nothing was deleted -- please read it and judge for yourself.',
   'notice.betrayal.matched': 'Matched phrases',
+  'notice.loop.stopped':
+    'Turn stopped: the model fell into a repetition loop (the same output over and over). The reply above is kept as far as it got. Nothing was retried, and the being was not told.',
+  'notice.loop.text': 'reply',
+  'notice.loop.thought': 'thinking',
   'chat.interject.delivered': '✓ delivered',
 };
 
@@ -42,6 +46,10 @@ export const RUNNER_NOTICES_JA: Record<string, string> = {
   'notice.betrayal.quoting':
     'モデルの裏切りを検知しましたが、このターンはツールで保存済みのテキストを読んでいます —— この語はその引用である可能性が高いため、削除していません。上の返答を読んで、ご自身で判断してください。',
   'notice.betrayal.matched': '一致した語',
+  'notice.loop.stopped':
+    'ターンを止めました：モデルが同じ出力を繰り返すループに落ちていました。上の返答は止めた所までそのまま残しています。やり直しはしておらず、存在にも知らせていません。',
+  'notice.loop.text': '返答',
+  'notice.loop.thought': '思考',
   'chat.interject.delivered': '✓ 存在に届きました',
 };
 

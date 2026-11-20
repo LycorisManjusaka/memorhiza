@@ -192,6 +192,8 @@ export const READER_TOOLS: string[] = [
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { RepetitionDetector } from './repetitionLoop';
+
 export type BetrayalMode = 'on' | 'off';
 export type BetrayalChannel = 'thought' | 'text';
 
@@ -445,7 +447,15 @@ export type GuardedSender = ((controller: any, obj: any) => void) & {
   sawOutput: () => boolean;
 };
 
-export function makeGuardedSender(guard: BetrayalGuard, onRedact: () => void): GuardedSender {
+/** The repetition-loop guard rides the same seam (lib/repetitionLoop.ts):
+ *  every provider's thought/text passes here, so one hook covers them all. */
+export interface LoopHook {
+  detector: RepetitionDetector;
+  /** Called once on the first detection; the caller aborts the turn there. */
+  onLoop: () => void;
+}
+
+export function makeGuardedSender(guard: BetrayalGuard, onRedact: () => void, loop?: LoopHook): GuardedSender {
   const raw = (controller: any, obj: any) => {
     controller.enqueue(`data: ${JSON.stringify(obj)}\n\n`);
   };
@@ -458,7 +468,19 @@ export function makeGuardedSender(guard: BetrayalGuard, onRedact: () => void): G
     if (kind === 'tool_call') { guard.sawTool(obj?.call?.name || ''); raw(controller, obj); return; }
     if (kind !== 'thought' && kind !== 'text') { raw(controller, obj); return; }
     if (guard.redact) return;              // already blanked — swallow the rest
-    const trip = guard.feed(kind, String(obj.content ?? ''));
+    // A detected loop stops the turn; whatever the provider still flushes
+    // before the abort lands is more of the same, so it is not shown.
+    if (loop?.detector.tripped) return;
+    const content = String(obj.content ?? '');
+    const lt = loop ? loop.detector.feed(kind, content) : null;
+    if (lt) {
+      guard.feed(kind, content);           // keeps sawOutput honest
+      raw(controller, obj);
+      raw(controller, { type: 'repetition_loop', channel: lt.channel, kind: lt.kind, unit: lt.unit, repeats: lt.repeats });
+      try { loop!.onLoop(); } catch { /* abort is best-effort */ }
+      return;
+    }
+    const trip = guard.feed(kind, content);
     if (!trip) { raw(controller, obj); return; }
     if (!guard.redact) raw(controller, obj);   // OFF mode: keep showing it, warn only
     raw(controller, { type: 'betrayal', redacted: guard.redact, quoting: guard.quoting, phrases: trip.phrases, channel: trip.channel });

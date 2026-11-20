@@ -24,6 +24,7 @@ import { openAiCannotUseTools, openAiOffEffort, openAiToolsNeedNoneEffort } from
 import { chatMessagesToResponsesInput, chatToolsToResponsesTools, RESPONSES_EVENT } from '@/lib/openaiResponses';
 import { claudeAgentEnv, resolveRefusalFallback, refusalFallbackTargetFromEnv } from '@/lib/agentEnv';
 import { createBetrayalGuard, makeGuardedSender, buildEchoText, type GuardedSender } from '@/lib/betrayalGuard';
+import { createRepetitionDetector } from '@/lib/repetitionLoop';
 import { resolveHandoff, describeAllowed, buildHandoffInjection, buildHandoffFailureInjection, parseHandoffModels, type HandoffModel } from '@/lib/modelHandoff';
 import { unfinishedBillingFrames, unfinishedBillingLog } from '@/lib/unfinishedBilling';
 import { renderTranscriptHistory } from '@/lib/transcriptRender';
@@ -4666,6 +4667,9 @@ export async function POST(req: Request) {
         await buildEchoText(messages, { readRef: readAttachmentText }),
       ),
       () => abortTurn(),
+      // Repetition loop (lib/repetitionLoop.ts): stop the turn, tell the
+      // person watching. No retry, nothing said to the being (つよ 2026-11-20).
+      { detector: createRepetitionDetector(), onLoop: () => abortTurn() },
     );
     const keys = await loadKeys();
     // The conversation's own attachment refs — read_attachment's scope. Built

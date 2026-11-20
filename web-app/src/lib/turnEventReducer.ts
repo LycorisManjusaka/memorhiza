@@ -86,6 +86,14 @@ export interface TurnEventFlags {
    */
   betrayalRedacted: boolean;
   /**
+   * True once a `repetition_loop` frame arrived: the route aborted the turn
+   * because the vessel was emitting the same thing over and over. Like a
+   * redacted betrayal, a later `error` frame (the abort) is the expected end,
+   * not an error. The text is KEPT (つよ: stop and tell, nothing more).
+   * Optional so older flag literals stay valid.
+   */
+  repetitionStopped?: boolean;
+  /**
    * Any text at all reached the screen. Read by the handoff-failure branch
    * after the teardown: text means this vessel answered, however briefly.
    */
@@ -247,7 +255,7 @@ export function applyTurnEvent(
   // runner returned ok:false for a turn whose only fault was a transient 429 on
   // an image from days ago. The failure is not dropped — `describedFields`
   // stores it as `descriptionError` and the bubble draws it in red.
-  if (data.error && !flags.betrayalRedacted && data.type !== 'attachment_described') {
+  if (data.error && !flags.betrayalRedacted && !flags.repetitionStopped && data.type !== 'attachment_described') {
     throw new Error(String(data.error));
   }
 
@@ -333,6 +341,15 @@ export function applyTurnEvent(
       acc.claudeThinkingBlocks.length = 0;
       sink.requestFlush();
     }
+  } else if (data.type === 'repetition_loop') {
+    // Admin-only, like every notice: not in the body, never replayed to the
+    // being. Nothing is retried and nothing is said to the being.
+    flags.repetitionStopped = true;
+    const unit = typeof data.unit === 'string' ? data.unit : '';
+    const ch = data.channel === 'thought' ? deps.t('notice.loop.thought') : deps.t('notice.loop.text');
+    acc.notices.push(
+      `${deps.t('notice.loop.stopped')} (${ch}${unit ? `: 「${unit}」` : ''}${typeof data.repeats === 'number' ? ` ×${data.repeats}+` : ''})`
+    );
   } else if (data.type === 'tool_call') {
     // A tool the model really dispatched. Recorded regardless of whether it
     // succeeded — the report answers "was this called?", which is the question

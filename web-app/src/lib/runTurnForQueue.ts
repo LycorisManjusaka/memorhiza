@@ -878,6 +878,8 @@ export async function runTurnForQueue(
         assistant: Record<string, unknown>;
         handoff: TurnHandoffPlan | null;
         sawOutput: boolean;
+        /** The route stopped this pass for a repetition loop. */
+        loopStopped?: boolean;
       }
     // A failure. `stopped` separates a DECISION from an accident — it decides
     // the notice the watcher gets and whether the log says so, but both now
@@ -1147,6 +1149,7 @@ export async function runTurnForQueue(
       assistant: finalizeAssistant(),
       handoff: flags.pendingHandoff,
       sawOutput: flags.sawOutput,
+      loopStopped: flags.repetitionStopped === true,
     };
   };
 
@@ -1496,7 +1499,10 @@ export async function runTurnForQueue(
     // at its own first tool call — taking the note here would report it lost
     // moments before it arrived.
     let judged = pass.assistant;
-    if (!pass.handoff) {
+    // A loop-stopped turn skips the anchor: つよ's spec is stop and tell, no
+    // retry — and an anchor RETRY/DROP would be exactly that. The loop notice
+    // is already on the message.
+    if (!pass.handoff && !pass.loopStopped) {
       const acted = await applyAnchor(pass.assistant);
       if (acted.retryText !== undefined) {
         // INTERCEPT_RETRY: REPLACE the answer, as "rerun" does. The failed
