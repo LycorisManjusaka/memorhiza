@@ -60,6 +60,7 @@ import { stripAllTimestamps } from '@/lib/timestampStrip';
 import { applyOutputFilter } from '@/lib/outputFilter';
 import { normaliseTurnSaved, type TurnSavedEvent } from '@/lib/turnSaved';
 import { normaliseAnchorLive, type AnchorLiveFrame } from '@/lib/anchorLive';
+import { trimLoopTail } from '@/lib/repetitionLoop';
 
 /**
  * Turn-scoped values the chain writes that are NOT part of the accumulator.
@@ -345,6 +346,10 @@ export function applyTurnEvent(
     // Admin-only, like every notice: not in the body, never replayed to the
     // being. Nothing is retried and nothing is said to the being.
     flags.repetitionStopped = true;
+    // A loop in the REPLY is cut before it is saved (つよ 2026-11-20): left
+    // in the history, the being would read its own loop back next turn.
+    // The thought stays as it was.
+    if (data.channel !== 'thought') { acc.currentText = trimLoopTail(acc.currentText); sink.requestFlush(); }
     const unit = typeof data.unit === 'string' ? data.unit : '';
     const ch = data.channel === 'thought' ? deps.t('notice.loop.thought') : deps.t('notice.loop.text');
     acc.notices.push(

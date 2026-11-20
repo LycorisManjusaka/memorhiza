@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import MessageBubble from './MessageBubble';
 import AskUserQuestionCard from './AskUserQuestionCard';
 import InputArea from './InputArea';
+import NextWakeChip from './NextWakeChip';
 import EditableCombo from './EditableCombo';
 import ModelPriceSelect from './ModelPriceSelect';
 import FamilyModelPicker, { RetiredOption } from './FamilyModelPicker';
@@ -5992,6 +5993,8 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           >
             {copiedLink === 'convo' ? <Check size={14} /> : <Link2 size={14} />}
           </button>
+          {/* Next wake, compact; details in its hover tip (トカゲくん 2026-11-20). */}
+          <NextWakeChip folderName={folderName} />
           {/* Mobile only: the two numbers worth seeing without asking. The full
               status bar collapses with the toolbar (it is too tall for a phone
               header), but collapsing it must not take the elapsed reading with

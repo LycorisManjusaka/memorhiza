@@ -23,6 +23,13 @@ export interface WakeOverviewFacts {
   /** "Context elapsed" % of the conversation a wake would open (same number as
    *  its header gauge); null when there is no such conversation. */
   elapsedPct?: number | null;
+  /**
+   * A turn running in that conversation right now (トカゲくん 2026-11-20),
+   * read from the queue lease on disk, so any NEXUS sharing the data sees it.
+   * `tools` comes from the live relay, which only the NEXUS running the turn
+   * holds: null there means "not countable from here", never 0.
+   */
+  active?: { startedAt: number; holder: string; tools: number | null; toolsTruncated: boolean } | null;
 }
 
 export interface WakeOverviewRow extends WakeOverviewFacts {

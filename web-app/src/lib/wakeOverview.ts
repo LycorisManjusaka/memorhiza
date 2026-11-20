@@ -8,7 +8,8 @@ import { listFolders, listLogs, loadLog, saveLog, writeBeingSettings } from '@/l
 import { parseWakeSettings, WAKE_PURPOSE } from '@/lib/wakeSchedule';
 import { readWakeState, latestActiveConversation, clearBookings } from '@/lib/wakeClock';
 import { autoTriggerEnabled, setAutoTrigger } from '@/lib/autoTriggers';
-import { pending, queuedConversations, removePendingItem } from '@/lib/turnQueue';
+import { pending, queuedConversations, removePendingItem, readLease, holderIsGone } from '@/lib/turnQueue';
+import { liveTurnToolCount } from '@/lib/turnBus';
 import { logContextElapsedPercent as elapsedOf } from '@/lib/autoHold';
 import { logCapUnlimited } from '@/lib/handoverRestore';
 import {
@@ -51,6 +52,15 @@ export async function wakeOverview(now = Date.now()): Promise<WakeOverviewRow[]>
       // A 0 cap has no ceiling, so there is no % to show.
       elapsedPct: log && !logCapUnlimited(f.settings?.maxConversationLog) ? elapsedOf(log, family, f.settings?.maxConversationLog) : null,
     };
+    // A running turn holds the queue lease; a lease whose process is gone is
+    // a leftover, not a turn (it is cleared on the next claim).
+    if (convoId) {
+      const lease = await readLease(f.name, convoId);
+      if (lease && !holderIsGone(lease.pid)) {
+        const count = liveTurnToolCount(convoId);
+        facts.active = { startedAt: lease.startedAt, holder: lease.holder, tools: count ? count.tools : null, toolsTruncated: !!count?.truncated };
+      }
+    }
     if (canWakeByItself(facts)) rows.push(overviewRow(facts, now));
   }
   return sortOverview(rows);

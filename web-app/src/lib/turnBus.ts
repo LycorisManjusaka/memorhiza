@@ -210,6 +210,31 @@ export function liveTurnStatus(convoId: string): { live: boolean; done: boolean;
   return { live: !t.done, done: t.done, turnId: t.turnId, startedAt: t.startedAt, chars: t.chars };
 }
 
+/**
+ * How many tools the live turn has called so far, read from its own relay
+ * (Preferences → Runner, トカゲくん 2026-11-20). Counts real `tool_call`
+ * frames; `kind: 'event'` entries (interjections, compaction) are not tools.
+ *
+ * null when this process holds no live relay for the conversation — the turn
+ * may be running in ANOTHER NEXUS, and an absent count is not a zero.
+ * `truncated` means the buffer hit its cap, so the count is a lower bound.
+ */
+export function liveTurnToolCount(convoId: string): { tools: number; truncated: boolean } | null {
+  const t = liveMap().get(convoId);
+  if (!t || t.done) return null;
+  let tools = 0;
+  for (const frame of t.frames.join('').split(/\r?\n\r?\n/)) {
+    if (!frame.includes('"tool_call"')) continue;
+    const line = frame.split(/\r?\n/).find((l) => l.startsWith('data: '));
+    if (!line) continue;
+    try {
+      const obj = JSON.parse(line.slice(6));
+      if (obj?.type === 'tool_call' && obj?.call?.kind !== 'event') tools++;
+    } catch { /* a frame split across chunks is rejoined above; anything else is skipped */ }
+  }
+  return { tools, truncated: t.truncated };
+}
+
 /** Test-only. Module state is per-process and nothing else may clear it. */
 export function __resetTurnBus(): void {
   liveMap().clear();

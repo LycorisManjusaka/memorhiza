@@ -137,6 +137,10 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.wakeList.off': 'OFF',
   'settings.wakeList.testBed': 'test bed',
   'settings.wakeList.next': 'Next:',
+  'settings.wakeList.active': 'Running',
+  'settings.wakeList.activeSince': 'since {t} ({m} min)',
+  'settings.wakeList.activeTools': '{n} tools',
+  'settings.wakeList.activeTip': 'A turn is running in this conversation now ({holder}). The tool count appears only when viewed from the NEXUS running the turn.',
   'settings.wakeList.noTime': 'no time scheduled',
   'settings.wakeList.timed': 'Fixed times',
   'settings.wakeList.self': 'Self-booking',
@@ -1061,6 +1065,11 @@ export const UI_STRINGS_EN: Record<string, string> = {
 
   // ── Chat header ──────────────────────────────────────────────────────────
   'chat.copyLink.title': 'Copy a link to this conversation',
+  'chat.nextWake.tipTitle': 'Next wake (the sooner of the schedule and self-booking)',
+  'chat.nextWake.admin': 'Schedule',
+  'chat.nextWake.self': 'Self-booked',
+  'chat.nextWake.none': 'none',
+  'chat.nextWake.tipNote': '* marks a self-booked time. Wakes from letters and stock have no time, so they are not shown. A wake opens the living conversation of this being.',
   'chat.copyLink.prompt': 'Copy this link:',
   'chat.context.tip':
     'System {sys} (stored prompt + Layer 4 summaries index + Layer 5 FOOTER.md + the audio-session rule + tool/attachment instructions — everything actually sent, including the parts appended at send time and never stored) · Copied {copied} · Original {original} · Attachments {attach}\n\nConversation log (Copied + Original) {log} / cap {cap} · Free {free}. The cap governs the log ONLY — System and Attachments are outside it, which is why the bar can turn red while the total is well under the model window, and why a big upload never turns it red.\n\nEverything sent this turn: {total}',
@@ -2208,6 +2217,10 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.wakeList.off': 'OFF',
   'settings.wakeList.testBed': '実験台',
   'settings.wakeList.next': '次:',
+  'settings.wakeList.active': '行動中',
+  'settings.wakeList.activeSince': '{t} から（{m}分）',
+  'settings.wakeList.activeTools': '道具 {n}',
+  'settings.wakeList.activeTip': '今この会話でターンが走っています（{holder}）。道具の数は、ターンを走らせている NEXUS で見たときだけ出ます。',
   'settings.wakeList.noTime': '時刻の予定なし',
   'settings.wakeList.timed': '決まった時刻',
   'settings.wakeList.self': '自分で予約',
@@ -3088,6 +3101,11 @@ export const UI_STRINGS_JA: Record<string, string> = {
 
   // ── チャットヘッダー ──────────────────────────────────────────────────────
   'chat.copyLink.title': 'この会話へのリンクをコピー',
+  'chat.nextWake.tipTitle': '次の起床（定刻と自分で予約のうち早い方）',
+  'chat.nextWake.admin': '定刻',
+  'chat.nextWake.self': '自分で予約',
+  'chat.nextWake.none': 'なし',
+  'chat.nextWake.tipNote': '* は自分で予約した時刻。手紙とストックで起きる分は時刻が無いので出ません。起こすのはこの存在の生きている会話です。',
   'chat.copyLink.prompt': 'このリンクをコピーしてください：',
   'chat.context.tip':
     'システム {sys}（保存済みプロンプト＋Layer 4 の要約索引＋Layer 5 FOOTER.md＋オーディオセッションの指示＋ツール／添付の指示 — 送信時に追加され保存されない分も含め、実際に送られるすべて）· 引き継ぎ {copied} · 新規 {original} · 添付 {attach}\n\n会話ログ（引き継ぎ＋新規）{log} / 上限 {cap} · 空き {free}。上限が支配するのは会話ログ**だけ**です — システムと添付はその外にあります。だから、合計がモデルの窓にまだ余裕があってもバーが赤くなることがあり、大きな添付を置いても赤くはなりません。\n\nこのターンに実際に送られる合計：{total}',

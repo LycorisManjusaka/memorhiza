@@ -42,6 +42,7 @@ type WakeOverviewView = {
   nextSelf: { at: number; hhmm: string } | null;
   nextAt: number | null;
   elapsedPct?: number | null;
+  active?: { startedAt: number; holder: string; tools: number | null; toolsTruncated: boolean } | null;
 };
 
 type TabId = (typeof TABS)[number]['id'];
@@ -1255,6 +1256,23 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
                           title={t('settings.wakeList.elapsedTip')}
                         >{b.elapsedPct}%</span>
                       )}
+                      {b.active && (() => {
+                        /* A turn running right now (lease on disk). Tool count only
+                           where this NEXUS holds the live relay; absent is not 0. */
+                        const d = new Date(b.active.startedAt);
+                        const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                        const mins = Math.max(0, Math.floor((Date.now() - b.active.startedAt) / 60000));
+                        return (
+                          <span
+                            className="inline-flex items-center gap-1 text-[11px] px-1.5 rounded border border-emerald-500/50 text-emerald-500"
+                            title={t('settings.wakeList.activeTip').replace('{holder}', b.active.holder)}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            {t('settings.wakeList.active')} · {t('settings.wakeList.activeSince').replace('{t}', hhmm).replace('{m}', String(mins))}
+                            {b.active.tools !== null && ` · ${t('settings.wakeList.activeTools').replace('{n}', `${b.active.tools}${b.active.toolsTruncated ? '+' : ''}`)}`}
+                          </span>
+                        );
+                      })()}
                       <span className="ml-auto font-mono text-indigo-400">
                         {b.nextAt !== null ? `${t('settings.wakeList.next')} ${fmtWhen(b.nextAt)}` : t('settings.wakeList.noTime')}
                       </span>

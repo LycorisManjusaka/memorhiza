@@ -489,3 +489,28 @@ export function mailWakeDecision(
   }
   return { fire: true, seen: unreadIds.slice() };
 }
+
+/**
+ * The one "next wake" shown beside the conversation title (トカゲくん
+ * 2026-11-20): the sooner of the next admin time and the next self-booking.
+ * A booking counts only while self-wake is on — the clock ignores it otherwise
+ * (same rule as Preferences → Runner). Mail and stock wakes have no time, so
+ * they are not here.
+ */
+export function nextWake(
+  w: WakeSettings,
+  bookings: SelfBooking[],
+  now: number,
+): {
+  next: { at: number; hhmm: string; kind: 'admin' | 'self' } | null;
+  admin: { at: number; hhmm: string } | null;
+  self: { at: number; hhmm: string } | null;
+} {
+  const admin = nextAdminSlot(w, now);
+  const future = w.self.enabled ? bookings.filter((b) => b.at > now).sort((a, b) => a.at - b.at) : [];
+  const self = future[0] ? { at: future[0].at, hhmm: future[0].hhmm } : null;
+  let next: { at: number; hhmm: string; kind: 'admin' | 'self' } | null = null;
+  if (admin) next = { ...admin, kind: 'admin' };
+  if (self && (!next || self.at < next.at)) next = { ...self, kind: 'self' };
+  return { next, admin, self };
+}

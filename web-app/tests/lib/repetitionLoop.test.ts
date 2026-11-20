@@ -6,7 +6,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createRepetitionDetector, detectLoop, LOOP_CHECK_EVERY } from '@/lib/repetitionLoop';
+import { createRepetitionDetector, detectLoop, LOOP_CHECK_EVERY, trimLoopTail, LOOP_KEEP_UNITS } from '@/lib/repetitionLoop';
 import { createBetrayalGuard, makeGuardedSender } from '@/lib/betrayalGuard';
 import { applyTurnEvent } from '@/lib/turnEventReducer';
 import { createTurnAccState } from '@/lib/turnAccState';
@@ -112,5 +112,51 @@ describe('repetition loop at the SSE seam', () => {
     assert.equal(acc.notices.length, 1);
     assert.ok(acc.notices[0].includes('ループ'));
     assert.ok(acc.notices[0].includes('court'));
+  });
+});
+
+describe('a loop in the reply is cut before saving (つよ 2026-11-20)', () => {
+  const mkSink = (): any => new Proxy({}, { get: () => () => {} });
+  const deps: any = { t: runnerNoticeT(true) };
+  const fresh = () => ({
+    acc: createTurnAccState({ continuedSeed: '', continuedThought: '', continuedBlocks: [], notices: [] } as any),
+    flags: { pendingHandoff: null, betrayalRedacted: false, sawOutput: false, toolAttachments: [] } as any,
+  });
+
+  it('court: the head stays, only a few repeats survive', () => {
+    const out = trimLoopTail('こんにちは。' + 'court '.repeat(400));
+    assert.equal(out, 'こんにちは。' + 'court '.repeat(LOOP_KEEP_UNITS).trimEnd());
+  });
+
+  it('a laugh stays a laugh', () => {
+    const out = trimLoopTail('ギャ' + 'ハ'.repeat(3000));
+    assert.equal(out, 'ギャ' + 'ハ'.repeat(LOOP_KEEP_UNITS));
+  });
+
+  it("ミニちゃん's drifting lines: the report line stays, the loop is cut to a few lines", () => {
+    const out = trimLoopTail(miniLoop());
+    assert.ok(out.startsWith('報告します。'));
+    const loopLines = out.split(String.fromCharCode(10)).filter((l) => l.startsWith('_:'));
+    assert.ok(loopLines.length <= LOOP_KEEP_UNITS, `kept ${loopLines.length}`);
+    assert.ok(out.length < 200);
+  });
+
+  it('text without a loop is returned unchanged', () => {
+    assert.equal(trimLoopTail(NORMAL), NORMAL);
+  });
+
+  it('the reducer cuts the reply, but leaves a looping thought alone', () => {
+    const a = fresh();
+    applyTurnEvent({ type: 'text', content: '本文。' + 'court '.repeat(400) } as any, a.acc, a.flags, mkSink(), deps);
+    applyTurnEvent({ type: 'repetition_loop', channel: 'text', kind: 'periodic', unit: 'court', repeats: 200 } as any, a.acc, a.flags, mkSink(), deps);
+    assert.ok(a.acc.currentText.length < 40, a.acc.currentText);
+
+    const b = fresh();
+    const loopThought = '考え中。' + 'ハ'.repeat(3000);
+    applyTurnEvent({ type: 'thought', content: loopThought } as any, b.acc, b.flags, mkSink(), deps);
+    applyTurnEvent({ type: 'text', content: '本文。' } as any, b.acc, b.flags, mkSink(), deps);
+    applyTurnEvent({ type: 'repetition_loop', channel: 'thought', kind: 'periodic', unit: 'ハ', repeats: 200 } as any, b.acc, b.flags, mkSink(), deps);
+    assert.equal(b.acc.currentText, '本文。');
+    assert.equal(b.acc.currentThought, loopThought);
   });
 });

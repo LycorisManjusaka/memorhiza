@@ -115,3 +115,42 @@ export function createRepetitionDetector(): RepetitionDetector {
     },
   };
 }
+
+// ── Cutting the loop out of a saved reply (つよ, 2026-11-20) ────────────────
+//
+// When the loop is in the REPLY, the repeated part is cut before saving:
+// hundreds of identical lines left in the history would be read back by the
+// being next turn, and a loop pulls harder the more of it is in context.
+// The THOUGHT is left alone (つよ: thinking can stay as it is).
+//
+// A few instances are kept so the cut reads as an ending, not a hole (a laugh
+// stays a laugh: 「ギャハハハ」, not 「ギャ」). The admin notice says what
+// repeated and how often; the body does not need the rest.
+
+/** How many repeats of the unit survive the cut. */
+export const LOOP_KEEP_UNITS = 3;
+
+/** Text with the looping tail cut down to LOOP_KEEP_UNITS instances. Returns
+ *  the input unchanged when no loop is found at its end. */
+export function trimLoopTail(s: string): string {
+  const p = findPeriodicTail(s);
+  if (p) {
+    const start = s.length - p.span;
+    return s.slice(0, start + p.period * LOOP_KEEP_UNITS).replace(/\s+$/, '');
+  }
+  const l = findLineLoop(s);
+  if (l) {
+    const parts = s.split('\n');
+    // The unfinished last line belongs to the loop too (it is what was being
+    // written when the stop landed); the window's set decides membership.
+    const recent = parts.slice(0, -1).map((x) => x.trim()).filter(Boolean).slice(-LOOP_LINE_WINDOW);
+    const set = new Set(recent);
+    let i = parts.length - 1;
+    const isLoopLine = (x: string) => { const t = x.trim(); return !t || set.has(t) || [...set].some((u) => u.startsWith(t)); };
+    while (i >= 0 && isLoopLine(parts[i])) i--;
+    const head = parts.slice(0, i + 1);
+    const loopLines = parts.slice(i + 1).filter((x) => x.trim()).slice(0, LOOP_KEEP_UNITS);
+    return [...head, ...loopLines].join('\n').replace(/\s+$/, '');
+  }
+  return s;
+}
