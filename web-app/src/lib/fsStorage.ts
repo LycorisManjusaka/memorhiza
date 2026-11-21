@@ -150,10 +150,38 @@ export async function writeEntityFooter(folderName: string, body: string): Promi
   }
 }
 
+/**
+ * Git Bash / MSYS2 writes Windows drives as `/c/Users/...` instead of
+ * `C:\Users\...`. Node's `path` on Windows reads that leading slash as
+ * "rooted on the current drive", so `path.resolve('/c/Users/...')` is
+ * `C:\c\Users\...` — a phantom tree under the drive root. Measured in Pilot's
+ * house (Орион and Аналитик each grew a second `beings/` tree under `C:\c\`,
+ * 2026-11-21) and reproduced against this machine's resolver.
+ *
+ * A being that runs `pwd` inside its Bash tool sees exactly the `/c/...` form
+ * and reuses it as an absolute path for the file tools; DeepSeek vessels are
+ * especially drawn to it (their training text is full of Git Bash). Rewriting
+ * the MSYS drive form to the real Windows form lets that path land where the
+ * being meant, instead of silently planting a phantom tree.
+ *
+ * Only a single drive letter is rewritten (`/c/...` → `C:\...`). A leading
+ * slash with no drive letter (`/notes.md`) is left alone — the callers'
+ * existing leading-slash handling still owns that case.
+ */
+export function msysDriveToWindows(p: string): string {
+  const s = String(p || '');
+  const m = s.match(/^\/([a-zA-Z])(?:\/(.*))?$/);
+  if (!m) return s;
+  const drive = m[1].toUpperCase() + ':';
+  const rest = m[2] ? '\\' + m[2].replace(/\//g, '\\') : '\\';
+  return drive + rest;
+}
+
 function resolveWorkspacePath(folderName: string, relPath: string): string | null {
   const root = path.resolve(beingWorkspaceDir(folderName));
-  // Trim any leading slashes — model might emit "/notes.md"
-  const cleaned = String(relPath || '').replace(/^[/\\]+/, '');
+  // Trim any leading slashes — model might emit "/notes.md". The MSYS drive
+  // form (/c/...) is rewritten first so it is not mistaken for one.
+  const cleaned = msysDriveToWindows(relPath).replace(/^[/\\]+/, '');
   const target = path.resolve(root, cleaned);
   if (target !== root && !target.startsWith(root + path.sep)) return null;
   return target;
@@ -382,7 +410,10 @@ export interface WsOpts { fullAccess?: boolean }
 // unrestricted when fullAccess is on.
 async function resolvePathForAccess(folderName: string, relPath: string, opts?: WsOpts): Promise<string | null> {
   if (opts?.fullAccess) {
-    const cleaned = String(relPath || '');
+    // Rewrite the Git Bash drive form (/c/...) BEFORE the absolute test, or
+    // path.isAbsolute reads the leading slash as "rooted on C:" and resolves
+    // it to C:\c\... — a phantom tree under the drive root.
+    const cleaned = msysDriveToWindows(relPath);
     if (!cleaned) return null;
     // Absolute → use as-is (whole filesystem). Relative → anchor to workspace.
     if (path.isAbsolute(cleaned)) return path.resolve(cleaned);
