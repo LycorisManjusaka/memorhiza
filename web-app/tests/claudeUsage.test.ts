@@ -20,6 +20,18 @@ test('weekPace: elapsed share counts from resetsAt minus 7 days; above it is ahe
   assert.equal(weekPace({ state: 'live', pct: 0, resetsAt }, resetsAt)!.elapsedPct, 100);
 });
 
+// つよ, 2026-11-21: when ahead, the time the even-pace line reaches the usage.
+test('weekPace: catchUpAt is when the pace line reaches the usage, only while ahead', () => {
+  const resetsAt = new Date(2026, 10, 27, 17, 0).getTime();
+  const start = resetsAt - WEEK_MS;
+  const now = start + 0.156 * WEEK_MS;
+  const p = weekPace({ state: 'live', pct: 17, resetsAt }, now)!;
+  assert.equal(p.ahead, true);
+  assert.equal(p.catchUpAt, start + 0.17 * WEEK_MS);
+  assert.equal(weekPace({ state: 'live', pct: 10, resetsAt }, now)!.catchUpAt, null);
+  assert.equal(weekPace({ state: 'live', pct: 100, resetsAt }, now)!.catchUpAt, resetsAt);
+});
+
 test('weekPace: no pace without a live window and a reset time', () => {
   assert.equal(weekPace({ state: 'unknown' }, 0), null);
   assert.equal(weekPace({ state: 'live', pct: 50, resetsAt: null }, 0), null);

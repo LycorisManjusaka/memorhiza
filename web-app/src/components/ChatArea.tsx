@@ -2335,6 +2335,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       line(t('chat.usage.five'), five, hm),
       line(t('chat.usage.week'), week, dt),
       ...(pace ? [t(pace.ahead ? 'chat.usage.paceAhead' : 'chat.usage.pace').replace('{pct}', String(pace.elapsedPct))] : []),
+      ...(pace?.catchUpAt ? [t('chat.usage.catchUp').replace('{time}', dt(pace.catchUpAt))] : []),
       claudeUsage ? t('chat.usage.asOf').replace('{time}', dt(claudeUsage.capturedAt)) : t('chat.usage.none'),
       t('chat.usage.note'),
     ].join('\n');
@@ -2347,7 +2348,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         </div>
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-2 font-semibold whitespace-nowrap">
           <span>{t('chat.usage.five')} {short(five)}{five.state === 'live' && five.resetsAt ? ` · ${hm(five.resetsAt)}` : ''}</span>
-          <span className={pace?.ahead ? 'text-red-500' : undefined}>{t('chat.usage.week')} {short(week)}</span>
+          <span className={pace?.ahead ? 'text-red-500' : undefined}>
+            {t('chat.usage.week')} {short(week)}
+            {pace?.catchUpAt ? ` (${t('chat.usage.catchUpShort').replace('{time}', new Date(pace.catchUpAt).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }))})` : ''}
+          </span>
         </div>
       </div>
     );

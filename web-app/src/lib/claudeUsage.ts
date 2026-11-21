@@ -115,12 +115,17 @@ export const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
  * before the reset at this rate (Lizard-kun's rule, 2026-11-15). null when the
  * window is not live or carries no reset time — no pace is invented.
  */
-export function weekPace(v: WindowView, now: number): { elapsedPct: number; ahead: boolean } | null {
+export function weekPace(v: WindowView, now: number): { elapsedPct: number; ahead: boolean; catchUpAt: number | null } | null {
   if (v.state !== 'live' || v.resetsAt === null) return null;
   const start = v.resetsAt - WEEK_MS;
   const frac = Math.max(0, Math.min(1, (now - start) / WEEK_MS));
   const elapsedPct = Math.round(frac * 1000) / 10;
-  return { elapsedPct, ahead: v.pct > elapsedPct };
+  const ahead = v.pct > elapsedPct;
+  // When usage is above the even pace: the moment the pace line reaches the
+  // current usage, i.e. when the week would be back under it if nothing more
+  // were used (つよ, 2026-11-21). Only while ahead; never past the reset.
+  const catchUpAt = ahead ? Math.min(v.resetsAt, start + (v.pct / 100) * WEEK_MS) : null;
+  return { elapsedPct, ahead, catchUpAt };
 }
 
 /** Parse the stored file; anything malformed reads as "no snapshot". */
