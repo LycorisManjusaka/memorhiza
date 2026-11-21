@@ -355,6 +355,7 @@ import { looksLikeText, isMediaMime, SNIFF_BYTES, TEXT_MAX_BYTES } from '@/lib/t
 import { isPdf, expandPdf, formatPdfText } from '@/lib/pdfExpand';
 import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
+import { fitImageForWire, fitNote, WIRE_IMAGE_MAX_BYTES } from '@/lib/fitImageForWire';
 
 // Anthropic rejects any image whose longest edge exceeds 2000px on many-image
 // requests, and internally downscales anything over ~1568px for token counting
@@ -10263,9 +10264,12 @@ export async function POST(req: Request) {
                           // Vision-capable models (Qwen-VL, Gemma 4 mmproj,
                           // etc.) pick up the image from the follow-up user
                           // message and respond about it.
-                          const base64 = bin.data.toString('base64');
-                          const dataUrl = `data:${bin.mimeType};base64,${base64}`;
-                          resultText = `Image "${p}" (${bin.mimeType}, ${bin.data.length} bytes) loaded successfully. Image content follows in the next user message.`;
+                          // Fit under the per-image byte ceiling (MiniMax 400s the
+                          // whole turn over 10 MiB) — see lib/fitImageForWire.ts.
+                          const fitted = await fitImageForWire(bin.data, bin.mimeType);
+                          const base64 = fitted.data.toString('base64');
+                          const dataUrl = `data:${fitted.mimeType};base64,${base64}`;
+                          resultText = `Image "${p}" (${bin.mimeType}, ${bin.data.length} bytes) loaded successfully. Image content follows in the next user message.${fitNote(fitted, language === 'ja')}`;
                           pendingImageInjects.push({ name: p, dataUrl });
                           attachmentEvent = {
                             type: 'file_attachment',
@@ -10644,7 +10648,16 @@ export async function POST(req: Request) {
                         text: hintTemplate.replace(/\{filename\}/g, img.name),
                       });
                     }
-                    parts.push({ type: 'image_url', image_url: { url: img.dataUrl } });
+                    // Last gate before the wire: any image still over the
+                    // per-image ceiling (read_attachment, screenshots) is fitted
+                    // here. Read already fitted its own and said so.
+                    let url = img.dataUrl;
+                    const mm = /^data:([^;]+);base64,([\s\S]*)$/.exec(url);
+                    if (mm && mm[2].length * 0.75 > WIRE_IMAGE_MAX_BYTES) {
+                      const f = await fitImageForWire(Buffer.from(mm[2], 'base64'), mm[1]);
+                      url = `data:${f.mimeType};base64,${f.data.toString('base64')}`;
+                    }
+                    parts.push({ type: 'image_url', image_url: { url } });
                   }
                   msgs = [...msgs, { role: 'user', content: parts }];
                 }
