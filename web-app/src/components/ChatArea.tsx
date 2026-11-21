@@ -275,6 +275,10 @@ MiniMax  | MiniMax-M2.7                 | on  | MiniMax M2.7
 # workspace tools. gpt-6-sol and gpt-6-luna go the ordinary chat/completions route.
 # Vision measured on all. gpt-6.1-terra (added 2026-11-09) accepts 'none' unlike
 # gpt-6.1-sol, so it uses the ordinary route, and is cheaper ($1/$5).
+# gpt-6.2-sol / gpt-6.2-astra (added 2026-11-21) behave like gpt-6.1-sol: no 'none',
+# so their tool turns also go through /v1/responses. Vision measured on both.
+ChatGPT  | gpt-6.2-sol                  | on  | GPT-6.2 Sol (newest)
+ChatGPT  | gpt-6.2-astra                | on  | GPT-6.2 Astra (most capable)
 ChatGPT  | gpt-6.1-sol                  | on  | GPT-6.1 Sol
 ChatGPT  | gpt-6.1-terra                | on  | GPT-6.1 Terra (tools OK)
 ChatGPT  | gpt-6-sol                    | on  | GPT-6 Sol

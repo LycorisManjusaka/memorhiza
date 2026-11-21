@@ -41,8 +41,15 @@
 // be imported outside Next, and a hand-copied predicate in a probe would only
 // ever agree with itself.
 
+// gpt-6.2-sol / gpt-6.2-astra, measured 2026-11-21 (same endpoint, real calls):
+// both behave exactly like gpt-6.1-sol. 'none' and 'minimal' -> 400 ("Supported
+// values are: 'low', 'medium', 'high', and 'xhigh'"); tools + low -> 400 and
+// tools + omitted -> 400 ("use /v1/responses or set reasoning_effort to 'none'");
+// /v1/responses + tools -> 200 function_call, and the stateless second round
+// (function_call + function_call_output, no reasoning item) -> 200 final answer.
+
 /** Ids whose reasoning_effort vocabulary has no 'none' (low|medium|high|xhigh). */
-const EFFORT_HAS_NO_NONE = /gpt-6\.1-sol|gpt-6-astra/i;
+const EFFORT_HAS_NO_NONE = /gpt-6\.1-sol|gpt-6-astra|gpt-6\.2-sol|gpt-6\.2-astra/i;
 
 /** Ids that need an explicit 'none' alongside tools; omitting the field 400s. */
 const TOOLS_NEED_EXPLICIT_NONE = /gpt-5\.6|gpt-6/i;

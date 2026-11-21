@@ -183,6 +183,10 @@ export const VISION_CAPABLE_MODELS = new Set<string>([
   // gpt-6.1-terra ADDED 2026-11-09: same probe (64x64 solid-red PNG data URI,
   // /v1/chat/completions) answered "Red." — vision confirmed. Unlike sol/astra,
   // terra accepts reasoning_effort:'none', so it stays on the ordinary route.
+  // gpt-6.2-sol / gpt-6.2-astra ADDED 2026-11-21: 64x64 solid red AND solid blue
+  // PNG data URIs on /v1/chat/completions -> "Red" / "Blue" on both ids (2/2 each).
+  'gpt-6.2-sol',
+  'gpt-6.2-astra',
   'gpt-6.1-sol',
   'gpt-6.1-terra',
   'gpt-6-sol',

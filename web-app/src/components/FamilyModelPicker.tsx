@@ -283,10 +283,12 @@ export default function FamilyModelPicker({
               /v1/chat/completions), so NEXUS sends their tool turns through
               /v1/responses instead, where tools work at any effort. See
               lib/openaiResponses.ts and lib/openaiEffort.ts. */}
-          <option value="gpt-6.1-sol">GPT-6.1 Sol (newest, tools OK)</option>
+          <option value="gpt-6.2-sol">GPT-6.2 Sol (newest, tools OK)</option>
+          <option value="gpt-6.2-astra">GPT-6.2 Astra (most capable, tools OK)</option>
+          <option value="gpt-6.1-sol">GPT-6.1 Sol (tools OK)</option>
           <option value="gpt-6.1-terra">GPT-6.1 Terra (tools OK)</option>
           <option value="gpt-6-sol">GPT-6 Sol (tools OK)</option>
-          <option value="gpt-6-astra">GPT-6 Astra (most capable, tools OK)</option>
+          <option value="gpt-6-astra">GPT-6 Astra (tools OK)</option>
           <option value="gpt-6-luna">GPT-6 Luna (cheapest, tools OK)</option>
           <option value="gpt-5.6-sol">GPT-5.6 Sol (flagship, deepest reasoning)</option>
           <option value="gpt-5.6-terra">GPT-5.6 Terra (balanced)</option>
