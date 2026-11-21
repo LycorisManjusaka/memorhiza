@@ -485,8 +485,12 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
       // the chat route calls forgetStop the instant it aborts, so by the time
       // runTurnForQueue's throw is caught the record is already gone.
       let stopped = false;
+      // Ends the anchor calls on Stop (the chat route's own listener only
+      // covers the being's pass, and is gone by the time the anchor runs).
+      const stopCtl = new AbortController();
       const offStop = onStop(t.convoId, turnId, () => {
         stopped = true;
+        try { stopCtl.abort(); } catch { /* already aborted */ }
         // Stop also silences a reply the server is still reading for this turn.
         serverSpeech().stop({ convoId: t.convoId });
       });
@@ -497,6 +501,7 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
       try {
         result = await runTurnForQueue(t.being, t.convoId, c.claim.items, {
           wasStopped: () => stopped,
+          stopSignal: stopCtl.signal,
           loadLog,
           saveLog,
           chatPost,
@@ -583,6 +588,7 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
               origin: opts.origin,
               chatPost,
               onDelta: a.onDelta,
+              signal: a.signal,
             });
             return r.ok ? r.report : null;
           },
@@ -599,6 +605,7 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
               promptFile: ANCHOR_REWRITE_FILE,
               wrapUserMsg: (m) => buildRewriteUserMsg(m, a.convLang, a.lang),
               onDelta: a.onDelta,
+              signal: a.signal,
             });
             return r.ok ? r.report : null;
           },

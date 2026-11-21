@@ -97,7 +97,15 @@ export interface RunTurnDeps {
     lang: 'ja' | 'en';
     /** Chunks as they stream; relayed to the tabs (lib/anchorLive.ts). */
     onDelta?: (d: AnchorLiveDelta) => void;
+    /** Fires when the person presses Stop (`stopSignal`). */
+    signal?: AbortSignal;
   }) => Promise<AnchorReport | null>;
+  /**
+   * Aborted the moment the person presses Stop for this turn. Handed to the
+   * anchor calls, so Stop ends the anchor too (ふわふわ, 2026-11-21). The main
+   * pass does not need it — the chat route has its own stop listener.
+   */
+  stopSignal?: AbortSignal;
   /**
    * The anchor's REWRITE writer (anchor_rewrite.md) — the same call shape as
    * `runAnchor` with the conversation's language added. Absent in tests that
@@ -111,6 +119,7 @@ export interface RunTurnDeps {
     lang: 'ja' | 'en';
     convLang: string;
     onDelta?: (d: AnchorLiveDelta) => void;
+    signal?: AbortSignal;
   }) => Promise<AnchorReport | null>;
   /**
    * `[->name]` — plan the routes in a finished reply (lib/beingRouteExec.ts at
@@ -1208,6 +1217,10 @@ export async function runTurnForQueue(
     if (!anchorRunsOn(settings, !!nexus)) return { assistant };
     // Nothing to judge (a redacted betrayal, a turn that produced no text).
     if (!String(assistant.content ?? '').trim()) return { assistant };
+    // Stop pressed already (during the reply): no anchor at all.
+    const stoppedNow = () => deps.wasStopped?.() === true || deps.stopSignal?.aborted === true;
+    if (stoppedNow()) return { assistant };
+    const signal = deps.stopSignal;
     const lang: 'ja' | 'en' = noticeJa ? 'ja' : 'en';
     // Tell watching tabs the anchor is running, so the busy line stops saying
     // the being is still thinking (つよ, 2026-11-15: a few seconds of "<name>
@@ -1232,14 +1245,25 @@ export async function runTurnForQueue(
       const targetId = String(assistant.id);
       const judge = async () => {
         const em = live('judge');
-        try { return await deps.runAnchor!({ messages, targetId, settings, lang, onDelta: em.push }); }
+        try { return await deps.runAnchor!({ messages, targetId, settings, lang, onDelta: em.push, signal }); }
         finally { em.end(); }
       };
+      // Stop during the anchor (ふわふわ, 2026-11-21): the reply stays exactly
+      // as written, and a half-read verdict is kept only as a record, never
+      // acted on — a DROP or RETRY after the person said stop is the opposite
+      // of what they asked for.
+      const halted = (r: AnchorReport | null) => ({
+        assistant: r
+          ? { ...assistant, anchorReport: { ...r, error: r.error || (lang === 'ja' ? '停止されました' : 'stopped') } }
+          : assistant,
+      });
       let report = await judge();
+      if (stoppedNow()) return halted(report);
       if (!report) return { assistant };
       // An empty or unreadable first line is "could not judge" — asked ONCE more.
       if (!report.error && readAnchorVerdict(report.output) === 'UNREADABLE') {
         const second = await judge();
+        if (stoppedNow()) return halted(second ?? report);
         if (second) report = second;
       }
       let out: Record<string, unknown> = { ...assistant, anchorReport: report };
@@ -1267,9 +1291,11 @@ export async function runTurnForQueue(
         if (deps.runAnchorRewrite) {
           const em = live('rewrite');
           try {
-            w = await deps.runAnchorRewrite({ messages, targetId, settings, lang, convLang: d.lang, onDelta: em.push });
+            w = await deps.runAnchorRewrite({ messages, targetId, settings, lang, convLang: d.lang, onDelta: em.push, signal });
           } finally { em.end(); }
         }
+        // Stopped mid-rewrite: keep the reply as written (the verdict stays on record).
+        if (stoppedNow()) return { assistant: out };
         const { record, after } = settleRewrite({ before, lang: d.lang, model: settings.model, at: deps.nowMs(), w });
         // Silent on purpose (謡/つよ 2026-11-20): no anchorAct, so nothing
         // reaches the being. A mix-in is a decoder leak the being cannot

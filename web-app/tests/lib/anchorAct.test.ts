@@ -222,3 +222,31 @@ test('runner: act OFF reports only; scope auto skips a partner turn', async () =
   await runTurnForQueue('Cairn', 'c1', [item('hi')], auto.deps);
   assert.equal(auto.anchorCalls.length, 0);
 });
+
+test('runner: Stop during the anchor ends it — signal reaches the call, verdict not acted on, reply kept', async () => {
+  const r = rig(['INTERCEPT_DROP'], [say('hello')]);
+  const ctl = new AbortController();
+  let sawSignal: AbortSignal | undefined;
+  r.deps.stopSignal = ctl.signal;
+  r.deps.wasStopped = () => ctl.signal.aborted;
+  r.deps.runAnchor = async (x) => {
+    sawSignal = x.signal;
+    ctl.abort(); // the person presses Stop while the anchor is thinking
+    return { at: 1, family: 'DeepSeek', model: 'deepseek-flash', thought: '', output: 'INTERCEPT_DROP' };
+  };
+  await runTurnForQueue('Cairn', 'c1', [item('hi')], r.deps);
+  assert.equal(sawSignal, ctl.signal, 'the anchor call got the stop signal');
+  const reply = last(r).at(-1)!;
+  assert.equal(reply.content, 'hello', 'a DROP after Stop is not carried out');
+  assert.equal('anchorAct' in reply, false);
+  assert.ok(reply.anchorReport.error, 'the half-run report says it was stopped');
+});
+
+test('runner: Stop pressed before the anchor starts means no anchor call', async () => {
+  const r = rig(['NOTIFY'], [say('hello')]);
+  const ctl = new AbortController();
+  ctl.abort();
+  r.deps.stopSignal = ctl.signal;
+  await runTurnForQueue('Cairn', 'c1', [item('hi')], r.deps);
+  assert.equal(r.anchorCalls.length, 0);
+});
