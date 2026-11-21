@@ -97,8 +97,16 @@ function cacheDirFor(key: string): string | null {
   return path.join(CACHE_DIR, key.toLowerCase());
 }
 
+// The specifier is built at run time and marked ignore so the bundler never
+// tries to resolve it. With a literal string Turbopack resolves it while
+// compiling, so a tree whose `npm install` had not brought pdfjs-dist yet
+// failed to compile /api/chat and the runner as a whole (measured on the
+// pilot install, 2026-11-21) — not just PDFs. Now a missing package only
+// throws here, and expandPdf's caller falls back to the old one-line note.
+const PDFJS_SPECIFIER = ['pdfjs-dist', 'legacy', 'build', 'pdf.mjs'].join('/');
+
 async function loadPdfjs(): Promise<any> {
-  return await import('pdfjs-dist/legacy/build/pdf.mjs');
+  return await import(/* turbopackIgnore: true */ /* webpackIgnore: true */ PDFJS_SPECIFIER);
 }
 
 /**
