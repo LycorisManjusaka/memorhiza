@@ -490,6 +490,29 @@ export async function readWorkspaceFile(folderName: string, relPath: string, opt
   catch { return null; }
 }
 
+/**
+ * Read for the agent's Read TOOL (not for internal callers). Same as
+ * readWorkspaceFile for text, but a non-text file (audio, video, archives,
+ * PDFs…) is NOT decoded and handed back: it returns one factual line instead.
+ *
+ * Why: the plain reader decodes any bytes as UTF-8. On 2026-11-21 ミニちゃん
+ * Read a 1,382,593-byte mp3 on the MiniMax tool loop; the decoded garbage
+ * (~1.38M chars) became the tool result and the next request failed with
+ * "context window exceeds limit" — the turn died with nothing to see.
+ * The sniff is the same content test the attachment funnel uses (textSniff).
+ */
+export async function readWorkspaceFileForTool(folderName: string, relPath: string, opts?: WsOpts): Promise<string | null> {
+  const target = await resolvePathForAccess(folderName, relPath, opts);
+  if (!target) return null;
+  let buf: Buffer;
+  try { buf = await fs.readFile(target); }
+  catch { return null; }
+  const { looksLikeText, SNIFF_BYTES } = await import('./textSniff');
+  if (looksLikeText(buf.subarray(0, SNIFF_BYTES))) return buf.toString('utf-8');
+  const ext = path.extname(relPath).toLowerCase() || '(no extension)';
+  return `"${relPath}" is not a text file (${ext}, ${buf.length} bytes), so Read does not return its bytes. Read returns text files and images (.png .jpg .jpeg .gif .webp .bmp).`;
+}
+
 // Image / binary read. Returns null if the path is invalid or the file is unreadable.
 const IMAGE_MIME_BY_EXT: Record<string, string> = {
   '.png': 'image/png',

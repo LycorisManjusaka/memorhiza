@@ -18,7 +18,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
-import { readWorkspaceFile, readWorkspaceFileBinary, isImageFilename, globWorkspaceFiles, grepWorkspaceFiles } from './fsStorage';
+import { readWorkspaceFile, readWorkspaceFileForTool, readWorkspaceFileBinary, isImageFilename, globWorkspaceFiles, grepWorkspaceFiles } from './fsStorage';
 import { webSearch as runWebSearch, webFetch as runWebFetch } from './webTools';
 import { resolveOpenAIRoute } from './openAiRoutes';
 import { usageFromSubagent } from './auxBilling';
@@ -68,7 +68,7 @@ async function dispatchTool(name: string, args: any, folderName: string, fullAcc
         if (!bin) return { kind: 'text', text: `Error: image not found or outside workspace: ${p}` };
         return { kind: 'image', mimeType: bin.mimeType, base64: bin.data.toString('base64'), note: `Image "${p}" (${bin.mimeType}, ${bin.data.length} bytes) follows:` };
       }
-      const t = await readWorkspaceFile(folderName, p, { fullAccess });
+      const t = await readWorkspaceFileForTool(folderName, p, { fullAccess });
       return { kind: 'text', text: t == null ? `Error: file not found or outside workspace: ${p}` : t };
     }
     if (name === 'list_files' || name === 'Glob') {

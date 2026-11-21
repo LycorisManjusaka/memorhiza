@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import pathModule from 'path';
 import { promises as fsp } from 'fs';
 import { routableBeingNames } from '@/lib/beingRouteNames';
-import { loadKeys, readWorkspaceFile, readWorkspaceFileBinary, isImageFilename, writeWorkspaceFile, ensureWorkspace, editWorkspaceFile, globWorkspaceFiles, grepWorkspaceFiles, deleteWorkspaceFile, readEntityFooter, getTrustedJunctionRoot, getSharedZoneRoot } from '@/lib/fsStorage';
+import { loadKeys, readWorkspaceFile, readWorkspaceFileForTool, readWorkspaceFileBinary, isImageFilename, writeWorkspaceFile, ensureWorkspace, editWorkspaceFile, globWorkspaceFiles, grepWorkspaceFiles, deleteWorkspaceFile, readEntityFooter, getTrustedJunctionRoot, getSharedZoneRoot } from '@/lib/fsStorage';
 import { isVisionCapable, isAudioCapable, isVideoCapable, resolveGeminiMinThinkingLevel, reportsNormalizedCoords } from '@/lib/modelVision';
 import { beingIsBlockedHere, blockedResponseBody } from '@/lib/blockedBeings';
 import { type ThinkTagState, newThinkTagState, splitThinkTags, enterThinkFromPrefill } from '@/lib/thinkTagSplitter';
@@ -3983,7 +3983,7 @@ async function streamViaAnthropicCompat(args: {
                     ];
                   }
                 } else {
-                  const txt = await readWorkspaceFile(folderName, p, { fullAccess: agentFullSystemAccess });
+                  const txt = await readWorkspaceFileForTool(folderName, p, { fullAccess: agentFullSystemAccess });
                   resultContent = txt == null ? `Error: file not found or path outside workspace: ${p}` : txt;
                 }
               } else if (tu.name === 'Write') {
@@ -6574,7 +6574,7 @@ export async function POST(req: Request) {
                         };
                       }
                     } else {
-                      const text = await readWorkspaceFile(folderName, p, { fullAccess: agentFullSystemAccess });
+                      const text = await readWorkspaceFileForTool(folderName, p, { fullAccess: agentFullSystemAccess });
                       if (text == null) {
                         resultContent = `Error: file not found or path outside workspace: ${p}`;
                       } else {
@@ -7715,7 +7715,7 @@ export async function POST(req: Request) {
                           };
                         }
                       } else {
-                        const text = await readWorkspaceFile(folderName, p, { fullAccess: agentFullSystemAccess });
+                        const text = await readWorkspaceFileForTool(folderName, p, { fullAccess: agentFullSystemAccess });
                         if (text == null) {
                           result = { error: `file not found or path outside workspace: ${p}` };
                         } else {
@@ -10287,7 +10287,7 @@ export async function POST(req: Request) {
                           };
                         }
                       } else {
-                        const text = await readWorkspaceFile(folderName, p, { fullAccess: agentFullSystemAccess });
+                        const text = await readWorkspaceFileForTool(folderName, p, { fullAccess: agentFullSystemAccess });
                         if (text == null) {
                           resultText = `Error: file not found or path outside workspace: ${p}`;
                         } else {
