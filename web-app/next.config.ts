@@ -69,7 +69,7 @@ const nextConfig: NextConfig = {
   // resolves against node_modules at run time, and a machine that never ran
   // `npx playwright install chromium` still boots (the import fails inside the
   // tool, not at startup).
-  serverExternalPackages: ["playwright"],
+  serverExternalPackages: ["playwright", "pdfjs-dist", "@napi-rs/canvas"],
 
   // Two Nexus instances share one local_data: the main house (port 3000,
   // web-app) and Cairn's frozen copy (port 3001, web-app-cairn, launched by

@@ -352,6 +352,7 @@ import {
   appToolsClaude, appToolsGemini, appToolsOpenAI,
 } from '@/lib/appControl';
 import { looksLikeText, isMediaMime, SNIFF_BYTES, TEXT_MAX_BYTES } from '@/lib/textSniff';
+import { isPdf, expandPdf, formatPdfText } from '@/lib/pdfExpand';
 import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
 
@@ -5321,7 +5322,27 @@ export async function POST(req: Request) {
                 // sitting in old conversations start working too, with no
                 // migration.
                 const raw = Buffer.from(base64Data, 'base64');
-                if (looksLikeText(new Uint8Array(raw.subarray(0, SNIFF_BYTES)))) {
+                // PDF: every page's text, plus page images for a vessel that
+                // sees them natively (lib/pdfExpand). A vessel that would need
+                // the eyes bridge gets the text alone — one eyes call per page
+                // of a long document is a cost nobody asked for.
+                let pdfDone = false;
+                if (isPdf(mimeType, raw.subarray(0, 8))) {
+                  const wantImages = isVisionCapable(specificModel) && resolveBridge('image', isPastMessage, deliveryCtx) === null;
+                  try {
+                    const pdf = await expandPdf(raw, att.ref ? String(att.ref) : null, wantImages);
+                    contentStr += formatPdfText(att.name || 'document.pdf', pdf.pages, pdf.totalPages, pdf.images.length, wantImages);
+                    for (const img of pdf.images) {
+                      mediaFiles.push({ mimeType: 'image/jpeg', base64Data: img.base64, name: `${att.name || 'document.pdf'} — page ${img.page}` });
+                    }
+                    pdfDone = true;
+                  } catch (e: any) {
+                    console.warn(`[pdf] could not read "${att.name}": ${e?.message || e}`);
+                  }
+                }
+                if (pdfDone) {
+                  // handled above
+                } else if (looksLikeText(new Uint8Array(raw.subarray(0, SNIFF_BYTES)))) {
                   const clipped = raw.subarray(0, TEXT_MAX_BYTES).toString('utf-8');
                   const note = raw.length > TEXT_MAX_BYTES
                     ? `\n\n[… truncated by NEXUS: ${(raw.length / 1048576).toFixed(1)} MB total …]`

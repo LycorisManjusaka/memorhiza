@@ -43,8 +43,12 @@ registerHooks({
       spec = pathToFileURL(path.join(SRC, spec.slice(2))).href;
     }
 
-    // Rule 2: extensionless relative/absolute file specifier.
-    if (spec.startsWith('.') || spec.startsWith('file:')) {
+    // Rule 2: extensionless relative/absolute file specifier — for OUR files
+    // only. Inside node_modules a CJS `require('./js-binding')` would be
+    // rewritten to a file:// URL that require() cannot open (measured with
+    // @napi-rs/canvas, 2026-11-21); packages resolve themselves correctly.
+    const fromPackage = String(context.parentURL || '').includes('/node_modules/');
+    if (!fromPackage && (spec.startsWith('.') || spec.startsWith('file:'))) {
       let filePath = null;
       try {
         filePath = spec.startsWith('file:')
