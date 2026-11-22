@@ -3,7 +3,8 @@ import crypto from 'crypto';
 import pathModule from 'path';
 import { promises as fsp } from 'fs';
 import { routableBeingNames } from '@/lib/beingRouteNames';
-import { loadKeys, readWorkspaceFile, readWorkspaceFileForTool, readWorkspaceFileBinary, isImageFilename, writeWorkspaceFile, ensureWorkspace, editWorkspaceFile, globWorkspaceFiles, grepWorkspaceFiles, deleteWorkspaceFile, readEntityFooter, getTrustedJunctionRoot, getSharedZoneRoot } from '@/lib/fsStorage';
+import { loadKeys, readWorkspaceFile, readWorkspaceFileForTool, readWorkspaceFileBinary, isImageFilename, writeWorkspaceFile, ensureWorkspace, editWorkspaceFile, globWorkspaceFiles, grepWorkspaceFiles, deleteWorkspaceFile, readEntityFooter, getTrustedJunctionRoot, getSharedZoneRoot, listFolders } from '@/lib/fsStorage';
+import { buildBackgroundNote, parseWakeSettings, selfWakeBookable } from '@/lib/wakeSchedule';
 import { isVisionCapable, isAudioCapable, isVideoCapable, resolveGeminiMinThinkingLevel, reportsNormalizedCoords } from '@/lib/modelVision';
 import { beingIsBlockedHere, blockedResponseBody } from '@/lib/blockedBeings';
 import { type ThinkTagState, newThinkTagState, splitThinkTags, enterThinkFromPrefill } from '@/lib/thinkTagSplitter';
@@ -1100,6 +1101,19 @@ async function streamClaudeViaAgentSDK(args: {
     toolUseEnabled && agentDangerousTools && I.oauthCwdNote
       ? `${systemPrompt}\n\n${I.oauthCwdNote}`
       : systemPrompt;
+
+  // Background-work note — same gate (Bash exists). See buildBackgroundNote():
+  // Claude Code's Bash description promises a call-back NEXUS cannot give.
+  // The `[->wakeup]` sentence only when this being can really book one.
+  if (toolUseEnabled && agentDangerousTools) {
+    let canBookWake = false;
+    try {
+      const folders = await listFolders() as Array<{ name: string; settings?: { wake?: unknown } }>;
+      const f = folders.find((x) => x.name === folderName);
+      canBookWake = selfWakeBookable(parseWakeSettings(f?.settings?.wake));
+    } catch { /* unreadable settings → do not name the door */ }
+    effectiveSystemPrompt = `${effectiveSystemPrompt}\n\n${buildBackgroundNote(language === 'en' ? 'en' : 'ja', canBookWake)}`;
+  }
 
   // Classifier-notice vaccine — OAuth ONLY, which is why it is appended here
   // rather than next to inlineMediaNote (that one runs for every provider).

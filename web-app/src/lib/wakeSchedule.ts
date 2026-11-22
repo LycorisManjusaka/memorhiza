@@ -370,6 +370,38 @@ export function buildCapabilityList(lang: WakeLang, c: WakeCapabilities): string
   return lines.map(l => `・${l}`).join('\n');
 }
 
+/**
+ * Claude Code's `Bash` description says a background command "re-invokes you
+ * when it exits". Inside NEXUS that is false: every turn is a fresh session, so
+ * nothing comes back (Doc stopped on it three times; Ephemeris read it too).
+ * We cannot rewrite Claude Code's own description, so this rides on the system
+ * prompt next to the working-directory note (same gate: Bash exists).
+ *
+ * The `[->wakeup]` sentence is added ONLY when this being can actually book a
+ * wake (トカゲくん, 2026-11-22): self-booking ON and a daily cap above 0.
+ * Naming a door that is shut would be another promise NEXUS cannot keep.
+ */
+export function selfWakeBookable(w: WakeSettings): boolean {
+  return w.self.enabled && w.self.maxPerDay > 0;
+}
+
+export function buildBackgroundNote(lang: WakeLang, canBookWake: boolean): string {
+  if (lang === 'ja') {
+    return 'バックグラウンドの仕事 — 終わっても、誰も呼び戻さない。\n' +
+      '`Bash` の `run_in_background` の説明には「終了したら呼び戻します」と書いてあるが、NEXUS の中ではそれは起きない。' +
+      'NEXUS は毎ターン新しいセッションを作るので、返事を書き終えた時点でターンは終わり、後ろで走っている仕事が終わってもターンは始まらない。' +
+      '後ろで走らせること自体はできるし、同じターンの中でなら結果を読みに行ける。\n' +
+      '結果を待つ必要があるなら、前景で `timeout` を付けて走らせる（最大10分）。' +
+      (canBookWake ? 'それより長くかかるなら、行頭に `[->wakeup: HH:MM]` と書いて、次に起きる時刻を自分で予約できる。' : '');
+  }
+  return 'Background work — nothing calls you back when it ends.\n' +
+    'The `Bash` description says a `run_in_background` command "re-invokes you when it exits". Inside NEXUS that does not happen: ' +
+    'every turn is a fresh session, so the turn ends when your reply is finished, and a background job finishing starts no turn. ' +
+    'Running something in the background still works, and you can read its result later within the same turn.\n' +
+    'If you need to wait for a result, run it in the foreground with a `timeout` (up to 10 minutes).' +
+    (canBookWake ? ' If it takes longer than that, you can book your own next wake by writing `[->wakeup: HH:MM]` at the start of a line.' : '');
+}
+
 /** The self-wake line, with the admin's bounds written in as numbers. */
 export function buildSelfWakeLine(lang: WakeLang, w: WakeSettings, remainingToday: number): string {
   if (!w.self.enabled) return '';
