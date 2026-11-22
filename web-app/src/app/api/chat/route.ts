@@ -1957,7 +1957,12 @@ async function streamClaudeViaAgentSDK(args: {
         // by agentDangerousTools. Task/subagent + workflow tools stay off (the
         // SDK doesn't drive subagents reliably here, per the OAuth notes).
         const shellTools = ['Bash', 'BashOutput', 'KillShell'];
-        const alwaysOffTools = ['Task', 'TodoWrite', 'NotebookEdit', 'SlashCommand', 'Skill'];
+        // Wake-up tools (ScheduleWakeup / Cron* / RemoteTrigger) promise to
+        // re-invoke the being later. NEXUS starts a fresh session every turn,
+        // so nothing would ever come back: the promise is false here. A being
+        // that wants to be woken uses `[->wakeup: HH:MM]` instead.
+        const wakeTools = ['ScheduleWakeup', 'CronCreate', 'CronDelete', 'CronList', 'RemoteTrigger'];
+        const alwaysOffTools = ['Task', 'TodoWrite', 'NotebookEdit', 'SlashCommand', 'Skill', ...wakeTools];
         const dangerousAlwaysDisabled = agentDangerousTools
           ? alwaysOffTools
           : [...shellTools, ...alwaysOffTools];
