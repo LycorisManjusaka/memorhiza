@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from 'react-dom';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { PlusCircle, MessageSquare, Settings, Trash2, MoreVertical, Copy, Pencil, UserRoundPlus, Edit2, Palette, Upload, History, ArrowDown, ArrowUp, Eye, EyeOff, HelpCircle, X, Mail, BarChart3, FlaskConical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -288,6 +289,56 @@ export default function Sidebar({
   const [renameValue, setRenameValue] = useState('');
   
   const [folderMenuOpen, setFolderMenuOpen] = useState(false);
+  const [folderMenuRect, setFolderMenuRect] = useState<DOMRect | null>(null);
+  const folderBtnRef = useRef<HTMLButtonElement>(null);
+  const folderMenuRef = useRef<HTMLDivElement>(null);
+
+  const openFolderMenu = () => {
+    if (folderBtnRef.current) {
+      setFolderMenuRect(folderBtnRef.current.getBoundingClientRect());
+    }
+    setFolderMenuOpen(true);
+  };
+
+  useEffect(() => {
+    if (!folderMenuOpen) return;
+    const isInside = (t: Node | null) =>
+      (folderBtnRef.current && folderBtnRef.current.contains(t)) ||
+      (folderMenuRef.current && folderMenuRef.current.contains(t));
+
+    const reposition = () => {
+      if (folderBtnRef.current) {
+        setFolderMenuRect(folderBtnRef.current.getBoundingClientRect());
+      }
+    };
+
+    const onDoc = (e: MouseEvent) => {
+      if (!isInside(e.target as Node)) {
+        setFolderMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFolderMenuOpen(false);
+    };
+
+    let attached = false;
+    const id = setTimeout(() => {
+      document.addEventListener('mousedown', onDoc);
+      window.addEventListener('scroll', reposition, true);
+      window.addEventListener('resize', reposition);
+      document.addEventListener('keydown', onKey);
+      attached = true;
+    }, 0);
+
+    return () => {
+      clearTimeout(id);
+      if (!attached) return;
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [folderMenuOpen]);
   
   // Per-folder context-management settings. Moved here from global Preferences
   // so each AI entity / persona can have its own token budget, auto-trim
@@ -949,14 +1000,26 @@ export default function Sidebar({
           {activeFolder && (
             <div className="relative shrink-0">
               <button 
-                onClick={(e) => { e.stopPropagation(); setFolderMenuOpen(!folderMenuOpen); }}
+                ref={folderBtnRef}
+                onClick={(e) => { e.stopPropagation(); folderMenuOpen ? setFolderMenuOpen(false) : openFolderMenu(); }}
                 className="p-2 bg-background border border-border rounded-lg hover:border-indigo-400 text-muted-foreground hover:text-foreground transition-all"
               >
                 <MoreVertical size={16} />
               </button>
 
-              {folderMenuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-56 max-w-[calc(100vw-2rem)] bg-card border border-border shadow-xl rounded-lg py-1 z-50 overflow-hidden">
+              {folderMenuOpen && folderMenuRect && typeof document !== 'undefined' && createPortal(
+                <div
+                  ref={folderMenuRef}
+                  style={{
+                    position: 'fixed',
+                    top: folderMenuRect.bottom + 4,
+                    left: Math.max(8, Math.min(folderMenuRect.right - 224, window.innerWidth - 224 - 8)),
+                    width: 224,
+                    maxHeight: Math.max(160, window.innerHeight - (folderMenuRect.bottom + 4) - 16),
+                    zIndex: 9999,
+                  }}
+                  className="bg-card border border-border shadow-xl rounded-lg py-1 overflow-auto custom-scrollbar"
+                >
                   <button 
                     onClick={handleRenameFolder}
                     className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -1058,7 +1121,9 @@ export default function Sidebar({
                   >
                     <Trash2 size={14} /> {t('sidebar.menu.delete')}
                   </button>
-                </div>
+                </div>,
+                document.body
+              )
               )}
             </div>
           )}
