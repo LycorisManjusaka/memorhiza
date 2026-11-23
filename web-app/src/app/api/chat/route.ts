@@ -25,6 +25,7 @@ import { openAiCannotUseTools, openAiOffEffort, openAiToolsNeedNoneEffort } from
 import { chatMessagesToResponsesInput, chatToolsToResponsesTools, RESPONSES_EVENT } from '@/lib/openaiResponses';
 import { claudeAgentEnv, resolveRefusalFallback, refusalFallbackTargetFromEnv } from '@/lib/agentEnv';
 import { createBetrayalGuard, makeGuardedSender, buildEchoText, type GuardedSender } from '@/lib/betrayalGuard';
+import { isMimoHighRisk, MIMO_HIGH_RISK_MAX_RETRIES } from '@/lib/mimoModeration';
 import { createRepetitionDetector } from '@/lib/repetitionLoop';
 import { resolveHandoff, describeAllowed, buildHandoffInjection, buildHandoffFailureInjection, parseHandoffModels, type HandoffModel } from '@/lib/modelHandoff';
 import { unfinishedBillingFrames, unfinishedBillingLog } from '@/lib/unfinishedBilling';
@@ -3771,6 +3772,10 @@ async function streamViaAnthropicCompat(args: {
         // nothing was generated — resending the identical body after the wait is
         // a resume, not a duplicate. Retry up to 3 times; anything else throws.
         let res: Response | null = null;
+        // MiMo's moderation block (lib/mimoModeration.ts) is refused before the
+        // model runs, so a resend of the identical body is safe. Its own counter:
+        // it must not eat the 429 retries, nor they its.
+        let highRiskRetries = 0;
         for (let attempt = 0; ; attempt++) {
           const r = await fetch(baseUrl, {
             method: 'POST',
@@ -3781,6 +3786,24 @@ async function streamViaAnthropicCompat(args: {
           if (r.ok && r.body) { res = r; break; }
           const errText = await r.text().catch(() => '');
           const err = new Error(`${provider === 'kimi' ? 'Kimi' : 'MiMo'} Anthropic API: ${r.status} ${errText.slice(0, 400)}`);
+          if (provider === 'mimo' && isMimoHighRisk(r.status, errText)) {
+            if (highRiskRetries < MIMO_HIGH_RISK_MAX_RETRIES) {
+              highRiskRetries++;
+              attempt--;   // not a 429 attempt
+              console.log(`[mimo] moderation block ("high risk") — resending ${highRiskRetries}/${MIMO_HIGH_RISK_MAX_RETRIES}`);
+              enqueue({ type: 'notice', content: noticeJa
+                ? `MiMo の入口が「high risk」として断りました（モデルは動いていません）。同じ内容で送り直します（${highRiskRetries}/${MIMO_HIGH_RISK_MAX_RETRIES}）。`
+                : `MiMo's gateway refused the request as "high risk" (the model did not run). Resending the same request (${highRiskRetries}/${MIMO_HIGH_RISK_MAX_RETRIES}).` });
+              await new Promise((s) => setTimeout(s, 1000));
+              continue;
+            }
+            // Still refused after every resend: the same guillotine as a
+            // betrayal — the turn is discarded and the "could not take shape"
+            // notice is shown. The reducer suppresses the error frame that
+            // follows once this has landed.
+            enqueue({ type: 'betrayal', redacted: true, quoting: false, phrases: ['MiMo: high risk'], channel: 'text' });
+            throw err;
+          }
           const waitMs = parseRetryDelayMs(err);
           if (waitMs === null || attempt >= 2) throw err;
           console.log(`[${provider}] quota 429 — waiting ${Math.round(waitMs / 1000)}s, retry ${attempt + 2}/3`);
