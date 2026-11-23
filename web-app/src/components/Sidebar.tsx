@@ -1123,7 +1123,6 @@ export default function Sidebar({
                   </button>
                 </div>,
                 document.body
-              )
               )}
             </div>
           )}
