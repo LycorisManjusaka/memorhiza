@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { promises as fsp } from 'node:fs';
+import { beingSettingsFile } from '@/lib/beingPaths';
 import {
   enqueue, claim, release, abandon, composeBatch, readLease, splitByLease,
   breakLease, isCommandKind, isEmptyTurnText, pendingWithErrors, itemIsForThisInstallation,
@@ -109,7 +111,13 @@ export async function GET(req: Request) {
     const soulRun = (await soulUpdateRunning(being))
       ?? (autoRun ? { label: '', action: 'auto', host: '', startedAt: autoRun.startedAt } : null);
     const autoStatus = await readAutoSoulStatus(being);
+    // When the being's settings.json was last written. A tab holds the settings
+    // it read at mount; this lets it notice another tab's change (e.g. the
+    // conversation-log cap) and re-read. 0 = no file. See beingSettingsStamp.ts.
+    let settingsStamp = 0;
+    try { settingsStamp = Math.round((await fsp.stat(beingSettingsFile(being))).mtimeMs); } catch { /* mail-only name, or none yet */ }
     return NextResponse.json({
+      settingsStamp,
       /**
        * A soul update is running for this being (2026-11-20). While it is,
        * no turn starts — the screen locks the send button to "stock" and says

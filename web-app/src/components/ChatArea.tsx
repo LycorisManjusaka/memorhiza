@@ -20,6 +20,7 @@ import { planStopPress, planTurnNamed } from '@/lib/pendingStop';
 import { resolveAudioSessionRule } from '@/lib/audioSessionRule';
 import { mintTurnId } from '@/lib/turnName';
 import { shouldAutoScroll, nextStickState, jumpToBottom, distanceFromBottom } from '@/lib/scrollMagnet';
+import { settingsStampMoved } from '@/lib/beingSettingsStamp';
 import { runTurnStream, drainStreamToEnd, RELAY_DRAIN_TIMEOUT_MS } from '@/lib/turnStreamLoop';
 import {
   type StopTrace, beginStopTrace, markStop, noteStopHow, formatStopTrace,
@@ -3291,8 +3292,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   const followedAutoSoulRef = useRef(false);
   // Props read through a ref: refreshStock must not be rebuilt every render
   // (its identity drives the poll timers).
-  const followDepsRef = useRef<{ refreshLogs?: () => unknown; onOpenConvo?: (id: string) => void }>({});
-  followDepsRef.current = { refreshLogs, onOpenConvo };
+  const followDepsRef = useRef<{ refreshLogs?: () => unknown; onOpenConvo?: (id: string) => void; fetchFolders?: () => unknown }>({});
+  followDepsRef.current = { refreshLogs, onOpenConvo, fetchFolders: typeof fetchFolders === 'function' ? fetchFolders : undefined };
+  // The settings.json time this tab last saw for the being on screen.
+  const settingsStampRef = useRef<{ being: string; stamp: number | null }>({ being: '', stamp: null });
   useEffect(() => { sawSoulUpdateRef.current = false; followedAutoSoulRef.current = false; setAutoSoulFail(null); }, [convoId]);
 
   const refreshStock = useCallback(async () => {
@@ -3304,6 +3307,12 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       if (!res.ok) return;
       const d = await res.json();
       const items: StockItem[] = Array.isArray(d?.items) ? d.items : [];
+      // Another tab changed this being's settings (the log cap, say): re-read
+      // them, or this tab keeps trimming/restoring against a number nobody
+      // holds any more. See lib/beingSettingsStamp.ts.
+      if (settingsStampRef.current.being !== folderName) settingsStampRef.current = { being: folderName, stamp: null };
+      if (settingsStampMoved(settingsStampRef.current.stamp, d?.settingsStamp)) followDepsRef.current.fetchFolders?.();
+      if (typeof d?.settingsStamp === 'number' && d.settingsStamp > 0) settingsStampRef.current = { being: folderName, stamp: d.settingsStamp };
       const su = d?.soulUpdate;
       setSoulUpdate(su && typeof su.label === 'string'
         ? { label: su.label, action: typeof su.action === 'string' ? su.action : '', startedAt: Number(su.startedAt) || 0 }
