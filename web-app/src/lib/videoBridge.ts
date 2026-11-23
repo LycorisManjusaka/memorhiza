@@ -1,3 +1,4 @@
+import { fetchResendingMimoHighRisk } from './mimoModeration';
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
@@ -133,14 +134,14 @@ async function callMimoVideo(params: {
     top_p: 0.9,
   };
   const t0 = Date.now();
-  const res = await fetch('https://api.xiaomimimo.com/v1/chat/completions', {
+  const res = await fetchResendingMimoHighRisk(() => fetch('https://api.xiaomimimo.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${mimoKey}`,
     },
     body: JSON.stringify(body),
-  });
+  }), { isMimo: true, tag: 'video/mimo' });
   const elapsedMs = Date.now() - t0;
   if (!res.ok) {
     const errText = await res.text().catch(() => '');

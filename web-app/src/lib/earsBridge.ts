@@ -1,3 +1,4 @@
+import { fetchResendingMimoHighRisk } from './mimoModeration';
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
@@ -127,14 +128,14 @@ async function callMimoAudio(params: {
     temperature: 0.3,
     top_p: 0.9,
   };
-  const res = await fetch('https://api.xiaomimimo.com/v1/chat/completions', {
+  const res = await fetchResendingMimoHighRisk(() => fetch('https://api.xiaomimimo.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${mimoKey}`,
     },
     body: JSON.stringify(body),
-  });
+  }), { isMimo: true, tag: 'ears/mimo' });
   if (!res.ok) {
     const errText = await res.text().catch(() => '');
     console.error(`[ears/mimo] HTTP ${res.status} · FULL BODY:\n${errText}`);

@@ -28,3 +28,31 @@ export function isMimoHighRisk(status: number, bodyText: string): boolean {
   if (/considered high risk/i.test(s)) return true;
   return status === 421 && /moderation block/i.test(s);
 }
+
+/**
+ * The same resend for every MiMo call that is not a conversation turn: the
+ * subagent, and the eyes / ears / video bridges (the SPU and the summary
+ * writer already go through the conversation path in /api/chat). Non-MiMo
+ * calls pass straight through (`isMimo` false → one request, untouched).
+ *
+ * When the refusal is not resolved, the last refusal is handed back as a
+ * Response with the same status and body, so each caller's existing error
+ * path reads it exactly as before.
+ */
+export async function fetchResendingMimoHighRisk(
+  doFetch: () => Promise<Response>,
+  opts: { isMimo: boolean; tag?: string; sleep?: (ms: number) => Promise<void> },
+): Promise<Response> {
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((s) => setTimeout(s, ms)));
+  for (let resends = 0; ; resends++) {
+    const res = await doFetch();
+    if (!opts.isMimo || res.ok) return res;
+    const text = await res.text().catch(() => '');
+    if (isMimoHighRisk(res.status, text) && resends < MIMO_HIGH_RISK_MAX_RETRIES) {
+      console.log(`[${opts.tag || 'mimo'}] moderation block ("high risk") — resending ${resends + 1}/${MIMO_HIGH_RISK_MAX_RETRIES}`);
+      await sleep(1000);
+      continue;
+    }
+    return new Response(text, { status: res.status, statusText: res.statusText, headers: res.headers });
+  }
+}

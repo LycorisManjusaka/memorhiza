@@ -16,6 +16,7 @@
 // loops do — so a vision-capable child model SEES the picture. (The default
 // child models — Claude Haiku, Gemini Flash-Lite — are vision-capable.)
 
+import { fetchResendingMimoHighRisk } from './mimoModeration';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
 import { readWorkspaceFile, readWorkspaceFileForTool, readWorkspaceFileBinary, isImageFilename, globWorkspaceFiles, grepWorkspaceFiles } from './fsStorage';
@@ -164,13 +165,13 @@ export async function runOpenAISubagent(opts: {
     { role: 'user', content: opts.task },
   ];
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const resp = await fetch(opts.url, {
+    const resp = await fetchResendingMimoHighRisk(() => fetch(opts.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...opts.headers },
       // No temperature: GPT-5 and Kimi reject any value but their default (1),
       // and an investigation task doesn't need it. Each provider uses its own.
       body: JSON.stringify({ model: opts.model, messages: msgs, tools, stream: false }),
-    });
+    }), { isMimo: /xiaomimimo\.com/.test(opts.url), tag: 'subagent/mimo' });
     const data = await resp.json().catch(() => null);
     if (!data) return { text: `Subagent error: provider returned non-JSON (HTTP ${resp.status}).`, usage, via: via() };
     if (data.error) return { text: `Subagent error: ${data.error?.message || JSON.stringify(data.error)}`, usage, via: via() };
