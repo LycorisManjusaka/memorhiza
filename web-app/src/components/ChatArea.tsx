@@ -197,6 +197,7 @@ Gemini   | gemini-3.1-flash-lite        | on  | Gemini 3.1 Flash Lite
 Gemini   | gemini-3.1-pro-preview       | on  | Gemini 3.1 Pro Preview
 
 # ── Qwen (DashScope intl) ──────────────────────────────────────────
+Qwen     | qwen4-max                    | on  | Qwen 4 Max (reasoning)
 Qwen     | qwen3.8-max                  | on  | Qwen 3.8 Max (reasoning)
 Qwen     | qwen3.7-max                  | on  | Qwen 3.7 Max (reasoning)
 Qwen     | qwen3.6-max-preview          | on  | Qwen 3.6 Max

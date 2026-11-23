@@ -148,6 +148,7 @@ export default function FamilyModelPicker({
           onChange={(e) => onModel(e.target.value)} keep={ks}
           className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm appearance-none cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
         >
+          <option value="qwen4-max">Qwen 4 Max (reasoning, text + vision)</option>
           <option value="qwen3.8-max">Qwen 3.8 Max (reasoning, text + vision)</option>
           <option value="qwen3.7-max">Qwen 3.7 Max (reasoning, text)</option>
           <option value="qwen3.6-max-preview">Qwen 3.6 Max (text + vision)</option>

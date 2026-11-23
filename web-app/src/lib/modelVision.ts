@@ -62,6 +62,12 @@ export const VISION_CAPABLE_MODELS = new Set<string>([
   // and video claims are about long-video *analysis* rather than a documented
   // `video_url` content part, so it stays out of VIDEO_CAPABLE_MODELS too.
   // Both bridges therefore still fire for it, which is the safe default.
+  // qwen4-max measured 2026-11-23: solid red / solid blue png -> "Red" / "Blue",
+  // 2/2. Video DOES arrive (video_tokens counted) but a 2 s blue->red clip came
+  // back "Blue, purple" and red->blue "Red, pink" — the second half was missed
+  // both times — so it stays OUT of VIDEO_CAPABLE_MODELS and the watcher bridge
+  // keeps firing. Audio is not listed on the model card.
+  'qwen4-max',
   'qwen3.8-max',
   'qwen3.7-max',
   // NOTE: the model table exposes this as `qwen3.6-max-preview`, and this set is
