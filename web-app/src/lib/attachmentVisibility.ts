@@ -438,6 +438,7 @@ export function applyAutoHide<T extends { attachments?: any[] }>(
 export function attachmentTokens(att: any, isPastMessage: boolean, ctx: DeliveryContext): number {
   if (!att) return 0;
   if (att.excluded) return 0;
+  if (isPdfAttachment(att)) return pdfAttachmentTokens(att, isPastMessage, ctx);
   const kind = attachmentKind(att);
   if (isUndeliverable(kind, isPastMessage, ctx)) return 0;
   const bridge = resolveBridge(kind, isPastMessage, ctx);
@@ -456,6 +457,60 @@ export function attachmentTokens(att: any, isPastMessage: boolean, ctx: Delivery
     if (framed > 0) return framed;
   }
   return att.tokens || 0;
+}
+
+// ── PDF attachments ──────────────────────────────────────────────────────────
+// Attached as an opaque binary (tokens: 0); expanded only at delivery time into
+// every page's text plus, for a vessel that sees natively, one picture per page
+// (lib/pdfExpand, api/chat/route.ts). The gauge used to read that 0, so a PDF
+// never showed up and hiding it changed nothing on screen. The page count and
+// text estimate come from /api/attachments/pdf-info and are kept here per ref
+// for the session — not written into the log, so opening an old conversation
+// does not turn into a save.
+
+export interface PdfInfo { totalPages: number; textTokens: number }
+const pdfInfoByRef = new Map<string, PdfInfo>();
+export function rememberPdfInfo(ref: string, info: PdfInfo): void { pdfInfoByRef.set(ref, info); }
+export function pdfInfoFor(ref: string | undefined | null): PdfInfo | undefined {
+  return ref ? pdfInfoByRef.get(String(ref)) : undefined;
+}
+
+export function isPdfAttachment(att: any): boolean {
+  if (!att || att.isText || att.isImage || att.isAudio || att.isVideo) return false;
+  return String(att.type || '').toLowerCase() === 'application/pdf' || /\.pdf$/i.test(String(att.name || ''));
+}
+
+/** Same cap as lib/pdfExpand PDF_MAX_IMAGE_PAGES (that module is server-only). */
+const PDF_IMAGE_PAGE_CAP = 40;
+
+/** One rendered page: longest edge 1568 (pdfExpand PDF_PAGE_EDGE), A4-shaped. */
+function pdfPageImageTokens(ctx: DeliveryContext): number {
+  const w = 1109, h = 1568;
+  if (String(ctx.aiName || '').toLowerCase().includes('claude')) return Math.ceil((w * h) / 750);
+  return Math.ceil(w / 768) * Math.ceil(h / 768) * 258;
+}
+
+/**
+ * Mirrors the send path's choice: page pictures go only to a vessel that sees
+ * natively (no eyes bridge), on a wire that carries images, and never to a
+ * past OAuth-Claude message (its transcript is text). Text always goes.
+ */
+export function pdfImagesDelivered(isPastMessage: boolean, ctx: DeliveryContext): boolean {
+  if (!isVisionCapable(ctx.specificModel)) return false;
+  if (resolveBridge('image', isPastMessage, ctx) !== null) return false;
+  if (!wireCarriesMedia('image', ctx)) return false;
+  if (ctx.isOAuthClaude && isPastMessage) return false;
+  return true;
+}
+
+export function pdfAttachmentTokens(att: any, isPastMessage: boolean, ctx: DeliveryContext): number {
+  const info: PdfInfo | undefined =
+    typeof att?.pdfPages === 'number' ? { totalPages: att.pdfPages, textTokens: att.pdfTextTokens || 0 } : pdfInfoFor(att?.ref);
+  if (!info) return att?.tokens || 0;
+  const images = pdfImagesDelivered(isPastMessage, ctx)
+    ? Math.min(info.totalPages, PDF_IMAGE_PAGE_CAP) * pdfPageImageTokens(ctx)
+    : 0;
+  return info.textTokens + images;
 }
 
 /**

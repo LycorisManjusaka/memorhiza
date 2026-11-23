@@ -72,7 +72,7 @@ import {
   type RestorePlanReply,
 } from '@/lib/handoverRestore';
 import { setUnloadGuard, useBusyLabel } from '@/lib/unloadGuard';
-import { applyAutoHide, attachmentTokens, attachmentKind, isUndeliverable, wireCarriesMedia, resolveBridge, resolveKeepMessages, bridgedDescriptionText } from '@/lib/attachmentVisibility';
+import { applyAutoHide, attachmentTokens, attachmentKind, isUndeliverable, wireCarriesMedia, resolveBridge, resolveKeepMessages, bridgedDescriptionText, isPdfAttachment, pdfInfoFor, rememberPdfInfo } from '@/lib/attachmentVisibility';
 import { ensureAudioPermission } from '@/lib/audioSink';
 import { estimateTokensForModel } from '@/lib/tokenEstimate';
 import { createTurnAccState } from '@/lib/turnAccState';
@@ -2491,6 +2491,37 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       }
     })();
   }, [messages, loading, deliveryCtx, lastUserMsgIndex, localAiName]);
+
+  // PDF sizes for the gauge (lib/attachmentVisibility pdfAttachmentTokens).
+  // Asked once per ref per session; kept in memory, never written to the log.
+  const [pdfInfoTick, setPdfInfoTick] = useState(0);
+  const pdfInfoAskedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const want: string[] = [];
+    for (const m of messages) {
+      for (const a of (m.attachments || [])) {
+        if (!a?.ref || !isPdfAttachment(a) || typeof a.pdfPages === 'number') continue;
+        const ref = String(a.ref);
+        if (pdfInfoFor(ref) || pdfInfoAskedRef.current.has(ref)) continue;
+        pdfInfoAskedRef.current.add(ref);
+        want.push(ref);
+      }
+    }
+    if (!want.length) return;
+    (async () => {
+      let got = false;
+      for (const ref of want) {
+        try {
+          const res = await fetch(`/api/attachments/pdf-info?ref=${encodeURIComponent(ref)}&model=${encodeURIComponent(localAiName || '')}`);
+          if (!res.ok) continue;
+          const j = await res.json();
+          if (typeof j.totalPages === 'number') { rememberPdfInfo(ref, { totalPages: j.totalPages, textTokens: j.textTokens || 0 }); got = true; }
+        } catch { /* gauge keeps the old number */ }
+      }
+      if (got) setPdfInfoTick((n) => n + 1);
+    })();
+  }, [messages, localAiName]);
+  void pdfInfoTick;
 
   // Per-message tokens, split so the progress bar can show attachments as
   // their own layer and so the auto-trim threshold can ignore attachments.
