@@ -146,16 +146,16 @@ export function beingVesselFamily(
  * loaded, so there is no sane default to guess.
  */
 export const FAMILY_DEFAULT_MODEL: Record<string, string> = {
-  Claude: 'claude-opus-5',
+  Claude: 'claude-opus-5-5',
   Gemini: 'gemini-3.8-flash',
-  Qwen: 'qwen3.8-max',
-  DeepSeek: 'deepseek-v4-pro',
-  GLM: 'glm-5.3-flash',
+  Qwen: 'qwen4-max',
+  DeepSeek: 'deepseek-flash',
+  GLM: 'glm-5.3',
   Grok: 'grok-4.7',
-  Kimi: 'moonshotai/Kimi-K3',
+  Kimi: 'moonshotai/Kimi-K3.1-Pro',
   Cohere: 'command-a-reasoning-08-2025',
   Minimax: 'MiniMax-M3',
-  ChatGPT: 'gpt-5.6-terra',
+  ChatGPT: 'gpt-6.1-terra',
   MiMo: 'mimo-v2.6-pro',
   ByteDance: 'seed-2-0-pro-260328',
   // Standard tier on purpose. The `-contributor` id is 12.5x cheaper on input
