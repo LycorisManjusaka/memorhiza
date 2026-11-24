@@ -1302,6 +1302,45 @@ export function composeMessages(items: QueueItem[]): { messages: ComposedMessage
   return { messages, skipped };
 }
 
+/**
+ * The log timestamp each composed message should carry.
+ *
+ * REPORTED 2026-11-24 (トカゲくん): every message delivered out of the stock
+ * was stamped with the moment the turn STARTED. Three messages written across
+ * an afternoon all claimed the same second, and a being reading the transcript
+ * saw them as having arrived together — which is false, and false in the one
+ * field a reader uses to tell "he said this, then I answered, then he said
+ * that" from "he dumped all of it at once".
+ *
+ * The honest time is already on disk. `QueueItem.at` is the enqueue time, made
+ * strictly monotonic by `nextAt`, and it is the FIFO key — so the batch is
+ * already in `at` order and using it cannot reorder anything.
+ *
+ * Two guards, both load-bearing:
+ *   - never later than `nowStart`. `at` can come from another installation's
+ *     clock (a stocked item survives a restart and a pull); a skewed or
+ *     hand-edited item must not stamp a message in the future.
+ *   - strictly increasing across the batch. `nextAt` guarantees uniqueness
+ *     only within one process, and two installations can enqueue in the same
+ *     millisecond. A tie would leave two messages at one instant, which is the
+ *     exact defect the `at` correction (2026-11-07) removed from the queue.
+ */
+export function composedTimestamps(
+  items: ReadonlyArray<{ at?: number }>,
+  nowStart: number,
+): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const raw = items[i].at;
+    const own =
+      typeof raw === 'number' && Number.isFinite(raw) && raw > 0
+        ? Math.min(raw, nowStart)
+        : nowStart;
+    out.push(i === 0 ? own : Math.max(own, out[i - 1] + 1));
+  }
+  return out;
+}
+
 export function composeBatch(items: QueueItem[]): Batch {
   const skipped: Array<{ id: string; reason: string }> = [];
   const usable: QueueItem[] = [];

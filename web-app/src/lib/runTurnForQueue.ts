@@ -63,7 +63,7 @@ import { runTurnStream } from '@/lib/turnStreamLoop';
 import { createRunnerSink, createTurnFlags } from '@/lib/runnerSink';
 import { effectiveFullAccess } from '@/lib/agentCapabilities';
 import {
-  composeBatch, composeMessages, splitLeadingTurn, isCommandKind, isEmptyTurnText,
+  composeBatch, composeMessages, composedTimestamps, splitLeadingTurn, isCommandKind, isEmptyTurnText,
   type QueueItem, type CommandPayload,
 } from '@/lib/turnQueue';
 import type { TurnEventDeps } from '@/lib/turnEventReducer';
@@ -609,6 +609,10 @@ export async function runTurnForQueue(
     if (deps.wakeAdminNote && composed.some((c) => nexusFieldFromItem(c.item)?.purpose === WAKE_PURPOSE)) {
       try { adminNote = await deps.wakeAdminNote(nowStart); } catch { adminNote = ''; }
     }
+    // Each message carries the time it was WRITTEN, not the time this turn
+    // happened to start (see composedTimestamps). Strictly increasing, so the
+    // order still survives any sort by timestamp.
+    const stamps = composedTimestamps(composed.map((c) => c.item), nowStart);
     const newUsers = composed.map((c, i) => {
       let nexusField = nexusFieldFromItem(c.item);
       if (adminNote && nexusField?.purpose === WAKE_PURPOSE && nexusField.full) {
@@ -620,7 +624,7 @@ export async function runTurnForQueue(
         content: c.text,
         attachments: c.attachments,
         // Strictly increasing so the order survives any sort by timestamp.
-        timestamp: nowStart - (composed.length - 1 - i),
+        timestamp: stamps[i],
         ...(nexusField ? { nexus: nexusField } : {}),
       };
     });
