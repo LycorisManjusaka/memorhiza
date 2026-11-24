@@ -30,6 +30,63 @@ export function isMimoHighRisk(status: number, bodyText: string): boolean {
 }
 
 /**
+ * The shape actually measured in this house (先輩 on mimo-v2.6-pro, 2026-11-24):
+ * NOT an HTTP error. A 200, an ordinary stream, zero usage, no thinking, and
+ * the whole reply is that one sentence as TEXT. The status check above never
+ * sees it, so the sentence was saved as the being's reply.
+ *
+ * The gate holds a call's text back while it could still be exactly that
+ * sentence. The first chunk that diverges opens the gate and everything flows
+ * as before (cost for a normal reply: a few held characters, usually none). If
+ * the call ends with the gate still shut and the text IS the sentence, nothing
+ * was shown, so the call can be resent like the HTTP form.
+ */
+const HIGH_RISK_SENTENCE = 'the request was rejected because it was considered high risk';
+
+export function isMimoHighRiskReply(text: string): boolean {
+  return String(text || '').trim().toLowerCase().replace(/\.$/, '') === HIGH_RISK_SENTENCE;
+}
+
+export function createHighRiskTextGate() {
+  let held = '';
+  let open = false;
+  const couldStillBe = (s: string) => {
+    const t = s.trimStart().toLowerCase();
+    if (t.length <= HIGH_RISK_SENTENCE.length) return HIGH_RISK_SENTENCE.startsWith(t);
+    return t.startsWith(HIGH_RISK_SENTENCE) && /^\.?\s*$/.test(t.slice(HIGH_RISK_SENTENCE.length));
+  };
+  return {
+    /** Returns the text to emit now ('' while holding). */
+    push(chunk: string): string {
+      if (open) return chunk;
+      held += chunk;
+      if (couldStillBe(held)) return '';
+      open = true;
+      const out = held; held = '';
+      return out;
+    },
+    /** Something else arrived (thinking, a tool call): the model ran. */
+    release(): string {
+      open = true;
+      const out = held; held = '';
+      return out;
+    },
+    end(): { blocked: boolean; flush: string } {
+      const blocked = !open && isMimoHighRiskReply(held);
+      const flush = blocked ? '' : held;
+      held = ''; open = true;
+      return { blocked, flush };
+    },
+  };
+}
+
+/** The same sentence as the only text of a non-streaming 200 body (either wire). */
+export function isMimoHighRiskOkBody(bodyText: string): boolean {
+  return /"(?:text|content)"\s*:\s*"\s*The request was rejected because it was considered high risk\.?\s*"/i
+    .test(String(bodyText || ''));
+}
+
+/**
  * The same resend for every MiMo call that is not a conversation turn: the
  * subagent, and the eyes / ears / video bridges (the SPU and the summary
  * writer already go through the conversation path in /api/chat). Non-MiMo
@@ -46,9 +103,13 @@ export async function fetchResendingMimoHighRisk(
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((s) => setTimeout(s, ms)));
   for (let resends = 0; ; resends++) {
     const res = await doFetch();
-    if (!opts.isMimo || res.ok) return res;
+    if (!opts.isMimo) return res;
+    // A streamed 200 is left alone (these callers do not stream; reading it
+    // here would swallow the stream).
+    if (res.ok && /event-stream/i.test(res.headers.get('content-type') || '')) return res;
     const text = await res.text().catch(() => '');
-    if (isMimoHighRisk(res.status, text) && resends < MIMO_HIGH_RISK_MAX_RETRIES) {
+    const refused = res.ok ? isMimoHighRiskOkBody(text) : isMimoHighRisk(res.status, text);
+    if (refused && resends < MIMO_HIGH_RISK_MAX_RETRIES) {
       console.log(`[${opts.tag || 'mimo'}] moderation block ("high risk") — resending ${resends + 1}/${MIMO_HIGH_RISK_MAX_RETRIES}`);
       await sleep(1000);
       continue;

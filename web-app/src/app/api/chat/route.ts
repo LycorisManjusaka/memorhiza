@@ -25,7 +25,7 @@ import { openAiCannotUseTools, openAiOffEffort, openAiToolsNeedNoneEffort } from
 import { chatMessagesToResponsesInput, chatToolsToResponsesTools, RESPONSES_EVENT } from '@/lib/openaiResponses';
 import { claudeAgentEnv, resolveRefusalFallback, refusalFallbackTargetFromEnv } from '@/lib/agentEnv';
 import { createBetrayalGuard, makeGuardedSender, buildEchoText, type GuardedSender } from '@/lib/betrayalGuard';
-import { isMimoHighRisk, MIMO_HIGH_RISK_MAX_RETRIES } from '@/lib/mimoModeration';
+import { isMimoHighRisk, MIMO_HIGH_RISK_MAX_RETRIES, createHighRiskTextGate } from '@/lib/mimoModeration';
 import { createRepetitionDetector } from '@/lib/repetitionLoop';
 import { resolveHandoff, describeAllowed, buildHandoffInjection, buildHandoffFailureInjection, parseHandoffModels, type HandoffModel } from '@/lib/modelHandoff';
 import { unfinishedBillingFrames, unfinishedBillingLog } from '@/lib/unfinishedBilling';
@@ -3748,7 +3748,15 @@ async function streamViaAnthropicCompat(args: {
 
       // One streaming call. Accumulates content blocks (text / thinking /
       // tool_use) in order so the assistant turn can be echoed back verbatim.
-      const runOnce = async (msgs: any[], withTools: boolean) => {
+      const noteHighRiskResend = (n: number) => {
+        console.log(`[mimo] moderation block ("high risk") — resending ${n}/${MIMO_HIGH_RISK_MAX_RETRIES}`);
+        enqueue({ type: 'notice', content: noticeJa
+          ? `MiMo の入口が「high risk」として断りました（モデルは動いていません）。同じ内容で送り直します（${n}/${MIMO_HIGH_RISK_MAX_RETRIES}）。`
+          : `MiMo's gateway refused the request as "high risk" (the model did not run). Resending the same request (${n}/${MIMO_HIGH_RISK_MAX_RETRIES}).` });
+      };
+      // `hr.n` counts high-risk resends across BOTH shapes of the refusal (the
+      // HTTP error and the 200 whose whole text is the sentence), per call.
+      const runOnceRaw = async (msgs: any[], withTools: boolean, hr: { n: number }) => {
         const body: any = {
           model,
           ...(systemPrompt ? { system: systemPrompt } : {}),
@@ -3775,7 +3783,6 @@ async function streamViaAnthropicCompat(args: {
         // MiMo's moderation block (lib/mimoModeration.ts) is refused before the
         // model runs, so a resend of the identical body is safe. Its own counter:
         // it must not eat the 429 retries, nor they its.
-        let highRiskRetries = 0;
         for (let attempt = 0; ; attempt++) {
           const r = await fetch(baseUrl, {
             method: 'POST',
@@ -3787,13 +3794,10 @@ async function streamViaAnthropicCompat(args: {
           const errText = await r.text().catch(() => '');
           const err = new Error(`${provider === 'kimi' ? 'Kimi' : 'MiMo'} Anthropic API: ${r.status} ${errText.slice(0, 400)}`);
           if (provider === 'mimo' && isMimoHighRisk(r.status, errText)) {
-            if (highRiskRetries < MIMO_HIGH_RISK_MAX_RETRIES) {
-              highRiskRetries++;
+            if (hr.n < MIMO_HIGH_RISK_MAX_RETRIES) {
+              hr.n++;
               attempt--;   // not a 429 attempt
-              console.log(`[mimo] moderation block ("high risk") — resending ${highRiskRetries}/${MIMO_HIGH_RISK_MAX_RETRIES}`);
-              enqueue({ type: 'notice', content: noticeJa
-                ? `MiMo の入口が「high risk」として断りました（モデルは動いていません）。同じ内容で送り直します（${highRiskRetries}/${MIMO_HIGH_RISK_MAX_RETRIES}）。`
-                : `MiMo's gateway refused the request as "high risk" (the model did not run). Resending the same request (${highRiskRetries}/${MIMO_HIGH_RISK_MAX_RETRIES}).` });
+              noteHighRiskResend(hr.n);
               await new Promise((s) => setTimeout(s, 1000));
               continue;
             }
@@ -3826,6 +3830,17 @@ async function streamViaAnthropicCompat(args: {
         // actually hit (frontier_llm, reasoning_extraction, general_harms).
         let refusalStop: any = null;
         let streamError: string | null = null;
+        // MiMo only: hold text back while it could still be the gateway's
+        // one-sentence refusal (lib/mimoModeration.ts). Kimi is untouched.
+        const hrGate = provider === 'mimo' ? createHighRiskTextGate() : null;
+        const emitText = (s: string) => {
+          const out = hrGate ? hrGate.push(s) : s;
+          if (out) enqueue({ type: 'text', content: out });
+        };
+        const openGate = () => {
+          const out = hrGate ? hrGate.release() : '';
+          if (out) enqueue({ type: 'text', content: out });
+        };
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -3868,13 +3883,15 @@ async function streamViaAnthropicCompat(args: {
                 assistantBlocks.push({ type: 'text', text: '' });
                 curTextIdx = assistantBlocks.length - 1;
                 const init = p.content_block?.text || '';
-                if (init) { assistantBlocks[curTextIdx].text += init; enqueue({ type: 'text', content: init }); }
+                if (init) { assistantBlocks[curTextIdx].text += init; emitText(init); }
               } else if (bt === 'thinking') {
+                openGate();
                 inThinking = true;
                 thinkingText = p.content_block?.thinking || '';
                 thinkingSig = p.content_block?.signature || '';
                 if (thinkingText) enqueue({ type: 'thought', content: thinkingText });
               } else if (bt === 'tool_use') {
+                openGate();
                 curTool = { type: 'tool_use', id: p.content_block.id, name: p.content_block.name, input: {} };
                 curToolJson = '';
               }
@@ -3882,7 +3899,7 @@ async function streamViaAnthropicCompat(args: {
               const d = p.delta || {};
               if (d.type === 'text_delta' && d.text) {
                 if (curTextIdx >= 0) assistantBlocks[curTextIdx].text += d.text;
-                enqueue({ type: 'text', content: d.text });
+                emitText(d.text);
               } else if (d.type === 'thinking_delta' && d.thinking) {
                 thinkingText += d.thinking;
                 enqueue({ type: 'thought', content: d.thinking });
@@ -3905,8 +3922,40 @@ async function streamViaAnthropicCompat(args: {
           }
         }
 
+        // End of the call. If the gate never opened and the text is exactly the
+        // refusal sentence, nothing was shown: report it instead of the text.
+        // A Stop is never turned into a resend.
+        let highRiskBody = false;
+        if (hrGate) {
+          const fin = hrGate.end();
+          if (fin.blocked && !turnAbort.signal.aborted) highRiskBody = true;
+          else {
+            const out = fin.blocked ? assistantBlocks.map((b: any) => b.type === 'text' ? b.text : '').join('') : fin.flush;
+            if (out) enqueue({ type: 'text', content: out });
+          }
+        }
+
         if (streamError && assistantBlocks.length === 0) throw new Error(streamError);
-        return { assistantBlocks, stopReason, refusalStop };
+        return { assistantBlocks, stopReason, refusalStop, highRiskBody };
+      };
+
+      // One call as the tool loop sees it: a refusal that arrived as a 200
+      // (measured 2026-11-24) is resent here, on the same counter and with the
+      // same ending as the HTTP form inside runOnceRaw.
+      const runOnce = async (msgs: any[], withTools: boolean) => {
+        const hr = { n: 0 };
+        for (;;) {
+          const out = await runOnceRaw(msgs, withTools, hr);
+          if (!out.highRiskBody) return out;
+          if (hr.n < MIMO_HIGH_RISK_MAX_RETRIES) {
+            hr.n++;
+            noteHighRiskResend(hr.n);
+            await new Promise((s) => setTimeout(s, 1000));
+            continue;
+          }
+          enqueue({ type: 'betrayal', redacted: true, quoting: false, phrases: ['MiMo: high risk'], channel: 'text' });
+          throw new Error('MiMo Anthropic API: 200 "The request was rejected because it was considered high risk"');
+        }
       };
 
       try {
