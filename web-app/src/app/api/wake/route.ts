@@ -11,6 +11,8 @@ import { parseWakeSettings, nextAdminSlot, nextWake } from '@/lib/wakeSchedule';
 // GET  ?folder=<being>   → which NEXUS runs the clock, this one's id, and the being's state
 // GET  ?overview=1       → every being that can wake by itself, soonest first (Preferences → Runner)
 // POST { action: 'stop-self-turns', folder } → every self-wake path of that being off at once
+// GET  ?notes=1          → the administrator's conditional wake notes (lib/wakeAdminNotes.ts)
+// POST { action: 'set-notes', notes } → replace them (cleaned by parseAdminNotes)
 // POST { action: 'set-clock' }    → THIS installation runs the clock (overwrites)
 // POST { action: 'clear-clock' }  → nobody runs it
 // POST { action: 'clear-bookings', folder } → drop the being's pending self-bookings
@@ -27,6 +29,10 @@ export async function GET(req: Request) {
     // "nobody runs the clock" one tick before this NEXUS takes it.
     await runsClockOrClaims(selfId);
     const clock = await readClockHost();
+    if (params.get('notes') === '1') {
+      const { readAdminNotes } = await import('@/lib/wakeAdminNotesStore');
+      return NextResponse.json({ notes: await readAdminNotes() });
+    }
     if (params.get('overview') === '1') {
       const { wakeOverview } = await import('@/lib/wakeOverview');
       return NextResponse.json({
@@ -66,6 +72,10 @@ export async function POST(req: Request) {
       const rec = await setClockHost(await installationId());
       ensureWakeClock();
       return NextResponse.json({ ok: true, clockHost: rec.host });
+    }
+    if (action === 'set-notes') {
+      const { writeAdminNotes } = await import('@/lib/wakeAdminNotesStore');
+      return NextResponse.json({ ok: true, notes: await writeAdminNotes(body.notes) });
     }
     if (action === 'clear-clock') {
       return NextResponse.json({ ok: true, removed: await clearClockHost() });

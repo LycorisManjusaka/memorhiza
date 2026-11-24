@@ -74,6 +74,8 @@ import { promotePendingMarker, type ResolvedMarker } from '@/lib/firstOriginal';
 import { planRebase } from '@/lib/saveRebase';
 import { undeliveredNotice } from '@/lib/undeliveredInjection';
 import { noticeLanguage } from '@/lib/noticeLanguage';
+import { WAKE_PURPOSE } from '@/lib/wakeSchedule';
+import { appendAdminNote } from '@/lib/wakeAdminNotes';
 import { runnerNoticeT } from '@/lib/runnerNotices';
 import type { DrainedInjection } from '@/lib/injectMessage';
 import { parseAnchorSettings, type AnchorReport, type AnchorSettings } from '@/lib/anchor';
@@ -198,6 +200,13 @@ export interface RunTurnDeps {
    * that no tab has painted, so it keeps minting its own.
    */
   proposedAssistantId?: string;
+  /**
+   * The administrator's conditional note for a wake turn starting at `now`
+   * (lib/wakeAdminNotes.ts), or ''. Asked when the turn STARTS, not when the
+   * wake was queued: a wake that waited behind a busy turn gets the note of
+   * the hour it actually runs in. Absent in tests → nothing is ever added.
+   */
+  wakeAdminNote?: (now: number) => Promise<string>;
   /** Clock, injected so a test is deterministic. */
   nowMs: () => number;
   /** This runner's identity, for lastWriter and the turn registry. */
@@ -596,8 +605,15 @@ export async function runTurnForQueue(
     // splitLeadingTurn allows a 'system' item only as the LAST of `take`, so
     // the covenant always sits on the newest message.
     const composed = composeMessages(take).messages;
+    let adminNote = '';
+    if (deps.wakeAdminNote && composed.some((c) => nexusFieldFromItem(c.item)?.purpose === WAKE_PURPOSE)) {
+      try { adminNote = await deps.wakeAdminNote(nowStart); } catch { adminNote = ''; }
+    }
     const newUsers = composed.map((c, i) => {
-      const nexusField = nexusFieldFromItem(c.item);
+      let nexusField = nexusFieldFromItem(c.item);
+      if (adminNote && nexusField?.purpose === WAKE_PURPOSE && nexusField.full) {
+        nexusField = { ...nexusField, full: appendAdminNote(nexusField.full, adminNote, noticeJa ? 'ja' : 'en') };
+      }
       return {
         id: deps.newId(),
         role: 'user',

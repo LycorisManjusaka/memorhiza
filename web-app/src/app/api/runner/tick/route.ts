@@ -533,6 +533,7 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
             modelParams: (t.settings.modelParams || {}) as Record<string, unknown>,
           },
           newId: () => crypto.randomUUID(),
+          wakeAdminNote: async (now) => (await import('@/lib/wakeAdminNotesStore')).adminNoteAt(now),
           proposedAssistantId: opts.assistantMsgId || undefined,
           nowMs: () => Date.now(),
           clientId: holder,

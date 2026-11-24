@@ -6,6 +6,7 @@ import VoiceSelector from './VoiceSelector';
 import UserIdentityEditor from './UserIdentityEditor';
 import AdminLoginEditor from './AdminLoginEditor';
 import { useT, Tx } from '@/lib/i18n';
+import WakeAdminNotesPanel from '@/components/WakeAdminNotesPanel';
 import { useServerSpeechMode, setServerSpeechMode } from '@/lib/serverSpeechClient';
 import { ensureAudioPermission, supportsSinkId, invalidateDeviceCache } from '@/lib/audioSink';
 import { buildTag, loadBuildTag, setBuildTag } from '@/lib/buildVersion';
@@ -1337,6 +1338,7 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
                 </div>
               )}
             </div>
+            <WakeAdminNotesPanel />
           </div>
           )}
 
