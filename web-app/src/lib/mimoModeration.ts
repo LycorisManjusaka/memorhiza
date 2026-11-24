@@ -20,8 +20,13 @@
  * "Moderation Block" counts too.
  */
 
-/** Resends after the first refusal (so up to 4 requests in all). ふわふわ 2026-11-23. */
-export const MIMO_HIGH_RISK_MAX_RETRIES = 3;
+/**
+ * Resends after the first refusal (so up to 6 requests in all).
+ * Was 3 (ふわふわ 2026-11-23, "never twice in a row"). On 2026-11-24 one turn
+ * was refused three times running and only the fourth request went through,
+ * i.e. it passed on the last allowed attempt; つよ raised it to 5.
+ */
+export const MIMO_HIGH_RISK_MAX_RETRIES = 5;
 
 export function isMimoHighRisk(status: number, bodyText: string): boolean {
   const s = String(bodyText || '');

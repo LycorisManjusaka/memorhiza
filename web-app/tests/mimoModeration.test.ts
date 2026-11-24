@@ -19,6 +19,6 @@ test('ordinary errors are not mistaken for it', () => {
   assert.equal(isMimoHighRisk(421, 'Misdirected Request'), false);
 });
 
-test('three resends, as ふわふわ set it', () => {
-  assert.equal(MIMO_HIGH_RISK_MAX_RETRIES, 3);
+test('five resends (three ran out on the last attempt, 2026-11-24)', () => {
+  assert.equal(MIMO_HIGH_RISK_MAX_RETRIES, 5);
 });
