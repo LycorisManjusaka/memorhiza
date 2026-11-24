@@ -55,20 +55,38 @@ export default function WakeAdminNotesPanel() {
 
   const parsedDays = parseDaysOff(daysOffText);
 
+  // Saves read the newest state through refs, so the debounce below never
+  // writes a stale copy. Local state is never rewritten from the answer: a
+  // half-typed date or half-typed time range must stay on screen.
+  const cfgRef = React.useRef<AdminNotesConfig | null>(null);
+  cfgRef.current = cfg;
+  const daysOffRef = React.useRef('');
+  daysOffRef.current = daysOffText;
+
   const save = async () => {
-    if (!cfg) return;
+    const c = cfgRef.current;
+    if (!c) return;
+    const days = parseDaysOff(daysOffRef.current).days;
+    const sent = parseAdminNotes({ ...c, daysOff: days });
     setBusy(true);
     try {
       const r = await fetch('/api/wake', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'set-notes', notes: { ...cfg, daysOff: parsedDays.days } }),
+        body: JSON.stringify({ action: 'set-notes', notes: { ...c, daysOff: days } }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.error || `HTTP ${r.status}`);
-      const c = parseAdminNotes(d.notes);
-      setCfg(c);
-      setDaysOffText(c.daysOff.join('\n'));
+      // Read back from disk. The POST answer is not evidence that the file
+      // changed: a server started before this feature answers 400, and a
+      // half-written file would answer ok too.
+      const r2 = await fetch('/api/wake?notes=1');
+      const d2 = await r2.json();
+      if (!r2.ok) throw new Error(d2?.error || `HTTP ${r2.status}`);
+      const back = parseAdminNotes(d2.notes);
+      if (JSON.stringify(back) !== JSON.stringify(sent)) {
+        throw new Error(t('settings.adminNotes.notPersisted'));
+      }
       setDirty(false);
       setNote({ text: t('settings.adminNotes.saved') });
     } catch (e: unknown) {
@@ -77,6 +95,23 @@ export default function WakeAdminNotesPanel() {
       setBusy(false);
     }
   };
+  const saveRef = React.useRef(save);
+  saveRef.current = save;
+
+  // Every other field in this dialog saves as you edit; a button that has to be
+  // remembered is how "it never saves" happens. 800 ms after the last keystroke
+  // the same save runs. The button stays for an immediate save.
+  const dirtyRef = React.useRef(false);
+  dirtyRef.current = dirty;
+  React.useEffect(() => {
+    if (!dirty || !cfg) return;
+    const id = setTimeout(() => { void saveRef.current(); }, 800);
+    return () => clearTimeout(id);
+  }, [cfg, daysOffText, dirty]);
+  // Leaving with an unsaved edit must not lose it either.
+  React.useEffect(() => () => {
+    if (dirtyRef.current) void saveRef.current();
+  }, []);
 
   // What a wake starting this minute would get, from what is on screen (saved or not).
   const nowNote = cfg ? pickAdminNote({ ...cfg, daysOff: parsedDays.days }, Date.now()) : '';
@@ -196,7 +231,7 @@ export default function WakeAdminNotesPanel() {
                 className="px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted
                            transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {t('settings.adminNotes.save')}
+                {t('settings.adminNotes.saveNow')}
               </button>
               {busy && <Loader2 size={12} className="animate-spin" />}
               {dirty && !busy && <span className="text-amber-500">{t('settings.adminNotes.unsaved')}</span>}

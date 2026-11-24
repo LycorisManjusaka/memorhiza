@@ -156,6 +156,9 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.adminNotes.save': 'Save',
   'settings.adminNotes.saved': 'Saved. It applies from the next wake.',
   'settings.adminNotes.saveFailed': 'Could not save:',
+  'settings.adminNotes.saveNow': 'Save now',
+  'settings.adminNotes.notPersisted':
+    'The answer came back ok, but the file on disk is unchanged. A NEXUS started before this feature cannot save it — restart NEXUS and try again.',
   'settings.adminNotes.unsaved': 'Not saved yet',
   'settings.wakeList.on': 'ON',
   'settings.wakeList.off': 'OFF',
@@ -2276,6 +2279,9 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.adminNotes.save': '保存',
   'settings.adminNotes.saved': '保存しました。次の起床から効きます。',
   'settings.adminNotes.saveFailed': '保存できませんでした：',
+  'settings.adminNotes.saveNow': '今すぐ保存',
+  'settings.adminNotes.notPersisted':
+    '返事は ok でしたが、ディスクのファイルが変わっていません。この機能より前に起動した NEXUS は保存できません。NEXUS を開き直してから、もう一度試してね。',
   'settings.adminNotes.unsaved': 'まだ保存していません',
   'settings.wakeList.on': 'ON',
   'settings.wakeList.off': 'OFF',
