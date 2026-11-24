@@ -45,6 +45,7 @@ import {
   normaliseWebSources,
   normaliseNotice,
   normaliseToolCall,
+  attachToolResult,
   normaliseToolAttachment,
   collapseBetrayalPhrases,
   betrayalNoticeKey,
@@ -367,6 +368,13 @@ export function applyTurnEvent(
     // this never reaches any model.
     const toolCall = normaliseToolCall(data, acc.currentThought.length);
     if (toolCall) acc.toolCalls.push(toolCall);
+  } else if (data.type === 'tool_result') {
+    // What the call returned, already cut and redacted on the server
+    // (lib/toolResultRecord). Calls in a round execute one at a time in the
+    // order they were announced, so the result belongs to the most recent
+    // call of that name still without one. Kept so the next turn can replay
+    // it instead of a placeholder (lib/toolHistory).
+    attachToolResult(acc.toolCalls, data);
   } else if (data.type === 'session_id') {
     // Claude OAuth path emits this so we can resume the Anthropic-side session
     // on the next turn.

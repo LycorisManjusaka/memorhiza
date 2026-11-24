@@ -192,8 +192,9 @@ describe('buildOpenAiToolReplay — PROPERTY: every call is paired', () => {
   // is read by a vessel, so what it SAYS is part of the contract, not a detail.
   it('tells the vessel the call ran, and claims nothing more', () => {
     const p = TOOL_HISTORY_PLACEHOLDER.toLowerCase();
-    assert.ok(p.includes('executed') || p.includes('ran'),
-      'must state the call actually happened, or it reads as a failed call');
+    // 2026-11-24: `(called)` — a claim about the record, not the world.
+    assert.ok(p.includes('called'),
+      'must state the call is on record, or it reads as a failed call');
     assert.ok(!p.includes('not recorded'),
       'the 2026-11-08 wording defect: storage-speak read as outcome-speak');
     assert.ok(!/\b(succeed|succeeded|success|worked|ok)\b/.test(p),

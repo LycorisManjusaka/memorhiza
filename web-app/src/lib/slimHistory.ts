@@ -236,7 +236,11 @@ function buildSlimMessages(
     // it, and only with the toggle on.
     if (m.id && toolHistoryIds.has(m.id)) {
       const calls = replayableCalls(m);
-      if (calls.length) slim.toolCalls = calls.map((c) => ({ name: c.name, input: c.input }));
+      // `result` rides along when the turn stored one (since 2026-11-24);
+      // older calls have none and replay as `(called)`.
+      if (calls.length) slim.toolCalls = calls.map((c) => (typeof c.result === 'string'
+        ? { name: c.name, input: c.input, result: c.result }
+        : { name: c.name, input: c.input }));
     }
     // Only feed Claude its own past reasoning when the user opts in via the
     // "Save & reuse thinking process" toggle, and only for blocks the user

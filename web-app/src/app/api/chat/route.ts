@@ -328,7 +328,22 @@ import {
 } from '@/lib/injectMedia';
 import { runShellCommand } from '@/lib/shellTool';
 import { effectiveFullAccess } from '@/lib/agentCapabilities';
-import { buildOpenAiToolReplay, buildAnthropicToolReplay } from '@/lib/toolHistory';
+import { buildOpenAiToolReplay, buildAnthropicToolReplay, toolHistoryNote } from '@/lib/toolHistory';
+import { recordToolResult, collectSecrets } from '@/lib/toolResultRecord';
+
+/**
+ * Announce what a tool call returned, cut and redacted, so the turn's saved
+ * toolCalls carry it and the next turn replays it (lib/toolResultRecord).
+ * Keys are re-read each time: a small file, and a key added mid-session must
+ * never be the one that leaks. Never throws — a failed record leaves the call
+ * replaying as `(called)`, exactly as before.
+ */
+async function emitToolResult(enqueue: (o: any) => void, name: string, content: unknown): Promise<void> {
+  try {
+    const secrets = collectSecrets(await loadKeys());
+    enqueue({ type: 'tool_result', name, result: recordToolResult(content, secrets) });
+  } catch { /* the record is best-effort */ }
+}
 import { runSubagent } from '@/lib/subagent';
 import { runLetterTool, LETTER_TOOL_NAMES, announceLetters } from '@/lib/letters';
 import { ensureLmStudioLaunched, getLocalModelsMeta, loadLocalModel } from '@/lib/localModels';
@@ -3740,7 +3755,7 @@ async function streamViaAnthropicCompat(args: {
         const conv: any = anthropicMessages[i];
         const src: any = processedMessages[i];
         const replay = (toolHistoryEnabled && conv?.role === 'assistant' && Array.isArray(conv.content))
-          ? buildAnthropicToolReplay(src || {}, conv.content, knownToolNames)
+          ? buildAnthropicToolReplay(src || {}, conv.content, knownToolNames, undefined, toolHistoryNote(language))
           : null;
         if (replay) { historyMessages.push(replay.assistant, replay.toolResult); }
         else { historyMessages.push(conv); }
@@ -4256,6 +4271,7 @@ async function streamViaAnthropicCompat(args: {
               resultContent = `Error: ${e?.message || 'tool execution failed'}`;
             }
             toolResultBlocks.push({ type: 'tool_result', tool_use_id: tu.id, content: resultContent });
+            await emitToolResult(enqueue, tu.name, resultContent);
             if (actLabel) enqueue({ type: 'tool_activity', tool: null });
           }
           const injected = drainInjections(injectTurnId);
@@ -6229,7 +6245,7 @@ export async function POST(req: Request) {
           const conv: any = cachedMessages[i];
           const src: any = processedMessages[i];
           const replay = (conv?.role === 'assistant' && Array.isArray(conv.content))
-            ? buildAnthropicToolReplay(src || {}, conv.content, knownToolNames)
+            ? buildAnthropicToolReplay(src || {}, conv.content, knownToolNames, undefined, toolHistoryNote(language))
             : null;
           if (replay) { out.push(replay.assistant, replay.toolResult); }
           else { out.push(conv); }
@@ -6918,6 +6934,7 @@ export async function POST(req: Request) {
                   resultContent = `Error: ${e?.message || 'tool execution failed'}`;
                 }
                 toolResultBlocks.push({ type: 'tool_result', tool_use_id: tu.id, content: resultContent });
+                await emitToolResult(enqueue, tu.name, resultContent);
                 // NOTE: deliberately NOT emitting `attachmentEvent` — a file the
                 // entity reads/creates/edits should NOT be pinned as a persistent
                 // attachment on its message (which would re-enter the context
@@ -9209,7 +9226,7 @@ export async function POST(req: Request) {
         // unpaired tool_use and shows no damage anyway, Gemini calls the tool
         // regardless. Measured per dialect — see lib/toolHistory.ts.
         const replay = toolHistoryEnabled && m.role !== 'user'
-          ? buildOpenAiToolReplay(m, content, new Set(localTools.map((t: any) => String(t?.function?.name || ''))))
+          ? buildOpenAiToolReplay(m, content, new Set(localTools.map((t: any) => String(t?.function?.name || ''))), undefined, toolHistoryNote(language))
           : null;
         if (replay) {
           baseOaiMessages.push(replay.assistant);
@@ -10716,6 +10733,7 @@ export async function POST(req: Request) {
                     name: tc.name,
                     content: resultText,
                   }];
+                  await emitToolResult(enqueue, tc.name, resultText);
                   // Deliberately NOT emitting `attachmentEvent` — see the note on
                   // the Claude path: tool files are not pinned as persistent
                   // message attachments (no context-window re-entry every turn),

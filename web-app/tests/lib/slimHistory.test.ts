@@ -232,7 +232,7 @@ describe('buildSlimHistory — the tool-call window', () => {
     role: 'assistant',
     content: 'done',
     toolCalls: [
-      { name: 'Write', input: { path: 'x' }, result: 'ok' },
+      { name: 'Write', input: { path: 'x' }, result: 'ok', at: 1, thinkingOffset: 3 },
       { kind: 'event', name: 'notice' },
     ],
   }];
@@ -242,11 +242,14 @@ describe('buildSlimHistory — the tool-call window', () => {
     assert.equal('toolCalls' in out[0], false);
   });
 
-  it('with the toggle on, a windowed call travels as name+input ONLY', () => {
+  // 2026-11-24: the stored result travels too, so the next turn replays it
+  // instead of a placeholder. Display fields (at, thinkingOffset) still do not.
+  it('with the toggle on, a windowed call travels as name+input+result ONLY', () => {
     const out = buildSlimHistory(bearing(), opts({ toolHistoryEnabled: true }));
     const calls = out[0].toolCalls as Record<string, unknown>[];
     assert.equal(calls.length, 1, 'the kind:event record is not a call');
-    assert.deepEqual(Object.keys(calls[0]).sort(), ['input', 'name']);
+    assert.deepEqual(Object.keys(calls[0]).sort(), ['input', 'name', 'result']);
+    assert.equal(calls[0].result, 'ok');
     assert.equal(calls[0].name, 'Write');
   });
 

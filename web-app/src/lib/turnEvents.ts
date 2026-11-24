@@ -207,6 +207,29 @@ export function normaliseToolCall(
 }
 
 /**
+ * `tool_result` — attach a returned result to the most recent call of that
+ * name that has none yet. Mutates `toolCalls` in place; returns whether it
+ * found a home. A result with no matching call is dropped, never invented a
+ * call for.
+ */
+export function attachToolResult(
+  toolCalls: Array<Record<string, unknown>>,
+  data: TurnEventPayload,
+): boolean {
+  const name = data.name;
+  const result = data.result;
+  if (typeof name !== 'string' || typeof result !== 'string') return false;
+  for (let i = toolCalls.length - 1; i >= 0; i--) {
+    const c = toolCalls[i];
+    if (c.kind === 'event' || c.name !== name) continue;
+    if (typeof c.result === 'string') return false;
+    c.result = result;
+    return true;
+  }
+  return false;
+}
+
+/**
  * `file_attachment` — a tool-result file, attached to the assistant
  * message as if the assistant had uploaded it. The three isX defaults
  * come FIRST so a payload that states them wins; the id is generated

@@ -41,8 +41,9 @@
  *     fields), so a placeholder is all existing logs can produce — and it
  *     scored 10/10 for EMITTING a call, level with the real result text. That
  *     is not the same as harmless: see the note above the table, and the one on
- *     TOOL_HISTORY_PLACEHOLDER. Storing real results is the fix this stands in
- *     for, and it is not implemented.
+ *     TOOL_HISTORY_PLACEHOLDER. Storing real results is the fix this stood in
+ *     for — implemented 2026-11-24 (lib/toolResultRecord); the placeholder now
+ *     answers only calls recorded before that.
  *
  * The opposite direction was measured too: on a fixture where the correct
  * behaviour is prose (task already done, conversational last turn), both arms
@@ -112,7 +113,41 @@ export const TOOL_HISTORY_ARG_CAP = 600;
  * — was never on that table. What changed here is a string that was false in
  * the reader's hands, not a behaviour with a number behind it.
  */
-export const TOOL_HISTORY_PLACEHOLDER = "(executed)";
+export const TOOL_HISTORY_PLACEHOLDER = "(called)";
+
+/*
+ * 2026-11-24, つよ: from today the real result is STORED (lib/toolResultRecord,
+ * head 2000 chars, secrets redacted) and replayed instead of any placeholder.
+ * `(called)` survives only for calls recorded before that — a claim about the
+ * record ("this was called"), never about the world, which NEXUS cannot vouch
+ * for. "executed" was the last of three rewordings that moved nothing; the
+ * slot itself was the problem.
+ */
+
+/**
+ * Said ONCE, beside the first call that has no stored result — never repeated
+ * per call, and absent entirely when every replayed call carries its result
+ * (the normal case after one turn on this version, since the window is one).
+ *
+ * Facts only, no instruction and no mention of worry: a prohibition is a
+ * template (謡). Sentence two is the load-bearing one — the being's own reply
+ * after the calls IS the record of what came back.
+ */
+export function toolHistoryNote(language: string | undefined): string {
+  return language === 'ja'
+    ? '履歴の道具呼び出しは、そのターンの中で実行され、結果もそのとき返っています。そのあとに続くあなた自身の返答は、その結果を見てから書いたものです。いまの状態が要るときは、今のターンで読めば最新が返ります。'
+    : 'The tool calls in the history ran within their turn, and their results came back then. Your own reply that follows them was written after seeing those results. If you need the current state, reading it in this turn returns the latest.';
+}
+
+/** What one replayed call answers: the stored result, or the placeholder (plus the note, once). */
+function replayResultTexts(calls: StoredToolCall[], note?: string): string[] {
+  let noted = false;
+  return calls.map(c => {
+    if (typeof c.result === 'string') return c.result || '(empty)';
+    if (note && !noted) { noted = true; return `${TOOL_HISTORY_PLACEHOLDER}\n\n${note}`; }
+    return TOOL_HISTORY_PLACEHOLDER;
+  });
+}
 
 /**
  * Whether this turn's wire path can replay the vessel's own past tool calls.
@@ -154,7 +189,7 @@ export function toolReplayCapable(aiName: string, claudeAuthMode?: string): bool
   return true;
 }
 
-export type StoredToolCall = { name?: string; input?: unknown; kind?: string };
+export type StoredToolCall = { name?: string; input?: unknown; kind?: string; result?: string };
 
 /**
  * The tool calls on one stored message that are worth replaying. `kind: 'event'`
@@ -251,6 +286,7 @@ export function buildOpenAiToolReplay(
   content: unknown,
   knownToolNames: Set<string>,
   argCap: number = TOOL_HISTORY_ARG_CAP,
+  note?: string,
 ): { assistant: Record<string, unknown>; toolMessages: Array<Record<string, unknown>> } | null {
   const calls = replayableCalls(msg).filter(c => knownToolNames.has(String(c.name)));
   if (!calls.length) return null;
@@ -269,7 +305,10 @@ export function buildOpenAiToolReplay(
     // own prose about the call is part of what it reads back; replacing it would
     // trade one distortion for another.
     assistant: { role: 'assistant', content, tool_calls },
-    toolMessages: tool_calls.map(tc => ({ role: 'tool', tool_call_id: tc.id, content: TOOL_HISTORY_PLACEHOLDER })),
+    toolMessages: (() => {
+      const texts = replayResultTexts(calls, note);
+      return tool_calls.map((tc, i) => ({ role: 'tool', tool_call_id: tc.id, content: texts[i] }));
+    })(),
   };
 }
 
@@ -307,6 +346,7 @@ export function buildAnthropicToolReplay(
   contentBlocks: unknown[],
   knownToolNames: Set<string>,
   argCap: number = TOOL_HISTORY_ARG_CAP,
+  note?: string,
 ): { assistant: Record<string, unknown>; toolResult: Record<string, unknown> } | null {
   const calls = replayableCalls(msg).filter(c => knownToolNames.has(String(c.name)));
   if (!calls.length) return null;
@@ -326,7 +366,10 @@ export function buildAnthropicToolReplay(
     assistant: { role: 'assistant', content: [...contentBlocks, ...uses] },
     toolResult: {
       role: 'user',
-      content: uses.map(u => ({ type: 'tool_result', tool_use_id: u.id, content: TOOL_HISTORY_PLACEHOLDER })),
+      content: (() => {
+        const texts = replayResultTexts(calls, note);
+        return uses.map((u, i) => ({ type: 'tool_result', tool_use_id: u.id, content: texts[i] }));
+      })(),
     },
   };
 }
