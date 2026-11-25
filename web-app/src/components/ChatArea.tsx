@@ -17,7 +17,7 @@ import { Download, Settings2, Eye, EyeOff, Radio, Wrench, RefreshCw, ImageDown, 
 import { createPortal, flushSync } from 'react-dom';
 import { makeIsOriginalId, makeIsOriginalIndex, optimisticMarkerIndex, adoptResolvedMarker, type FirstOriginalMarker } from '@/lib/firstOriginal';
 import { shouldReloadFromDisk, classifyLogLoad } from '@/lib/diskVersion';
-import { settingsSignature, shouldSkipAutoSave } from '@/lib/autoSaveSkip';
+import { settingsSignature, shouldSkipAutoSave, diskSettingsMovedSince, diskSettingsOf } from '@/lib/autoSaveSkip';
 import { planStopPress, planTurnNamed } from '@/lib/pendingStop';
 import { resolveAudioSessionRule } from '@/lib/audioSessionRule';
 import { mintTurnId } from '@/lib/turnName';
@@ -957,6 +957,9 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   const skipNextAutoSaveRef = useRef(false);
   // The settings signature this tab last saw on disk — see lib/autoSaveSkip.
   const diskSettingsSigRef = useRef<string | null>(null);
+  // The same settings as an object, for diskSettingsMovedSince (a signature
+  // cannot be compared one-sidedly against a file that lacks some keys).
+  const diskSettingsSeenRef = useRef<Record<string, unknown> | null>(null);
   // Set when a load could not READ the file (an unreadable status, a network
   // error, a body that did not parse) — as opposed to a 404, which is a real
   // answer. While it is true the auto-save is held off entirely, because the
@@ -1803,6 +1806,8 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         // on disk" for this one. Null = the one-shot skip applies unchanged
         // (lib/autoSaveSkip).
         diskSettingsSigRef.current = null;
+        // What the FILE holds, not what the screen rebuilds from it.
+        diskSettingsSeenRef.current = diskSettingsOf(data as Record<string, unknown>);
         // Record the version this tab is now working from. Every save below
         // carries it, so a save built on a snapshot another tab has already
         // superseded is refused instead of silently overwriting.
@@ -2081,7 +2086,8 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     // turn's patch, and a bare skip threw the change away — the screen said
     // Sonnet, disk (and therefore the runner) said Fable. Skip only when the
     // settings on screen are still the ones this tab last saw on disk.
-    const settingsSig = settingsSignature(buildLogData([]) as Record<string, unknown>);
+    const settingsNow = buildLogData([]) as Record<string, unknown>;
+    const settingsSig = settingsSignature(settingsNow);
     const skipSave = shouldSkipAutoSave(skipNextAutoSaveRef.current, settingsSig, diskSettingsSigRef.current);
     skipNextAutoSaveRef.current = false;
     if (skipSave) {
@@ -2089,6 +2095,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       return;
     }
     diskSettingsSigRef.current = settingsSig;
+    diskSettingsSeenRef.current = settingsNow;
 
     if (messages.length > 0) {
       const cleanMessages = messages.map(m => {
@@ -3615,6 +3622,14 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           if (!(k in theirs)) continue;
           if (JSON.stringify(theirs[k]) !== JSON.stringify(mine[k])) { settingsDiffer = true; break; }
         }
+      }
+      // EVERY reload, not only the mirror's (2026-11-25): the end-of-turn
+      // reload used to adopt the base unconditionally, which handed a tab
+      // still showing another tab's OLD vessel the licence to write it back.
+      // See lib/autoSaveSkip.diskSettingsMovedSince for the report and why
+      // the comparison is against what this tab last saw, not the screen.
+      if (!settingsDiffer && diskSettingsMovedSince(diskSettingsSeenRef.current, data as Record<string, unknown>, Object.keys(buildLogDataRef.current([]) as Record<string, unknown>))) {
+        settingsDiffer = true;
       }
       if (!settingsDiffer) {
         baseUpdatedAtRef.current = typeof data.updatedAt === 'number' ? data.updatedAt : null;
