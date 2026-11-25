@@ -122,3 +122,65 @@ export function diskSettingsOf(log: Record<string, unknown>): Record<string, unk
   void _messages;
   return rest;
 }
+
+// ── Another tab changed the settings: take them, wait, or ask? ─────────────
+//
+// REQUESTED 2026-11-25 (トカゲくん): settings should travel between tabs the
+// way messages do — "when something changes, send it to the other tabs; but a
+// tab that has its settings open does nothing".
+//
+// This REVERSES the 2026-11-01 decision recorded in lib/diskVersion.ts
+// ("settings are deliberately NOT mirrored"). Its two reasons, and what
+// became of them:
+//
+//   "replacing a panel someone is in the middle of using"
+//       still refused — that is 'defer' below.
+//   "one tab's save erasing another's is already answered by the 409"
+//       true, and it turned out not to be enough: a refusal protects the
+//       file, but the stale tab keeps SHOWING a vessel that is not the one
+//       that will answer, and every reload path that advances the base has
+//       to remember to look at the settings (one did not, until e31ce02).
+//       A tab that simply takes the new settings has nothing stale to write.
+//
+// The four answers:
+//
+//   'none'      disk carries the settings this tab last saw. Nothing to do.
+//   'adopt'     another writer changed them, this tab has no edit of its own
+//               and no panel open: show what is on disk.
+//   'defer'     same, but a settings panel is open. Do nothing now; the
+//               caller retries when the panel closes.
+//   'conflict'  another writer changed them AND this tab holds a settings
+//               edit that never reached disk (made mid-turn, or refused with
+//               a 409). Two people's edits — the 409 path asks the human;
+//               silently taking either side is not this function's call.
+//
+// "Has an edit of its own" compares the screen against the screen AS IT WAS
+// when this tab was last known to agree with disk (`syncedSig`: after a
+// load, after a save the server accepted, after an adoption). Not against
+// the raw file — the screen normalises fields on the way in, and a raw
+// comparison would read every such field as an edit and never adopt on
+// exactly the tabs that need it (opened long ago, never saved).
+//
+// `syncedSig === null` means this tab has no such moment on record. That is
+// "cannot tell", and cannot-tell is answered 'conflict' (today's behaviour:
+// withhold the base), never 'adopt'.
+// ───────────────────────────────────────────────────────────────────────────
+
+export type SettingsSyncDecision = 'none' | 'adopt' | 'defer' | 'conflict';
+
+export function decideSettingsSync(input: {
+  /** diskSettingsMovedSince(...) for the log just read. */
+  diskMoved: boolean;
+  /** settingsSignature of what is on screen now. */
+  screenSig: string;
+  /** settingsSignature of the screen when it last agreed with disk. */
+  syncedSig: string | null;
+  /** Is any panel that edits conversation settings open in this tab? */
+  panelOpen: boolean;
+}): SettingsSyncDecision {
+  if (!input.diskMoved) return 'none';
+  if (input.syncedSig === null) return 'conflict';
+  if (input.screenSig !== input.syncedSig) return 'conflict';
+  if (input.panelOpen) return 'defer';
+  return 'adopt';
+}

@@ -12,12 +12,12 @@
  *
  * ── WHAT THIS DELIBERATELY DOES NOT DECIDE ────────────────────────────────
  *
- * WHAT to re-read. The answer is MESSAGES ONLY, and that is the caller's
- * business (ChatArea.reloadMessagesFromDisk replaces `messages` and the
- * version, nothing else). Settings are deliberately NOT mirrored across tabs:
- * swapping a panel a person is in the middle of using is the shape this house
- * refuses, and the real hazard there — one tab's save erasing another's — is
- * already answered by the 409 in saveLog. See nexus-overhaul-plan.md §15.
+ * WHAT to re-read. That is the caller's business (ChatArea.
+ * reloadMessagesFromDisk). From 2026-11-01 to 2026-11-25 the answer was
+ * "messages only, settings are deliberately not mirrored". It is now
+ * "messages always, and settings when lib/autoSaveSkip.decideSettingsSync
+ * says adopt" — never under an open settings panel, never over an edit this
+ * tab has not saved. The reasons for the reversal are written there.
  */
 
 export interface DiskVersionInput {

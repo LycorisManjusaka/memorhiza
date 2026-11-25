@@ -86,3 +86,68 @@ test('diskSettingsOf: the file as it is, without the message array', () => {
   assert.equal(s.aiName, 'Claude');
   assert.equal(log.messages.length, 1);
 });
+
+// ── 2026-11-25: settings travel between tabs (トカゲくん) ───────────────────
+import { decideSettingsSync } from '../src/lib/autoSaveSkip';
+import { readFileSync } from 'node:fs';
+
+const tabAtOpen = { id: 'c1', aiName: 'Gemini', specificModel: 'opencode/gemini-4-argon', title: 't' };
+const otherTabWrote = { id: 'c1', aiName: 'Claude', specificModel: 'claude-fable-5-2', title: 't', messages: [1] };
+
+test('decideSettingsSync: the reported case — an idle tab takes the vessel another tab chose', () => {
+  const sig = settingsSignature(tabAtOpen);
+  assert.equal(decideSettingsSync({
+    diskMoved: diskSettingsMovedSince(tabAtOpen, otherTabWrote),
+    screenSig: sig, syncedSig: sig, panelOpen: false,
+  }), 'adopt');
+});
+
+test('decideSettingsSync: a tab with its settings open does nothing', () => {
+  const sig = settingsSignature(tabAtOpen);
+  assert.equal(decideSettingsSync({ diskMoved: true, screenSig: sig, syncedSig: sig, panelOpen: true }), 'defer');
+});
+
+test('decideSettingsSync: an edit of this tab that never reached disk is not overwritten', () => {
+  const synced = settingsSignature(tabAtOpen);
+  const edited = settingsSignature({ ...tabAtOpen, title: 'renamed here' });
+  assert.equal(decideSettingsSync({ diskMoved: true, screenSig: edited, syncedSig: synced, panelOpen: false }), 'conflict');
+  // The edit outranks the panel: closing the panel must not turn it into an adoption.
+  assert.equal(decideSettingsSync({ diskMoved: true, screenSig: edited, syncedSig: synced, panelOpen: true }), 'conflict');
+});
+
+test('decideSettingsSync: no agreed moment on record is "cannot tell", never adopt', () => {
+  const sig = settingsSignature(tabAtOpen);
+  assert.equal(decideSettingsSync({ diskMoved: true, screenSig: sig, syncedSig: null, panelOpen: false }), 'conflict');
+});
+
+test('decideSettingsSync: disk unchanged -> nothing, whatever the screen holds', () => {
+  const sig = settingsSignature(tabAtOpen);
+  assert.equal(decideSettingsSync({ diskMoved: false, screenSig: 'x', syncedSig: sig, panelOpen: true }), 'none');
+  assert.equal(decideSettingsSync({ diskMoved: false, screenSig: sig, syncedSig: null, panelOpen: false }), 'none');
+});
+
+// The wiring lives in a .tsx the loader cannot import, so it is pinned as text.
+const chatSrc = readFileSync('src/components/ChatArea.tsx', 'utf8');
+
+test('ChatArea: opening and syncing put settings on screen through ONE function', () => {
+  // Called by the load, and by the reload through its ref. A second field
+  // list for the sync is how one setting would stop following across tabs.
+  assert.equal((chatSrc.match(/\bapplyLogSettings\(data\);/g) || []).length, 1);
+  assert.equal((chatSrc.match(/applyLogSettingsRef\.current\(data\);/g) || []).length, 1);
+  // The setter that names the vessel family appears exactly once on the
+  // loaded-log side — inside that function.
+  assert.equal((chatSrc.match(/setLocalAiName\(data\.aiName \|\| aiName\);/g) || []).length, 1);
+});
+
+test('ChatArea: a refused save does not count as agreeing with disk', () => {
+  // syncedSettingsSigRef may be assigned from a signature in three places
+  // only: the post-load skip, the accepted save, the adoption read-back.
+  const writes = chatSrc.match(/syncedSettingsSigRef\.current = (?!null)[A-Za-z]+;/g) || [];
+  assert.deepEqual(writes.sort(), [
+    'syncedSettingsSigRef.current = adoptedSig;',
+    'syncedSettingsSigRef.current = settingsSig;',
+    'syncedSettingsSigRef.current = settingsSig;',
+  ]);
+  // …and the accepted-save one sits behind the server's reported version.
+  assert.match(chatSrc, /typeof j\?\.updatedAt === 'number'\) \{\s+baseUpdatedAtRef\.current = j\.updatedAt;\s+\/\/ Accepted[^\n]*\s+syncedSettingsSigRef\.current = settingsSig;/);
+});

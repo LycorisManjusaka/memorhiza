@@ -17,7 +17,7 @@ import { Download, Settings2, Eye, EyeOff, Radio, Wrench, RefreshCw, ImageDown, 
 import { createPortal, flushSync } from 'react-dom';
 import { makeIsOriginalId, makeIsOriginalIndex, optimisticMarkerIndex, adoptResolvedMarker, type FirstOriginalMarker } from '@/lib/firstOriginal';
 import { shouldReloadFromDisk, classifyLogLoad } from '@/lib/diskVersion';
-import { settingsSignature, shouldSkipAutoSave, diskSettingsMovedSince, diskSettingsOf } from '@/lib/autoSaveSkip';
+import { settingsSignature, shouldSkipAutoSave, diskSettingsMovedSince, diskSettingsOf, decideSettingsSync } from '@/lib/autoSaveSkip';
 import { planStopPress, planTurnNamed } from '@/lib/pendingStop';
 import { resolveAudioSessionRule } from '@/lib/audioSessionRule';
 import { mintTurnId } from '@/lib/turnName';
@@ -960,6 +960,22 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // The same settings as an object, for diskSettingsMovedSince (a signature
   // cannot be compared one-sidedly against a file that lacks some keys).
   const diskSettingsSeenRef = useRef<Record<string, unknown> | null>(null);
+  // ── Settings sync between tabs (lib/autoSaveSkip.decideSettingsSync) ──────
+  // The signature of the SCREEN at the last moment this tab was known to
+  // agree with disk: after a load, after a save the server accepted, after an
+  // adoption. Unlike diskSettingsSigRef it is NOT advanced when a save is
+  // merely sent — a refused save leaves an edit that is on screen and not on
+  // disk, and that difference is how the sync knows not to overwrite it.
+  const syncedSettingsSigRef = useRef<string | null>(null);
+  // Set by an adoption; consumed by the save effect's next run, which is the
+  // first place the adopted settings can be read back off the screen.
+  const settingsAdoptedRef = useRef(false);
+  // Another tab's settings arrived while a settings panel was open here.
+  // Retried when the panel closes.
+  const settingsSyncDeferredRef = useRef(false);
+  // Is a panel that edits conversation settings open? A ref because
+  // reloadMessagesFromDisk must not take it as a dependency (see markerRef).
+  const settingsPanelOpenRef = useRef(false);
   // Set when a load could not READ the file (an unreadable status, a network
   // error, a body that did not parse) — as opposed to a 404, which is a real
   // answer. While it is true the auto-save is held off entirely, because the
@@ -1662,6 +1678,95 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // still takes the being default once, in the load effect below.
   // Pinned by tests/vesselNotSyncedFromDefault.test.ts.
 
+  /**
+   * Put a log's SETTINGS on screen — everything a conversation saves except
+   * its messages, the copied/original marker, the agent session and the
+   * handoff reset, which the two callers treat differently.
+   *
+   * ONE function for the two readers on purpose: opening a conversation, and
+   * taking settings another tab changed (lib/autoSaveSkip.decideSettingsSync).
+   * Two field lists would drift, and the one that fell behind would be the
+   * sync — a setting that follows across tabs "except the newest one".
+   * Moved here verbatim from the load effect, 2026-11-25.
+   */
+  const applyLogSettings = (data: any) => {
+    setTitle(data.title || 'New Conversation');
+    setSystemPrompt(data.systemPrompt !== undefined ? data.systemPrompt : defaultSystemPrompt);
+    setToolUseEnabled(data.toolUseEnabled === true);
+    setAgentFullSystemAccess(data.agentFullSystemAccess === true);
+    setAgentDangerousTools(data.agentDangerousTools === true);
+    setHiddenAttachmentsAccessible(data.hiddenAttachmentsAccessible === true);
+    setAskUserEnabled(data.askUserEnabled === true);
+    setAskUserTimeoutMs(typeof data.askUserTimeoutMs === 'number' ? data.askUserTimeoutMs : 0);
+    setSubagentEnabled(data.subagentEnabled === true);
+    setLettersEnabled(data.lettersEnabled === true);
+    setBeingRouteEnabled(data.beingRouteEnabled === true);
+    // `=== true`: absent field means off. A conversation saved before
+    // browser control existed never asked for it, so it does not get it.
+    setBrowserEnabled(data.browserEnabled === true);
+    setBrowserAllowedHosts(typeof data.browserAllowedHosts === 'string' ? data.browserAllowedHosts : '');
+    setBrowserAllowAnyHost(data.browserAllowAnyHost === true);
+    // Same `=== true` discipline as browserEnabled above.
+    setComputerControlEnabled(data.computerControlEnabled === true);
+    setAppControlEnabled(data.appControlEnabled === true);
+    setCameraEnabled(data.cameraEnabled === true);
+    setAutoTriggers(parseAutoTriggers(data.autoTriggers));
+    setAnchorSettings(parseAnchorSettings(data.anchorSettings));
+    setSubagentModel(typeof data.subagentModel === 'string' ? data.subagentModel : '');
+    setSubagentFamily(typeof data.subagentFamily === 'string' ? data.subagentFamily : '');
+    setInstructionOverrides(data.instructionOverrides && typeof data.instructionOverrides === 'object' ? data.instructionOverrides : {});
+    if (typeof data.toolInstruction === 'string') setToolInstruction(data.toolInstruction);
+    if (typeof data.toolImageInstruction === 'string') setToolImageInstruction(data.toolImageInstruction);
+    setDateTimeVisibility(data.dateTimeVisibility || 'all');
+    setClaudeThinking(data.claudeThinking || false);
+    setSaveThinkingToLog(data.saveThinkingToLog || false);
+    setShowFatigueToEntity(data.showFatigueToEntity || false);
+    if (typeof data.fatigueInstruction === 'string') setFatigueInstruction(data.fatigueInstruction);
+    // Legacy folders may still carry the old three-state 'auto' value; anything other than 'off' coerces to 'on'.
+    setBaseBindingMode(data.baseBindingMode === 'off' ? 'off' : 'on');
+    setVrchatMode(data.vrchatMode !== undefined ? data.vrchatMode : defaultVrchatMode);
+    setVrchatRule(data.vrchatRule !== undefined ? data.vrchatRule : defaultVrchatRule);
+    setAudioRuleEnabled(data.audioSessionRuleEnabled !== false);
+    setAutoStopAtFull(data.autoStopAtFull !== false);
+    setAutoSoulUpdate(data.autoSoulUpdate === true);
+    setLocalAiName(data.aiName || aiName);
+    setSeedEnabled(data.seedEnabled === true);
+    if (typeof data.seedValue === 'number') setSeedValue(data.seedValue);
+    setModelHandoffEnabled(!!data.modelHandoffEnabled);
+    // `!== false`, NOT `=== true`: this field is younger than almost
+    // every log in this house, and a default-ON flag read with `=== true`
+    // is OFF for every conversation that predates it — which is the
+    // population that needs it.
+    setClassifierNoticeVaccine(data.classifierNoticeVaccine !== false);
+    if (typeof data.modelHandoffAllowedModels === 'string') setModelHandoffAllowedModels(data.modelHandoffAllowedModels);
+    if (data.claudeAuthMode === 'oauth') {
+      setClaudeAuthMode('oauth');
+    } else {
+      setClaudeAuthMode('api-key');
+    }
+    // Eyes/Ears/Watcher (sense bridges for non-multimodal primary models).
+    // All three default ON so existing text-only conversations gain the
+    // capability for free; existing logs without these fields keep their
+    // factory defaults.
+    if (typeof data.eyesEnabled === 'boolean') setEyesEnabled(data.eyesEnabled);
+    if (typeof data.eyesPrompt === 'string') setEyesPrompt(data.eyesPrompt);
+    if (typeof data.eyesModel === 'string' && data.eyesModel.trim()) setEyesModel(data.eyesModel);
+    if (typeof data.earsEnabled === 'boolean') setEarsEnabled(data.earsEnabled);
+    if (typeof data.earsPrompt === 'string') setEarsPrompt(data.earsPrompt);
+    if (typeof data.earsModel === 'string' && data.earsModel.trim()) setEarsModel(data.earsModel);
+    if (typeof data.watcherEnabled === 'boolean') setWatcherEnabled(data.watcherEnabled);
+    if (typeof data.watcherPrompt === 'string') setWatcherPrompt(data.watcherPrompt);
+    if (typeof data.watcherModel === 'string' && data.watcherModel.trim()) setWatcherModel(data.watcherModel);
+    if (data.modelParams) setModelParams(data.modelParams);
+    if (data.specificModel) setSpecificModel(data.specificModel);
+    // Unconditional, not `if (data.familyModels)`: a conversation saved
+    // before this field existed must land on {} rather than inherit the
+    // map from whatever conversation was open a moment ago.
+    setFamilyModels(sanitizeFamilyModels(data.familyModels));
+  };
+  const applyLogSettingsRef = useRef(applyLogSettings);
+  useEffect(() => { applyLogSettingsRef.current = applyLogSettings; });
+
   // Load chat
   useEffect(() => {
     // Cancel any in-flight load from a previous convoId so switching
@@ -1806,6 +1911,9 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         // on disk" for this one. Null = the one-shot skip applies unchanged
         // (lib/autoSaveSkip).
         diskSettingsSigRef.current = null;
+        syncedSettingsSigRef.current = null;
+        settingsAdoptedRef.current = false;
+        settingsSyncDeferredRef.current = false;
         // What the FILE holds, not what the screen rebuilds from it.
         diskSettingsSeenRef.current = diskSettingsOf(data as Record<string, unknown>);
         // Record the version this tab is now working from. Every save below
@@ -1821,46 +1929,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           (data.messages || []).map((m: any) => ({ ...m, autoPlay: false })),
         ).messages;
         setMessages(loadedMessages);
-        setTitle(data.title || 'New Conversation');
-        setSystemPrompt(data.systemPrompt !== undefined ? data.systemPrompt : defaultSystemPrompt);
-        setToolUseEnabled(data.toolUseEnabled === true);
-        setAgentFullSystemAccess(data.agentFullSystemAccess === true);
-        setAgentDangerousTools(data.agentDangerousTools === true);
-        setHiddenAttachmentsAccessible(data.hiddenAttachmentsAccessible === true);
-        setAskUserEnabled(data.askUserEnabled === true);
-        setAskUserTimeoutMs(typeof data.askUserTimeoutMs === 'number' ? data.askUserTimeoutMs : 0);
-        setSubagentEnabled(data.subagentEnabled === true);
-        setLettersEnabled(data.lettersEnabled === true);
-        setBeingRouteEnabled(data.beingRouteEnabled === true);
-        // `=== true`: absent field means off. A conversation saved before
-        // browser control existed never asked for it, so it does not get it.
-        setBrowserEnabled(data.browserEnabled === true);
-        setBrowserAllowedHosts(typeof data.browserAllowedHosts === 'string' ? data.browserAllowedHosts : '');
-        setBrowserAllowAnyHost(data.browserAllowAnyHost === true);
-        // Same `=== true` discipline as browserEnabled above.
-        setComputerControlEnabled(data.computerControlEnabled === true);
-        setAppControlEnabled(data.appControlEnabled === true);
-        setCameraEnabled(data.cameraEnabled === true);
-        setAutoTriggers(parseAutoTriggers(data.autoTriggers));
-        setAnchorSettings(parseAnchorSettings(data.anchorSettings));
-        setSubagentModel(typeof data.subagentModel === 'string' ? data.subagentModel : '');
-        setSubagentFamily(typeof data.subagentFamily === 'string' ? data.subagentFamily : '');
-        setInstructionOverrides(data.instructionOverrides && typeof data.instructionOverrides === 'object' ? data.instructionOverrides : {});
-        if (typeof data.toolInstruction === 'string') setToolInstruction(data.toolInstruction);
-        if (typeof data.toolImageInstruction === 'string') setToolImageInstruction(data.toolImageInstruction);
-        setDateTimeVisibility(data.dateTimeVisibility || 'all');
-        setClaudeThinking(data.claudeThinking || false);
-        setSaveThinkingToLog(data.saveThinkingToLog || false);
-        setShowFatigueToEntity(data.showFatigueToEntity || false);
-        if (typeof data.fatigueInstruction === 'string') setFatigueInstruction(data.fatigueInstruction);
-        // Legacy folders may still carry the old three-state 'auto' value; anything other than 'off' coerces to 'on'.
-        setBaseBindingMode(data.baseBindingMode === 'off' ? 'off' : 'on');
-        setVrchatMode(data.vrchatMode !== undefined ? data.vrchatMode : defaultVrchatMode);
-        setVrchatRule(data.vrchatRule !== undefined ? data.vrchatRule : defaultVrchatRule);
-        setAudioRuleEnabled(data.audioSessionRuleEnabled !== false);
-        setAutoStopAtFull(data.autoStopAtFull !== false);
-        setAutoSoulUpdate(data.autoSoulUpdate === true);
-        setLocalAiName(data.aiName || aiName);
+        applyLogSettings(data);
         // A log that carries MESSAGES but neither a marker nor the pending flag
         // is one where every message is original — that is already the default
         // this file applies for `isMessageOriginal` and for the copied/original
@@ -1885,43 +1954,10 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           data.firstOriginalMessageId
             || (data.firstOriginalIsNext === true ? null : (data.messages?.[0]?.id ?? null))
         );
-        setSeedEnabled(data.seedEnabled === true);
-        if (typeof data.seedValue === 'number') setSeedValue(data.seedValue);
-        setModelHandoffEnabled(!!data.modelHandoffEnabled);
-        // `!== false`, NOT `=== true`: this field is younger than almost
-        // every log in this house, and a default-ON flag read with `=== true`
-        // is OFF for every conversation that predates it — which is the
-        // population that needs it.
-        setClassifierNoticeVaccine(data.classifierNoticeVaccine !== false);
-        if (typeof data.modelHandoffAllowedModels === 'string') setModelHandoffAllowedModels(data.modelHandoffAllowedModels);
         // Safety valve: a handoff never survives re-opening a conversation.
         // Loading IS the "new session" 望月希子 asked to reset at.
         setHandoffOverride(null);
         setAgentSession(typeof data.claudeAgentSessionId === 'string' ? data.claudeAgentSessionId : null);
-        if (data.claudeAuthMode === 'oauth') {
-          setClaudeAuthMode('oauth');
-        } else {
-          setClaudeAuthMode('api-key');
-        }
-        // Eyes/Ears/Watcher (sense bridges for non-multimodal primary models).
-        // All three default ON so existing text-only conversations gain the
-        // capability for free; existing logs without these fields keep their
-        // factory defaults.
-        if (typeof data.eyesEnabled === 'boolean') setEyesEnabled(data.eyesEnabled);
-        if (typeof data.eyesPrompt === 'string') setEyesPrompt(data.eyesPrompt);
-        if (typeof data.eyesModel === 'string' && data.eyesModel.trim()) setEyesModel(data.eyesModel);
-        if (typeof data.earsEnabled === 'boolean') setEarsEnabled(data.earsEnabled);
-        if (typeof data.earsPrompt === 'string') setEarsPrompt(data.earsPrompt);
-        if (typeof data.earsModel === 'string' && data.earsModel.trim()) setEarsModel(data.earsModel);
-        if (typeof data.watcherEnabled === 'boolean') setWatcherEnabled(data.watcherEnabled);
-        if (typeof data.watcherPrompt === 'string') setWatcherPrompt(data.watcherPrompt);
-        if (typeof data.watcherModel === 'string' && data.watcherModel.trim()) setWatcherModel(data.watcherModel);
-        if (data.modelParams) setModelParams(data.modelParams);
-        if (data.specificModel) setSpecificModel(data.specificModel);
-        // Unconditional, not `if (data.familyModels)`: a conversation saved
-        // before this field existed must land on {} rather than inherit the
-        // map from whatever conversation was open a moment ago.
-        setFamilyModels(sanitizeFamilyModels(data.familyModels));
       } else {
         // Pull whatever the folder saved as defaults via "Save as Folder Defaults".
         // If a field wasn't saved, fall back to the factory default. This is
@@ -2061,6 +2097,20 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     // 6-connection cap and starving the tokenizer/voices/TTS fetches. When
     // loading flips back to false this effect runs once and persists the final
     // state.
+    //
+    // Settings just taken from another tab (reloadMessagesFromDisk, 'adopt')
+    // are read back off the screen HERE, above the `loading` return: this is
+    // the first run after the adoption, and it must be recorded even when a
+    // turn is in flight, or a second change arriving during that turn would
+    // find no "last agreed" moment and be refused as a conflict. Recording it
+    // in both signatures makes the skip below see "screen == disk" and not
+    // write the adopted settings straight back.
+    if (settingsAdoptedRef.current) {
+      settingsAdoptedRef.current = false;
+      const adoptedSig = settingsSignature(buildLogData([]) as Record<string, unknown>);
+      syncedSettingsSigRef.current = adoptedSig;
+      diskSettingsSigRef.current = adoptedSig;
+    }
     if (loading) return;
 
     // ⚠ A tab that could not READ this conversation must not WRITE it. Added
@@ -2091,6 +2141,11 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     const skipSave = shouldSkipAutoSave(skipNextAutoSaveRef.current, settingsSig, diskSettingsSigRef.current);
     skipNextAutoSaveRef.current = false;
     if (skipSave) {
+      // The skip after a LOAD (no signature on record yet) is the moment the
+      // screen is disk's settings as this tab renders them. Any other skip
+      // says only "unchanged since the last run", which a refused save can
+      // also satisfy — so it does not move the agreed signature.
+      if (diskSettingsSigRef.current === null) syncedSettingsSigRef.current = settingsSig;
       diskSettingsSigRef.current = settingsSig;
       return;
     }
@@ -2229,6 +2284,8 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
             const j = await res.json();
             if (typeof j?.updatedAt === 'number') {
               baseUpdatedAtRef.current = j.updatedAt;
+              // Accepted: disk now holds the settings this save carried.
+              syncedSettingsSigRef.current = settingsSig;
               // Remember it so a racing save of our own isn't mistaken for
               // another tab. Keep only the recent tail — anything older can no
               // longer be the disk head.
@@ -3580,10 +3637,11 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
    * loaded state re-fires the save effect, and that fire must not bump
    * updatedAt.
    *
-   * Only `messages` and the version are taken. The runner writes the log back
-   * WHOLE with only `messages` replaced, so every other field on disk is the
-   * one this tab already has; re-applying them would re-run thirty setStates
-   * for no change.
+   * `messages` and the version are taken every time. The SETTINGS are taken
+   * only when another writer changed them and this tab has neither an edit
+   * of its own nor a settings panel open (2026-11-25, decideSettingsSync) —
+   * after a runner-only write they are the ones this tab already has, and
+   * re-applying them would re-run thirty setStates for no change.
    */
   const reloadMessagesFromDisk = useCallback(async (opts?: { keepBaseIfSettingsDiffer?: boolean }): Promise<'loaded' | 'skipped' | 'unreachable'> => {
     if (!convoId) return 'skipped';
@@ -3628,7 +3686,30 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       // still showing another tab's OLD vessel the licence to write it back.
       // See lib/autoSaveSkip.diskSettingsMovedSince for the report and why
       // the comparison is against what this tab last saw, not the screen.
-      if (!settingsDiffer && diskSettingsMovedSince(diskSettingsSeenRef.current, data as Record<string, unknown>, Object.keys(buildLogDataRef.current([]) as Record<string, unknown>))) {
+      //
+      // 2026-11-25, later the same day (トカゲくん): and when the settings DID
+      // move, take them instead of only refusing — unless this tab has an
+      // edit of its own, or a settings panel open. The four answers and why
+      // are in lib/autoSaveSkip.decideSettingsSync.
+      const screenNow = buildLogDataRef.current([]) as Record<string, unknown>;
+      const sync = decideSettingsSync({
+        diskMoved: diskSettingsMovedSince(diskSettingsSeenRef.current, data as Record<string, unknown>, Object.keys(screenNow)),
+        screenSig: settingsSignature(screenNow),
+        syncedSig: syncedSettingsSigRef.current,
+        panelOpen: settingsPanelOpenRef.current,
+      });
+      if (sync === 'adopt') {
+        applyLogSettingsRef.current(data);
+        diskSettingsSeenRef.current = diskSettingsOf(data as Record<string, unknown>);
+        settingsAdoptedRef.current = true;
+        settingsSyncDeferredRef.current = false;
+        // The screen is about to BE disk's settings, so the comparison made
+        // above against the old screen no longer describes anything.
+        settingsDiffer = false;
+      } else if (sync === 'defer') {
+        settingsSyncDeferredRef.current = true;
+        settingsDiffer = true;
+      } else if (sync === 'conflict') {
         settingsDiffer = true;
       }
       if (!settingsDiffer) {
@@ -5242,10 +5323,13 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       // itself. The only thing missing was the question — the route never
       // said what was on disk. See lib/diskVersion.ts for the four rules.
       //
-      // MESSAGES ONLY, by decision. Settings are not mirrored: replacing a
-      // panel someone is in the middle of using is the shape this house
-      // refuses, and a second tab overwriting settings is already refused by
-      // saveLog's 409. nexus-overhaul-plan.md §15.
+      // Messages, and since 2026-11-25 SETTINGS too. The 2026-11-01 decision
+      // here was "messages only"; it was reversed at トカゲくん's request after
+      // a stale tab was found able to write an old vessel back. What that
+      // decision protected is kept as a rule instead of a refusal: a tab with
+      // a settings panel open, or with a settings edit of its own, takes
+      // nothing (lib/autoSaveSkip.decideSettingsSync). The reload below makes
+      // that call; this poll only notices that disk is newer.
       //
       // An in-progress EDIT survives this: MessageBubble keeps its own
       // `editContent` and re-syncs from props only when not editing
@@ -5994,6 +6078,29 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     setTtsBarVisible(false);
   }, []);
   const [audioSessionOpen, setAudioSessionOpen] = useState(false);
+
+  // "A tab that has its settings open does nothing" (トカゲくん, 2026-11-25).
+  // Every panel that edits what a conversation saves counts: the conversation
+  // settings, the soul updater (system prompt), the audio-session rule, the
+  // tools panel. When the last one closes, settings that arrived from another
+  // tab meanwhile are taken — by the same reload, asked again, so the
+  // decision is made on what is on disk NOW and not on what was seen then.
+  // An edit made in the panel is not overwritten by this: it left the screen
+  // different from the last agreed state, which decideSettingsSync answers
+  // 'conflict', and the save's 409 puts the question to the person.
+  const settingsPanelOpen = isPromptModalOpen || sysPromptUpdaterOpen || audioSessionOpen || toolsOpen;
+  useEffect(() => {
+    settingsPanelOpenRef.current = settingsPanelOpen;
+    if (settingsPanelOpen || !settingsSyncDeferredRef.current) return;
+    // Not while this tab has a turn or a save of its own in flight — the
+    // same two guards the mirror poll uses, for the same reasons. The flag
+    // stays set, so the next close (or the next mirror) picks it up.
+    if (loading || savesInFlightRef.current > 0) return;
+    settingsSyncDeferredRef.current = false;
+    void reloadMessagesFromDisk({ keepBaseIfSettingsDiffer: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsPanelOpen, loading]);
+
 
   // Recompute tokens for every visible piece — system prompt, attachment
   // instruction, every message body, plus the timestamp tags that are
