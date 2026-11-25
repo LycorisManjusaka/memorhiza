@@ -75,6 +75,7 @@ import {
   messageIdentityKey,
   type RestorePlanReply,
 } from '@/lib/handoverRestore';
+import { trimHold, lastReplyEndMs } from '@/lib/trimHold';
 import { setUnloadGuard, useBusyLabel } from '@/lib/unloadGuard';
 import { applyAutoHide, attachmentTokens, attachmentKind, isUndeliverable, wireCarriesMedia, resolveBridge, resolveKeepMessages, bridgedDescriptionText, isPdfAttachment, pdfInfoFor, rememberPdfInfo } from '@/lib/attachmentVisibility';
 import { ensureAudioPermission } from '@/lib/audioSink';
@@ -886,6 +887,8 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // the subscription.
   const oauthIsDefault = claudeOAuthAvailable !== false;
   const [claudeAuthMode, setClaudeAuthMode] = useState<'api-key' | 'oauth'>(oauthIsDefault ? 'oauth' : 'api-key');
+  // Bumped when a held auto-trim should look again (see lib/trimHold.ts).
+  const [trimHoldTick, setTrimHoldTick] = useState(0);
 
   // ── "Eyes" — vision bridge for text-only models (plus OAuth-Claude past-image
   //    recall: describes only PAST images so they persist in the flat transcript) ─
@@ -2806,6 +2809,22 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     const markerIdx = messages.findIndex(m => m.id === firstOriginalMessageId);
     if (markerIdx <= 0) return; // marker is the first message or missing — nothing to trim
 
+    // Trim hold (lib/trimHold.ts): removing anything from the top misses the
+    // provider's whole prompt cache, so while that cache can still be warm we
+    // wait, and look again the moment it is assumed cold. OAuth Claude is
+    // exempt — its cache never hits across turns.
+    const held = trimHold({
+      nowMs: Date.now(),
+      lastReplyEnd: lastReplyEndMs(messages),
+      oauth: String(localAiName || '').toLowerCase().includes('claude') && claudeAuthMode === 'oauth',
+      logTotal,
+      cap,
+    });
+    if (held.hold) {
+      const timer = setTimeout(() => setTrimHoldTick(n => n + 1), Math.max(1000, held.untilMs - Date.now() + 500));
+      return () => clearTimeout(timer);
+    }
+
     // Walk copied range from top, queue removals until the log is under the cap.
     // Only the message's TEXT tokens are subtracted from the running total —
     // attachment tokens don't participate in the threshold check.
@@ -2822,7 +2841,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       setMessages(prev => prev.filter(m => !toRemove.has(m.id)));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, firstOriginalMessageId, folders, folderName, systemTokens, attachmentInstructionTokens, saveThinkingToLog, loading]);
+  }, [messages, firstOriginalMessageId, folders, folderName, systemTokens, attachmentInstructionTokens, saveThinkingToLog, loading, trimHoldTick, localAiName, claudeAuthMode]);
 
   // ── Handover restore — the mirror of auto-trim above ─────────────────────
   //
