@@ -8,6 +8,7 @@ import { putDataUrl } from './attachmentStore';
 import { retitleForRenamedIdentity } from './convoNaming';
 import { summaryKey } from './summaryStorage';
 import { recordWrite, whoWrote } from './lastWriter';
+import { noteVesselWrite } from './vesselTrail';
 import {
   DATA_DIR,
   BEINGS_DIR,
@@ -1423,6 +1424,19 @@ export async function saveLog(
     // let a failed save claim a version it never wrote, and the next refusal
     // would be adopted against a file that does not contain it.
     recordWrite(convoId, logData.updatedAt, opts?.clientId);
+    // The vessel trail (vesselTrail.ts): one line when this write changed the
+    // conversation's (family, model) pair, naming the writer. Best-effort — a
+    // diagnostic must never fail a save that already reached disk.
+    try {
+      const line = noteVesselWrite(logData, {
+        at: Date.now(), convoId, being: folderName,
+        clientId: opts?.clientId, base: opts?.expectedUpdatedAt, written: logData.updatedAt,
+      });
+      if (line) {
+        console.warn(`[vessel] ${line}`);
+        await fs.appendFile(path.join(DATA_DIR, 'vessel_changes.log'), line + '\n', 'utf-8');
+      }
+    } catch {}
     return { ok: true, writtenUpdatedAt: logData.updatedAt };
   });
 }
