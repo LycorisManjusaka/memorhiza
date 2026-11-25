@@ -21,6 +21,18 @@ import { tagPriceOptions } from '@/lib/modelPriceLabel';
 import { retiredModelLabel } from '@/lib/retiredModels';
 import { isOpenCodeModel, bareModelId, OPENCODE_PREFIX, OPENCODE_GO_GEMINI_MODELS } from '@/lib/opencodeGo';
 import { useT, renderRich } from '@/lib/i18n';
+import { routeChoice, type AccessOpts } from '@/lib/providerAccess';
+import { useKeyPresence } from '@/lib/useKeyPresence';
+
+// A provider with no alternative on this install: named, not offered as a
+// choice (lib/providerAccess.ts routeChoice 'fixed').
+function FixedRoute({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="w-full px-3 py-2 border border-border rounded-lg text-sm text-muted-foreground bg-muted/30">
+      {children}
+    </div>
+  );
+}
 
 // Renders a saved-but-retired model id as a visibly-marked option, so a
 // <select> never silently displays its first child in place of what the folder
@@ -55,14 +67,28 @@ export interface FamilyModelPickerProps {
   keep?: (id: string, localVision?: boolean) => boolean;
   /** Hide the Claude monthly/pay-as-you-go switch (a seat that has no choice). */
   hideBilling?: boolean;
+  /** Routes this seat can use at all (see providerAccess AccessOpts.only). */
+  routeOnly?: AccessOpts['only'];
 }
 
 export default function FamilyModelPicker({
   family, model, onModel, authMode, onAuthMode,
   localModels, localModelsMeta, localModelsError, onRefreshLocal, compact,
-  keep, hideBilling,
+  keep, hideBilling, routeOnly,
 }: FamilyModelPickerProps) {
   const t = useT();
+  const presence = useKeyPresence();
+  const accessOpts = routeOnly ? { only: routeOnly } : undefined;
+  const claudeChoice = routeChoice('Claude', presence, authMode, accessOpts);
+  const geminiRoute = isOpenCodeModel(model) ? 'opencode' : 'google';
+  const geminiChoice = routeChoice('Gemini', presence, geminiRoute, accessOpts);
+  const glmRoute = (model || '').startsWith('digitalocean/') ? 'digitalocean' : 'zai';
+  const glmChoice = routeChoice('GLM', presence, glmRoute, accessOpts);
+  const claudeRouteLabel = (mode: string) => (mode === 'api-key' ? t('model.claude.tokenPaid') : t('model.claude.monthlyPaid'));
+  const geminiRouteLabel = (r: string) => (r === 'opencode' ? t('model.gemini.provider.opencode') : t('model.gemini.provider.google'));
+  const glmRouteLabel = (r: string) => (r === 'digitalocean'
+    ? 'DigitalOcean Inference — inference.do-ai.run (US-hosted, ~half Z.ai price)'
+    : 'Z.AI (Zhipu) — api.z.ai');
   const ks = keep ? (v: string) => keep(v) : undefined;
   const ksLocal = keep ? (v: string) => keep(v, !!localModelsMeta[v]?.vision) : undefined;
   return (
@@ -93,8 +119,11 @@ export default function FamilyModelPicker({
       {!hideBilling && (
       <div className="mb-4">
         <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.claude.billing')}</label>
+        {claudeChoice.mode === 'fixed' ? (
+          <FixedRoute>{claudeRouteLabel(claudeChoice.route)}</FixedRoute>
+        ) : (
         <div className="flex gap-2">
-          {(['api-key', 'oauth'] as const).map(mode => (
+          {(['api-key', 'oauth'] as const).filter((m) => claudeChoice.routes.includes(m)).map(mode => (
             <button
               key={mode}
               type="button"
@@ -105,10 +134,11 @@ export default function FamilyModelPicker({
                   : 'border-border text-muted-foreground hover:border-indigo-400 hover:text-foreground'
               }`}
             >
-              {mode === 'api-key' ? t('model.claude.tokenPaid') : t('model.claude.monthlyPaid')}
+              {claudeRouteLabel(mode)}
             </button>
           ))}
         </div>
+        )}
         <div className="model-help text-[10px] text-muted-foreground mt-1 leading-relaxed">
           {renderRich(t('model.claude.billingHelp'))}
           <span className="block mt-0.5">{renderRich(t('model.claude.billingHelp2'))}</span>
@@ -121,8 +151,13 @@ export default function FamilyModelPicker({
     {family === 'Gemini' && (
       <div className="mb-4">
         <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.gemini.providerLabel')}</label>
+        {(() => {
+          const routes = (geminiChoice.mode === 'choose' ? geminiChoice.routes : [geminiChoice.route])
+            .filter((r) => r === geminiRoute || r !== 'opencode' || !ks || ks(OPENCODE_PREFIX + OPENCODE_GO_GEMINI_MODELS[0]));
+          if (routes.length <= 1) return <div className="mb-3"><FixedRoute>{geminiRouteLabel(geminiRoute)}</FixedRoute></div>;
+          return (
         <select
-          value={isOpenCodeModel(model) ? 'opencode' : 'google'}
+          value={geminiRoute}
           onChange={(e) => {
             // Provider is derived from the model id prefix — one field, no
             // second state to drift out of sync (same as GLM below).
@@ -130,11 +165,10 @@ export default function FamilyModelPicker({
           }}
           className="w-full px-3 py-2 mb-3 bg-background border border-border rounded-lg text-sm appearance-none cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
         >
-          <option value="google">{t('model.gemini.provider.google')}</option>
-          {(!ks || ks(OPENCODE_PREFIX + OPENCODE_GO_GEMINI_MODELS[0])) && (
-            <option value="opencode">{t('model.gemini.provider.opencode')}</option>
-          )}
+          {routes.map((r) => <option key={r} value={r}>{geminiRouteLabel(r)}</option>)}
         </select>
+          );
+        })()}
         <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.gemini.label')}</label>
         {isOpenCodeModel(model) ? (
           <>
@@ -408,8 +442,13 @@ export default function FamilyModelPicker({
     {family === 'GLM' && (
       <div className="mb-4">
         <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.glm.providerLabel')}</label>
+        {(() => {
+          const routes = (glmChoice.mode === 'choose' ? glmChoice.routes : [glmChoice.route])
+            .filter((r) => r === glmRoute || r !== 'digitalocean' || !ks || ks('digitalocean/glm-5.2'));
+          if (routes.length <= 1) return <FixedRoute>{glmRouteLabel(glmRoute)}</FixedRoute>;
+          return (
         <select
-          value={(model || '').startsWith('digitalocean/') ? 'digitalocean' : 'zai'}
+          value={glmRoute}
           onChange={(e) => {
             // Provider is derived from the model id prefix — one
             // field, no second state to drift out of sync.
@@ -417,11 +456,10 @@ export default function FamilyModelPicker({
           }}
           className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm appearance-none cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
         >
-          <option value="zai">Z.AI (Zhipu) — api.z.ai</option>
-          {(!ks || ks('digitalocean/glm-5.2')) && (
-            <option value="digitalocean">DigitalOcean Inference — inference.do-ai.run (US-hosted, ~half Z.ai price)</option>
-          )}
+          {routes.map((r) => <option key={r} value={r}>{glmRouteLabel(r)}</option>)}
         </select>
+          );
+        })()}
         <label className="text-xs font-medium text-muted-foreground block mb-1 mt-3">{t('model.glm.label')}</label>
         <ModelPriceSelect
           value={(() => {

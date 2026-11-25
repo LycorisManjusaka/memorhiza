@@ -12,6 +12,12 @@
 import React from 'react';
 import FamilyModelPicker from './FamilyModelPicker';
 import { useT } from '@/lib/i18n';
+import { visibleFamilies } from '@/lib/providerAccess';
+import { useKeyPresence } from '@/lib/useKeyPresence';
+
+// The sense bridges reach Claude through the OAuth token and Gemini through
+// Google only, so those are the keys that make the family reachable here.
+const SENSE_ROUTES = { Claude: ['oauth'], Gemini: ['google'] };
 import {
   type SenseKind, senseAccepts, senseFamilies, senseFamilyOf,
   senseStoredValue, sensePickerId, senseSeatDefault,
@@ -30,7 +36,8 @@ export default function SenseModelPicker({
 }) {
   const t = useT();
   const family = senseFamilyOf(kind, value);
-  const families = senseFamilies(kind);
+  const presence = useKeyPresence();
+  const families = visibleFamilies(senseFamilies(kind), presence, family, { only: SENSE_ROUTES });
   return (
     <div className="rounded-xl border border-border p-3">
       <label className="text-xs font-medium text-muted-foreground block mb-1">{t('senses.seat.family')}</label>
@@ -53,6 +60,7 @@ export default function SenseModelPicker({
       <FamilyModelPicker
         compact
         hideBilling
+        routeOnly={SENSE_ROUTES}
         family={family}
         model={sensePickerId(value)}
         onModel={(m) => onChange(senseStoredValue(family, m))}

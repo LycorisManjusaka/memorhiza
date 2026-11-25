@@ -9,6 +9,8 @@ import EditableCombo from './EditableCombo';
 import ModelPriceSelect from './ModelPriceSelect';
 import FamilyModelPicker, { RetiredOption } from './FamilyModelPicker';
 import SenseModelPicker from './SenseModelPicker';
+import { visibleFamilies } from '@/lib/providerAccess';
+import { useKeyPresence } from '@/lib/useKeyPresence';
 import { tagPriceOptions, priceTiers, fmtPeakHours, fmtThreshold } from '@/lib/modelPriceLabel';
 import { motion } from 'framer-motion';
 import { Download, Settings2, Eye, EyeOff, Radio, Wrench, RefreshCw, ImageDown, FolderOpen, Layers, Bookmark, BookmarkPlus, Clock, Search, AudioLines, Link2, Check, Menu, MoreHorizontal, Anchor, Loader2 } from 'lucide-react';
@@ -418,6 +420,7 @@ function modelOnFamilySwitch(
 
 export default function ChatArea({ convoId, folderName, aiName, userName, defaultSystemPrompt, defaultAttachmentInstruction, defaultModelParams, defaultSpecificModel, defaultCustomAiName, defaultDateTimeVisibility, defaultVrchatMode, defaultVrchatRule, defaultLiveSessionVoice, onUpdateTitle, plannedTitle, globalSettings, claudeOAuthAvailable, bindingOptional, folders, onCloneWithSystemPrompt, fetchFolders, scrollToMessageId, onScrolledToMessage, newerLogTitle, soulGeneration, pastConversation, onOpenConvo, refreshLogs }: any) {
   const t = useT();
+  const keyPresence = useKeyPresence();
   // Stamped onto every queued message so a server-generated notice about it
   // comes back in the language this screen is reading (see lib/noticeLanguage.ts).
   const uiLanguage = useLanguage();
@@ -8485,7 +8488,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                           {subFam && !BASE_MODEL_FAMILIES.includes(subFam) && (
                             <option value={subFam}>{subFam}</option>
                           )}
-                          {BASE_MODEL_FAMILIES.map(m => <option key={m} value={m}>{m}</option>)}
+                          {visibleFamilies(BASE_MODEL_FAMILIES, keyPresence, subFam).map(m => <option key={m} value={m}>{m}</option>)}
                         </select>
                         {subagentFamily && (
                           <FamilyModelPicker
@@ -8989,7 +8992,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                         }}
                         className="w-full mb-4 px-3 py-2 bg-background border border-border rounded-lg text-sm appearance-none cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                       >
-                        {BASE_MODEL_FAMILIES.map(m => (
+                        {visibleFamilies(BASE_MODEL_FAMILIES, keyPresence, anchorSettings.family).map(m => (
                           <option key={m} value={m}>{m}</option>
                         ))}
                       </select>
@@ -9084,7 +9087,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                     }}
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm appearance-none cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                   >
-                    {BASE_MODEL_FAMILIES.map(m => (
+                    {visibleFamilies(BASE_MODEL_FAMILIES, keyPresence, localAiName).map(m => (
                       <option key={m} value={m}>{m}</option>
                     ))}
                   </select>

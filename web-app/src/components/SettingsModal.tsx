@@ -602,6 +602,9 @@ export default function SettingsModal({ onClose, globalSettings, setGlobalSettin
         body: JSON.stringify({ paths: enginePaths })
       }),
     ]);
+    // Every model picker hides families and providers that have no key
+    // (lib/providerAccess.ts); tell them the keys just changed.
+    window.dispatchEvent(new Event('nexus:keys-changed'));
     // The User Identity editor auto-saves (debounced, flushed on unmount). The
     // modal's "Save Changes" button still closes immediately — fine, because
     // the editor's own flush-on-unmount runs before React tears the tree down.
