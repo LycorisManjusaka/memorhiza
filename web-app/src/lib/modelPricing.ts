@@ -79,7 +79,10 @@ const M = 1_000_000;
 
 /** Normalize a model id to the JSON key form: lowercase, no "moonshotai/". */
 function normalizeId(id?: string | null): string {
-  return (id || '').replace(/^moonshotai\//i, '').toLowerCase().trim();
+  // `opencode/` is NEXUS's routing tag for the OpenCode Go allowance: the list
+  // price is the bare model's, shown as an equivalent the same way Claude OAuth
+  // messages are. Whether it is real money is the stats filter's job.
+  return (id || '').trim().replace(/^opencode\//i, '').replace(/^moonshotai\//i, '').toLowerCase().trim();
 }
 
 /** Look up the price row for a model id, or null if it isn't in the table. */

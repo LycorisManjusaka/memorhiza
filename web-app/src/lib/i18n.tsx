@@ -776,9 +776,9 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'stats.monthStarts': 'Month starts on',
   'stats.monthStartsHint':
     'Billing cycle start day of month (1 = calendar months)',
-  'stats.opt.excludeOauth': 'Exclude Claude OAuth',
+  'stats.opt.excludeOauth': 'Exclude subscription plans',
   'stats.opt.excludeOauthHint':
-    'Claude OAuth runs on a subscription, not metered per call — excluded by default so the bill shows only what is actually charged.',
+    'Subscription plans (Claude OAuth, OpenCode Go) are flat-rate, not metered per call — excluded by default so the bill shows only what is actually charged. When included, they are counted at list-price equivalent.',
   'stats.opt.includeEstimated': 'Include estimates',
   'stats.opt.includeEstimatedHint':
     'Imported / pre-tagging messages carry no real usage and are priced at notional list price. Off by default so the bill shows only metered money.',
@@ -1735,7 +1735,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   'model.gemini.providerLabel': 'Gemini route',
   'model.gemini.provider.google': 'Google (API key, pay per use)',
   'model.gemini.provider.opencode': 'OpenCode Go (monthly allowance, Gemini 4 Argon only)',
-  'model.gemini.opencodeNote': 'Drawn from the OpenCode Go monthly allowance. Argon is the only Gemini on this route. No per-message cost ($) is shown.',
+  'model.gemini.opencodeNote': 'Drawn from the OpenCode Go monthly allowance. Argon is the only Gemini on this route. The "$" on a message is the list-price equivalent, not a charge.',
   'model.qwen.label': 'Qwen Model',
   'model.qwen.help':
     'Uses Alibaba DashScope’s OpenAI-compatible endpoint (international region). Set your API key in Preferences. Only the `Omni` variant accepts audio & video uploads — other Qwen models will reject them at the API level even though Qwen’s own web app silently routes those uploads to Omni in the background.',
@@ -2883,9 +2883,9 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'stats.to': '終了',
   'stats.monthStarts': '月の開始日',
   'stats.monthStartsHint': '請求サイクルの開始日（1 = 暦月）',
-  'stats.opt.excludeOauth': 'Claude OAuth を除く',
+  'stats.opt.excludeOauth': '月額プランを除く',
   'stats.opt.excludeOauthHint':
-    'Claude OAuth はサブスクリプションで、呼び出しごとの従量課金ではありません。実際に請求される分だけを見られるよう、既定で除外します。',
+    '月額プラン（Claude OAuth、OpenCode Go）は定額で、呼び出しごとの従量課金ではありません。実際に請求される分だけを見られるよう、既定で除外します。外すと、定価での相当額として数えます。',
   'stats.opt.includeEstimated': '推定を含める',
   'stats.opt.includeEstimatedHint':
     '取り込んだ／タグ付け前のメッセージは実使用量を持たず、名目の定価で計上されます。請求される実額だけを見られるよう、既定ではオフです。',
@@ -3787,7 +3787,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   'model.gemini.providerLabel': 'Gemini の行き先',
   'model.gemini.provider.google': 'Google（API キー、使った分だけ課金）',
   'model.gemini.provider.opencode': 'OpenCode Go（月額の枠、Gemini 4 Argon のみ）',
-  'model.gemini.opencodeNote': 'OpenCode Go の月額の枠から引かれます。この行き先で選べる Gemini は Argon だけです。メッセージの料金（$）は出ません。',
+  'model.gemini.opencodeNote': 'OpenCode Go の月額の枠から引かれます。この行き先で選べる Gemini は Argon だけです。メッセージの「$」は定価での相当額で、請求額ではありません。',
   'model.qwen.label': 'Qwen モデル',
   'model.qwen.help':
     'Alibaba DashScope の OpenAI 互換エンドポイント（国際リージョン）を使います。設定で API キーを入れてください。音声・動画のアップロードを受け付けるのは `Omni` 系だけで、ほかの Qwen モデルは API レベルで拒否します（Qwen 自身のウェブアプリは、そうしたアップロードを裏で黙って Omni に回しています）。',

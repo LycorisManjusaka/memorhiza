@@ -23,7 +23,7 @@
 // Pure: no fs. The writer is lib/auxBillingStore.ts.
 
 import type { TurnCacheUsage } from '@/lib/turnEvents';
-import { canonFamily, familyFromModelId, splitClaudeByAuth, type StatRecord } from '@/lib/modelFamily';
+import { canonFamily, familyFromModelId, splitBySubscription, type StatRecord } from '@/lib/modelFamily';
 import { messageCost, resolvePrice } from '@/lib/modelPricing';
 import { billableUsage } from '@/lib/spuBilling';
 
@@ -196,7 +196,7 @@ export function auxBillingToStatRecord(
   const derived = familyFromModelId(entry.model);
   let family = stated && CANON.has(stated) ? stated : (derived !== 'Unknown' ? derived : (stated || derived));
   if (family === 'Local') return null;
-  family = splitClaudeByAuth(family, entry.authMode);
+  family = splitBySubscription(family, entry.authMode, entry.model);
 
   const price = resolvePrice(entry.model);
   const mc = messageCost(entry.usage, entry.model, entry.usage.outputTokens, entry.at);

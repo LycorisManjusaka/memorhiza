@@ -42,10 +42,14 @@ test('the prefixed id belongs to the Gemini family, not Local', () => {
   assert.equal(modelBelongsToFamily(GO_ARGON, 'Gemini'), true);
 });
 
-test('no per-token price is claimed for the subscription route', () => {
-  // The Go plan is flat-rate: a list price shown as a bill would be false.
-  assert.equal(resolvePrice(GO_ARGON), null);
+test('the subscription route prices at the bare model list price (an equivalent, as Claude OAuth does)', () => {
+  // Reversed 2026-11-25. The first version returned null here so that no list
+  // price could be read as a bill — but the turn was then SAVED under the bare
+  // id and billed as metered Google money anyway. The route now travels in the
+  // saved id; "is it real money" is answered by isSubscriptionFamily in the
+  // stats filter (tests/subscriptionFamily.test.ts), not by hiding the price.
   assert.notEqual(resolvePrice('gemini-4-argon'), null);
+  assert.deepEqual(resolvePrice(GO_ARGON), resolvePrice('gemini-4-argon'));
 });
 
 test('headers: a session id is always present and header-safe', () => {

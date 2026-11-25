@@ -26,11 +26,13 @@ import { useKeyPresence } from '@/lib/useKeyPresence';
 
 // A provider with no alternative on this install: named, not offered as a
 // choice (lib/providerAccess.ts routeChoice 'fixed').
-function FixedRoute({ children }: { children: React.ReactNode }) {
+// One small line, not a control: there is nothing to choose, so it must not
+// take a control's room (つよ, 2026-11-25: "it is a notice now, not a choice").
+function FixedRoute({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="w-full px-3 py-2 border border-border rounded-lg text-sm text-muted-foreground bg-muted/30">
-      {children}
-    </div>
+    <p className="text-[11px] leading-snug text-muted-foreground">
+      {label}: <span className="text-foreground/70">{children}</span>
+    </p>
   );
 }
 
@@ -118,10 +120,11 @@ export default function FamilyModelPicker({
       </div>
       {!hideBilling && (
       <div className="mb-4">
-        <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.claude.billing')}</label>
         {claudeChoice.mode === 'fixed' ? (
-          <FixedRoute>{claudeRouteLabel(claudeChoice.route)}</FixedRoute>
+          <FixedRoute label={t('model.claude.billing')}>{claudeRouteLabel(claudeChoice.route)}</FixedRoute>
         ) : (
+        <>
+        <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.claude.billing')}</label>
         <div className="flex gap-2">
           {(['api-key', 'oauth'] as const).filter((m) => claudeChoice.routes.includes(m)).map(mode => (
             <button
@@ -138,6 +141,7 @@ export default function FamilyModelPicker({
             </button>
           ))}
         </div>
+        </>
         )}
         <div className="model-help text-[10px] text-muted-foreground mt-1 leading-relaxed">
           {renderRich(t('model.claude.billingHelp'))}
@@ -150,12 +154,13 @@ export default function FamilyModelPicker({
 
     {family === 'Gemini' && (
       <div className="mb-4">
-        <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.gemini.providerLabel')}</label>
         {(() => {
           const routes = (geminiChoice.mode === 'choose' ? geminiChoice.routes : [geminiChoice.route])
             .filter((r) => r === geminiRoute || r !== 'opencode' || !ks || ks(OPENCODE_PREFIX + OPENCODE_GO_GEMINI_MODELS[0]));
-          if (routes.length <= 1) return <div className="mb-3"><FixedRoute>{geminiRouteLabel(geminiRoute)}</FixedRoute></div>;
+          if (routes.length <= 1) return <div className="mb-2"><FixedRoute label={t('model.gemini.providerLabel')}>{geminiRouteLabel(geminiRoute)}</FixedRoute></div>;
           return (
+        <>
+        <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.gemini.providerLabel')}</label>
         <select
           value={geminiRoute}
           onChange={(e) => {
@@ -167,6 +172,7 @@ export default function FamilyModelPicker({
         >
           {routes.map((r) => <option key={r} value={r}>{geminiRouteLabel(r)}</option>)}
         </select>
+        </>
           );
         })()}
         <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.gemini.label')}</label>
@@ -441,12 +447,13 @@ export default function FamilyModelPicker({
 
     {family === 'GLM' && (
       <div className="mb-4">
-        <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.glm.providerLabel')}</label>
         {(() => {
           const routes = (glmChoice.mode === 'choose' ? glmChoice.routes : [glmChoice.route])
             .filter((r) => r === glmRoute || r !== 'digitalocean' || !ks || ks('digitalocean/glm-5.2'));
-          if (routes.length <= 1) return <FixedRoute>{glmRouteLabel(glmRoute)}</FixedRoute>;
+          if (routes.length <= 1) return <FixedRoute label={t('model.glm.providerLabel')}>{glmRouteLabel(glmRoute)}</FixedRoute>;
           return (
+        <>
+        <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.glm.providerLabel')}</label>
         <select
           value={glmRoute}
           onChange={(e) => {
@@ -458,6 +465,7 @@ export default function FamilyModelPicker({
         >
           {routes.map((r) => <option key={r} value={r}>{glmRouteLabel(r)}</option>)}
         </select>
+        </>
           );
         })()}
         <label className="text-xs font-medium text-muted-foreground block mb-1 mt-3">{t('model.glm.label')}</label>

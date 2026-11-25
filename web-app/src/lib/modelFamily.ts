@@ -83,3 +83,24 @@ export function splitClaudeByAuth(family: string, authMode?: string | null): str
   if (family !== 'Claude') return family;
   return authMode === 'oauth' ? 'Claude (OAuth)' : 'Claude (API)';
 }
+
+/** Suffix of a family that ran on the OpenCode Go monthly allowance. */
+export const OPENCODE_GO_FAMILY_SUFFIX = ' (OpenCode Go)';
+
+/**
+ * The stats family for one run, with every flat-rate route split out:
+ * Claude by auth mode, and any model id carrying the `opencode/` routing tag
+ * (lib/opencodeGo.ts) as "<family> (OpenCode Go)". The message walk, the SPU
+ * ledger and the aux ledger all route through here so the "exclude
+ * subscription plans" option sees one spelling.
+ */
+export function splitBySubscription(family: string, authMode?: string | null, modelId?: string | null): string {
+  if (/^opencode\//i.test((modelId || '').trim())) return family + OPENCODE_GO_FAMILY_SUFFIX;
+  return splitClaudeByAuth(family, authMode);
+}
+
+/** True for a family whose runs are paid by a flat subscription, not per call. */
+export function isSubscriptionFamily(family?: string | null): boolean {
+  const f = family || '';
+  return f === 'Claude (OAuth)' || f.endsWith(OPENCODE_GO_FAMILY_SUFFIX);
+}

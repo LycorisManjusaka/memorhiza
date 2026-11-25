@@ -371,7 +371,7 @@ import {
 import { looksLikeText, isMediaMime, SNIFF_BYTES, TEXT_MAX_BYTES } from '@/lib/textSniff';
 import { isPdf, expandPdf, formatPdfText } from '@/lib/pdfExpand';
 import { GoogleGenAI } from '@google/genai';
-import { isOpenCodeModel, bareModelId, OPENCODE_GO_GEMINI_BASE, OPENCODE_GO_GEMINI_MODELS, openCodeGoHeaders } from '@/lib/opencodeGo';
+import { isOpenCodeModel, bareModelId, OPENCODE_PREFIX, OPENCODE_GO_GEMINI_BASE, OPENCODE_GO_GEMINI_MODELS, openCodeGoHeaders } from '@/lib/opencodeGo';
 import sharp from 'sharp';
 import { fitImageForWire, fitNote, WIRE_IMAGE_MAX_BYTES } from '@/lib/fitImageForWire';
 
@@ -5169,7 +5169,11 @@ export async function POST(req: Request) {
     const modelSelectedPayload = {
       type: 'model_selected',
       family: aiName,
-      specificModel,
+      // The saved message must remember WHICH route it ran on: an OpenCode Go
+      // turn stored as bare `gemini-4-argon` is indistinguishable from a metered
+      // Google call, and statistics then bill the allowance as real money
+      // (measured 2026-11-25: the first Go turn in this house was saved bare).
+      specificModel: useOpenCodeGo ? OPENCODE_PREFIX + specificModel : specificModel,
       thinking: modelThinkingFlag,
       label: modelLabelForSSE,
     };

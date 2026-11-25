@@ -20,7 +20,7 @@
 // decision lives in one place even if a Local entry ever reaches disk).
 
 import type { TurnCacheUsage } from '@/lib/turnEvents';
-import { familyFromModelId, splitClaudeByAuth, type StatRecord } from '@/lib/modelFamily';
+import { familyFromModelId, splitBySubscription, type StatRecord } from '@/lib/modelFamily';
 import { messageCost, resolvePrice } from '@/lib/modelPricing';
 
 export interface SpuBillingEntry {
@@ -100,7 +100,7 @@ export function billingToStatRecord(
 ): StatRecord | null {
   let family = familyFromModelId(entry.model);
   if (family === 'Local') return null;
-  family = splitClaudeByAuth(family, entry.authMode);
+  family = splitBySubscription(family, entry.authMode, entry.model);
 
   const price = resolvePrice(entry.model);
   const mc = messageCost(entry.usage, entry.model, entry.usage.outputTokens, entry.startedAt);

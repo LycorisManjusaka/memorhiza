@@ -5,7 +5,7 @@ import { resolvePrice, messageCost, effectivePrice } from '@/lib/modelPricing';
 import { BEINGS_DIR, beingLogsDir, beingSettingsFile, beingBillingDir, beingAuxBillingDir } from '@/lib/beingPaths';
 import { makeIsOriginalIndex } from '@/lib/firstOriginal';
 import {
-  canonFamily, familyFromModelId, splitClaudeByAuth, type StatRecord,
+  canonFamily, familyFromModelId, splitClaudeByAuth, splitBySubscription, type StatRecord,
 } from '@/lib/modelFamily';
 import { billingToStatRecord, type SpuBillingEntry } from '@/lib/spuBilling';
 import { auxBillingToStatRecord, type AuxBillingEntry } from '@/lib/auxBilling';
@@ -159,6 +159,7 @@ export async function GET() {
               const authMode = m.modelFamily ? taggedAuth : untaggedAuth;
               family = splitClaudeByAuth('Claude', authMode);
             }
+            family = splitBySubscription(family, null, modelId);
 
             const output = (typeof m.textTokens === 'number' ? m.textTokens
               : typeof m.tokens === 'number' ? m.tokens : estTokens(m.content));

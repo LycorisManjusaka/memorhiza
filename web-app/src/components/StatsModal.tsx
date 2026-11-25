@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, BarChart3, RefreshCw, Copy, Check, Loader2 } from 'lucide-react';
 import { fmtUSD } from '@/lib/modelPricing';
+import { isSubscriptionFamily } from '@/lib/modelFamily';
 import { compareConvoTitles } from '@/lib/convoSort';
 import { useT, renderRich } from '@/lib/i18n';
 import { copyText } from '@/lib/clipboard';
@@ -195,11 +196,12 @@ export default function StatsModal({ open, onClose }: { open: boolean; onClose: 
   function calculate() {
     if (!data) return;
     // 2.1 / 2.2 global pre-filters, applied before every report groups the rows:
-    //   excludeOauth (default on)   → drop subscription Claude OAuth runs
+    //   excludeOauth (default on)   → drop flat-subscription runs (Claude OAuth,
+    //                                  OpenCode Go) — isSubscriptionFamily
     //   includeEstimated (default off) → drop notional-price imported messages
     const all = data.records.filter((r) =>
       (includeEstimated || !r.estimated) &&
-      (!excludeOauth || r.family !== 'Claude (OAuth)')
+      (!excludeOauth || !isSubscriptionFamily(r.family))
     );
     const startTs = startDate ? startOfDay(startDate) : -Infinity;
     const endTs = endDate ? endOfDay(endDate) : Infinity;
