@@ -371,6 +371,7 @@ import {
 import { looksLikeText, isMediaMime, SNIFF_BYTES, TEXT_MAX_BYTES } from '@/lib/textSniff';
 import { isPdf, expandPdf, formatPdfText } from '@/lib/pdfExpand';
 import { GoogleGenAI } from '@google/genai';
+import { isOpenCodeModel, bareModelId, OPENCODE_GO_GEMINI_BASE, OPENCODE_GO_GEMINI_MODELS, openCodeGoHeaders } from '@/lib/opencodeGo';
 import sharp from 'sharp';
 import { fitImageForWire, fitNote, WIRE_IMAGE_MAX_BYTES } from '@/lib/fitImageForWire';
 
@@ -4662,6 +4663,12 @@ export async function POST(req: Request) {
       betrayalDefense = true,
     } = await req.json();
 
+    // OpenCode Go: `opencode/<model>` is a NEXUS routing tag (lib/opencodeGo.ts).
+    // Strip it here, once, so every capability rule below sees the bare id;
+    // the Gemini branch reads `useOpenCodeGo` to pick the endpoint and key.
+    const useOpenCodeGo = isOpenCodeModel(specificModel);
+    if (useOpenCodeGo) specificModel = bareModelId(specificModel) as string;
+
     // ── NEXUS_BLOCKED_BEINGS ────────────────────────────────────────────────
     // The deepest door, and the only one that also catches a MODULE caller:
     // runTurnForQueue reaches this handler by building a `new Request` and
@@ -4995,6 +5002,9 @@ export async function POST(req: Request) {
 
     const isClaude    = aiName.toLowerCase().includes('claude');
     const isGemini    = aiName.toLowerCase().includes('gemini');
+    if (useOpenCodeGo && !isGemini) {
+      return NextResponse.json({ error: 'The opencode/ route is wired for the Gemini family only.' }, { status: 400 });
+    }
     const isLocal     = aiName.toLowerCase().includes('local');
     const isQwen      = aiName.toLowerCase().includes('qwen');
     // DeepSeek may go through DashScope (deepseek-v3.2) or its own API.
@@ -7041,8 +7051,23 @@ export async function POST(req: Request) {
       });
     }
     else if (isGemini) {
-      if (!keys.gemini) return NextResponse.json({ error: 'Gemini API key missing in settings.' }, { status: 400 });
-      const ai = new GoogleGenAI({ apiKey: keys.gemini });
+      if (useOpenCodeGo) {
+        if (!keys.opencode) return NextResponse.json({ error: 'OpenCode Go API key missing in settings (Preferences → API keys → OpenCode).' }, { status: 400 });
+        if (!(OPENCODE_GO_GEMINI_MODELS as readonly string[]).includes(specificModel)) {
+          return NextResponse.json({ error: `OpenCode Go does not serve "${specificModel}". Its Gemini models: ${OPENCODE_GO_GEMINI_MODELS.join(', ')}.` }, { status: 400 });
+        }
+      } else if (!keys.gemini) return NextResponse.json({ error: 'Gemini API key missing in settings.' }, { status: 400 });
+      // OpenCode Go speaks the native Gemini wire at another base URL and
+      // requires a per-conversation session header (400 without it).
+      const ai = useOpenCodeGo
+        ? new GoogleGenAI({
+            apiKey: keys.opencode,
+            httpOptions: {
+              baseUrl: OPENCODE_GO_GEMINI_BASE,
+              headers: openCodeGoHeaders(String(convoId || folderName || '')),
+            },
+          })
+        : new GoogleGenAI({ apiKey: keys.gemini });
 
       const history = processedMessages.slice(0, -1).map((m: any) => ({
         role: m.role === 'user' ? 'user' : 'model',

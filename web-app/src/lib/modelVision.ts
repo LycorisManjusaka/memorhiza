@@ -8,6 +8,10 @@
 // conservative — worst case we run an unnecessary eyes call. The opposite
 // default (assume vision) would fail in production with a 400/415 error.
 
+// `opencode/<id>` is a routing tag (lib/opencodeGo.ts): the same model on
+// another endpoint, so every lookup below strips it first.
+import { bareModelId } from './opencodeGo';
+
 export const VISION_CAPABLE_MODELS = new Set<string>([
   // ── Anthropic ──────────────────────────────────────────────────────────────
   // All current Claude models support vision.
@@ -254,6 +258,7 @@ export const VISION_CAPABLE_MODELS = new Set<string>([
  * "mmproj".
  */
 export function isVisionCapable(specificModel: string | undefined | null): boolean {
+  specificModel = bareModelId(specificModel);
   if (!specificModel) return false;
   if (VISION_CAPABLE_MODELS.has(specificModel)) return true;
 
@@ -400,6 +405,7 @@ export const AUDIO_CAPABLE_MODELS = new Set<string>([
 ]);
 
 export function isAudioCapable(specificModel: string | undefined | null): boolean {
+  specificModel = bareModelId(specificModel);
   if (!specificModel) return false;
   if (AUDIO_CAPABLE_MODELS.has(specificModel)) return true;
   // ByteDance Seed 2.0 *Lite* is the omni-modal tier — it natively understands
@@ -478,6 +484,7 @@ export const VIDEO_CAPABLE_MODELS = new Set<string>([
 ]);
 
 export function isVideoCapable(specificModel: string | undefined | null): boolean {
+  specificModel = bareModelId(specificModel);
   if (!specificModel) return false;
   if (VIDEO_CAPABLE_MODELS.has(specificModel)) return true;
   // ByteDance Seed 2.0 *Lite* (omni tier) natively watches video. Among Seed 2.0,
@@ -527,6 +534,7 @@ const GEMINI_NO_MINIMAL_THINKING = new Set<string>([
 // variants and Gemini 3.7 Flash fall back to 'low'; everything else gets the
 // true 'minimal'.
 export function resolveGeminiMinThinkingLevel(specificModel: string | undefined | null): 'minimal' | 'low' {
+  specificModel = bareModelId(specificModel);
   const model = (specificModel || '').toLowerCase();
   if (model.includes('pro')) return 'low';
   if (GEMINI_NO_MINIMAL_THINKING.has(specificModel || '')) return 'low';

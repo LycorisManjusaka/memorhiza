@@ -41,7 +41,8 @@ export function canonFamily(stored?: string | null): string {
 // modelFamily (old, pre-tagging messages priced at the entity default model),
 // and for every SPU billing entry (which stores only the model id it ran).
 export function familyFromModelId(id?: string | null): string {
-  const s = (id || '').toLowerCase().trim();
+  // `opencode/<id>` is a cloud routing tag, not a local slug — read the bare id.
+  const s = (id || '').toLowerCase().trim().replace(/^opencode\//, '');
   if (!s) return 'Unknown';
   // Local LM Studio slugs: vendor/name or name@quant. moonshotai/ is the one
   // cloud id that legitimately carries a slash — everything else with / or @ is

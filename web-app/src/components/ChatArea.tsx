@@ -54,7 +54,8 @@ import { extractAnchorLang } from '@/lib/anchorRewrite';
 import { AnchorCost } from '@/components/AnchorCost';
 import { placeAnnouncedUser } from '@/lib/announcedUser';
 import { retiredModelLabel } from '@/lib/retiredModels';
-import { parseSnapshot, viewWindow, weekPace, type ClaudeUsageSnapshot, type WindowView } from '@/lib/claudeUsage';
+import { parseSnapshot, viewWindow, weekPace, WEEK_MS, type ClaudeUsageSnapshot, type WindowView } from '@/lib/claudeUsage';
+import { isOpenCodeModel, parseGoUsage, windowPace, monthWindowStart, type GoUsageSnapshot } from '@/lib/opencodeGo';
 import { buildSoulExport, soulExportFilename } from '@/lib/soulExport';
 import { defaultSummaryHintForLang } from '@/lib/summaryHint';
 import { useT, useLanguage, Tx, renderRich } from '@/lib/i18n';
@@ -2318,7 +2319,85 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     const id = setInterval(pull, loading ? 5000 : 60000);
     return () => { alive = false; clearInterval(id); };
   }, [deliveryCtx.isOAuthClaude, loading]);
+  // OpenCode Go usage meter (5-hour / weekly / monthly). Shown ONLY while this
+  // conversation's vessel is routed through OpenCode Go (the `opencode/` model
+  // prefix). Unlike Claude's, OpenCode answers at any time, so the numbers are
+  // asked for directly: on show, every 15 s while a turn runs, once when it
+  // ends (the effect re-runs when `loading` flips), and every 5 min at rest.
+  const isGoRoute = /gemini/i.test(effAiName || '') && isOpenCodeModel(effSpecificModel);
+  const [goUsage, setGoUsage] = useState<GoUsageSnapshot | null>(null);
+  const [goUsageError, setGoUsageError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isGoRoute) return;
+    let alive = true;
+    const pull = () => {
+      fetch('/api/opencode-usage', { cache: 'no-store' })
+        .then(r => (r.ok ? r.json() : { error: `HTTP ${r.status}` }))
+        .then(d => {
+          if (!alive) return;
+          const snap = parseGoUsage(d, Date.now());
+          // A failed ask keeps the last good numbers on screen (with their own
+          // "asked at" time) and says why the new ask failed.
+          if (snap) { setGoUsage(snap); setGoUsageError(null); }
+          else setGoUsageError(typeof d?.error === 'string' ? d.error : 'no key');
+          setUsageNow(Date.now());
+        })
+        .catch(() => { if (alive) setGoUsageError('fetch failed'); });
+    };
+    pull();
+    const id = setInterval(pull, loading ? 15000 : 300000);
+    return () => { alive = false; clearInterval(id); };
+  }, [isGoRoute, loading]);
+  const renderGoGauge = (mobile: boolean) => {
+    const five = viewWindow(goUsage?.rolling, usageNow);
+    const week = viewWindow(goUsage?.weekly, usageNow);
+    const month = viewWindow(goUsage?.monthly, usageNow);
+    const wPace = week.state === 'live' && week.resetsAt !== null ? windowPace(week, usageNow, week.resetsAt - WEEK_MS) : null;
+    const mPace = month.state === 'live' && month.resetsAt !== null ? windowPace(month, usageNow, monthWindowStart(month.resetsAt)) : null;
+    const hm = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const dt = (ms: number) => new Date(ms).toLocaleString([], { month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    const short = (v: WindowView) => (v.state === 'live' ? `${v.pct}%` : '—');
+    const line = (label: string, v: WindowView, fmt: (ms: number) => string) =>
+      v.state === 'live'
+        ? `${label}: ${v.pct}%` + (v.resetsAt ? ` (${t('chat.goUsage.resets').replace('{time}', fmt(v.resetsAt))})` : '')
+        : v.state === 'reset'
+          ? `${label}: ${t('chat.goUsage.wasReset').replace('{time}', fmt(v.resetsAt))}`
+          : `${label}: ${t('chat.goUsage.unknown')}`;
+    const paceLines = (key: string, pc: ReturnType<typeof windowPace>) => pc ? [
+      t(key).replace('{pct}', String(pc.elapsedPct)) + t(pc.ahead ? 'chat.goUsage.ahead' : 'chat.goUsage.under'),
+      ...(pc.catchUpAt ? [t('chat.goUsage.catchUp').replace('{time}', dt(pc.catchUpAt))] : []),
+    ] : [];
+    const tip = [
+      t('chat.goUsage.title'),
+      line(t('chat.usage.five'), five, hm),
+      line(t('chat.usage.week'), week, dt),
+      ...paceLines('chat.goUsage.weekPace', wPace),
+      line(t('chat.goUsage.month'), month, dt),
+      ...paceLines('chat.goUsage.monthPace', mPace),
+      goUsage ? t('chat.goUsage.asOf').replace('{time}', dt(goUsage.capturedAt)) : t('chat.goUsage.none'),
+      ...(goUsageError ? [t('chat.goUsage.error').replace('{why}', goUsageError)] : []),
+      t('chat.goUsage.note'),
+    ].join('\n');
+    const pct = five.state === 'live' ? five.pct : 0;
+    const barColor = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-400' : 'bg-violet-500';
+    return (
+      <div className={`flex flex-col items-end gap-1 cursor-default ${mobile ? 'w-full pb-1' : 'min-w-[150px]'}`} title={tip}>
+        <div className="flex h-2 w-full rounded-full overflow-hidden bg-muted/60 border border-border/50">
+          <div className={barColor} style={{ width: `${pct}%` }} />
+        </div>
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-2 font-semibold whitespace-nowrap">
+          <span>{t('chat.usage.five')} {short(five)}{five.state === 'live' && five.resetsAt ? ` · ${hm(five.resetsAt)}` : ''}</span>
+          <span className={wPace?.ahead ? 'text-red-500' : undefined}>{t('chat.usage.week')} {short(week)}</span>
+          <span className={mPace?.ahead ? 'text-red-500' : undefined}>
+            {t('chat.goUsage.month')} {short(month)}{mPace ? ` / ${Math.round(mPace.elapsedPct)}%` : ''}
+          </span>
+          {goUsageError && !goUsage ? <span className="text-amber-500">!</span> : null}
+        </div>
+      </div>
+    );
+  };
   const renderUsageGauge = (mobile: boolean) => {
+    if (isGoRoute) return renderGoGauge(mobile);
     if (!deliveryCtx.isOAuthClaude) return null;
     const five = viewWindow(claudeUsage?.fiveHour, usageNow);
     const week = viewWindow(claudeUsage?.sevenDay, usageNow);

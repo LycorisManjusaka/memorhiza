@@ -19,6 +19,7 @@ import EditableCombo from './EditableCombo';
 import ModelPriceSelect from './ModelPriceSelect';
 import { tagPriceOptions } from '@/lib/modelPriceLabel';
 import { retiredModelLabel } from '@/lib/retiredModels';
+import { isOpenCodeModel, bareModelId, OPENCODE_PREFIX, OPENCODE_GO_GEMINI_MODELS } from '@/lib/opencodeGo';
 import { useT, renderRich } from '@/lib/i18n';
 
 // Renders a saved-but-retired model id as a visibly-marked option, so a
@@ -119,7 +120,39 @@ export default function FamilyModelPicker({
 
     {family === 'Gemini' && (
       <div className="mb-4">
+        <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.gemini.providerLabel')}</label>
+        <select
+          value={isOpenCodeModel(model) ? 'opencode' : 'google'}
+          onChange={(e) => {
+            // Provider is derived from the model id prefix — one field, no
+            // second state to drift out of sync (same as GLM below).
+            onModel(e.target.value === 'opencode' ? OPENCODE_PREFIX + OPENCODE_GO_GEMINI_MODELS[0] : OPENCODE_GO_GEMINI_MODELS[0]);
+          }}
+          className="w-full px-3 py-2 mb-3 bg-background border border-border rounded-lg text-sm appearance-none cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+        >
+          <option value="google">{t('model.gemini.provider.google')}</option>
+          {(!ks || ks(OPENCODE_PREFIX + OPENCODE_GO_GEMINI_MODELS[0])) && (
+            <option value="opencode">{t('model.gemini.provider.opencode')}</option>
+          )}
+        </select>
         <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.gemini.label')}</label>
+        {isOpenCodeModel(model) ? (
+          <>
+            <select
+              value={model}
+              onChange={(e) => onModel(e.target.value)}
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm appearance-none cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+            >
+              {!(OPENCODE_GO_GEMINI_MODELS as readonly string[]).includes(bareModelId(model) as string) && (
+                <option value={model}>{model}</option>
+              )}
+              {OPENCODE_GO_GEMINI_MODELS.map((m) => (
+                <option key={m} value={OPENCODE_PREFIX + m}>{m === 'gemini-4-argon' ? 'Gemini 4 Argon' : m}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">{t('model.gemini.opencodeNote')}</p>
+          </>
+        ) : (
         <ModelPriceSelect
           value={model}
           onChange={(e) => onModel(e.target.value)} keep={ks}
@@ -137,6 +170,7 @@ export default function FamilyModelPicker({
           <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
           <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview</option>
         </ModelPriceSelect>
+        )}
       </div>
     )}
 
