@@ -2076,8 +2076,8 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
 
   // Whether the being's own past tool calls replay onto the wire. Decided by
   // the current vessel's path, not a user toggle — lib/toolHistory.ts#toolReplayCapable:
-  // Gemini and Claude-OAuth have no builder and need none, everything else gets
-  // it. This replaces a checkbox that could only disable a side-effect-free fix
+  // Claude-OAuth has no builder, everything else (Gemini included, since
+  // 2026-11-26) gets it. This replaces a checkbox that could only disable a side-effect-free fix
   // (Fuwafuwa 2026-11-08). The runner RE-computes it for the pass it runs (so a
   // handoff is honoured); this copy is only what the saved log records.
   const toolHistoryEnabled = toolReplayCapable(localAiName, claudeAuthMode);

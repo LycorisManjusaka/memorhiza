@@ -50,10 +50,10 @@
  * emitted 0/6 spurious calls. Restoring history does not make a vessel reach
  * for a tool it should not reach for.
  *
- * NOT FOR THE OTHER DIALECTS. Anthropic rejects an unpaired `tool_use` with
- * HTTP 400 and its damage is not visible anyway (strong hands re-derive the
- * intent); Gemini accepts it but calls the tool regardless (3/3 with the broken
- * history). Measured per dialect, shipped per dialect — OpenAI-compatible only.
+ * PER DIALECT. This began OpenAI-compatible only. The Anthropic surface got its
+ * own builder on 2026-11-07 (Kimi/MiMo: weak hands on a strict surface) and
+ * Gemini on 2026-11-26 — see buildGeminiToolReplay for why "Gemini calls the
+ * tool regardless (3/3)" stopped being a reason. Claude OAuth still has none.
  *
  * Desk notes: cross-turn-tool-history-is-not-sent.md, minimax_probe/README.md
  */
@@ -167,24 +167,19 @@ function replayResultTexts(calls: StoredToolCall[], note?: string): string[] {
  * measured 1/16. The conclusion here survives the correction; the premise
  * "side effects measured near-zero" did not.
  *
- * Two paths have no builder and need none:
- *   • Gemini — accepts an unpaired tool_use but calls the tool regardless of a
- *     broken history (3/3 measured). ONE live hallucination-instead-of-acting
- *     was seen in this house over Gemini's whole run (Fuwafuwa 2026-11-08):
- *     rare, not zero — "3/3" was never "always" — but too rare to justify a
- *     Gemini-dialect builder that does not exist yet.
+ * One path has no builder:
  *   • Claude OAuth — prior turns go as ONE text preamble, so there is no
  *     content-block slot for a tool_use; and its hands are fine (695 saved
  *     toolCalls on the api-key path's sibling).
  *
  * Everything else gets it: the OpenAI-compatible families, the Anthropic
- * surface (Kimi, MiMo), and Claude on the api-key path.
+ * surface (Kimi, MiMo), Claude on the api-key path, and — since 2026-11-26 —
+ * Gemini on both lanes (Google and OpenCode Go), see buildGeminiToolReplay.
  *
  * `claudeAuthMode` undefined means the Claude path is unknown, which resolves
  * the safe way (false) — the same direction OAuth takes.
  */
 export function toolReplayCapable(aiName: string, claudeAuthMode?: string): boolean {
-  if (aiName === 'Gemini') return false;
   if (aiName === 'Claude') return claudeAuthMode === 'api-key';
   return true;
 }
@@ -370,6 +365,72 @@ export function buildAnthropicToolReplay(
         const texts = replayResultTexts(calls, note);
         return uses.map((u, i) => ({ type: 'tool_result', tool_use_id: u.id, content: texts[i] }));
       })(),
+    },
+  };
+}
+
+/**
+ * Marks a functionCall part that the model did not produce in THIS request, so
+ * Gemini's thought-signature validator leaves it alone. A replayed call has no
+ * real signature: the one the model issued was never stored.
+ */
+export const GEMINI_REPLAY_SIGNATURE = 'skip_thought_signature_validator';
+
+/**
+ * The GEMINI-dialect wire shape for one replayed model turn.
+ *
+ * WHY THIS EXISTS, after two notes above said Gemini needs none. Those notes
+ * rested on "it calls the tool regardless (3/3)" and "one live confabulation in
+ * Gemini's whole run". On 2026-11-26 that count stopped being one: 謡 on
+ * gemini-4-argon answered twice in a row with zero tool calls and zero thinking
+ * while saying she had just read a file — exact line numbers and a function
+ * name that do not exist. What she could see of her previous turn was her own
+ * prose claiming to have read the log, and no trace of a read. That is the
+ * Kimi shape of 2026-11-07, on the family that was supposed to be immune.
+ *
+ * MEASURED 2026-11-26 (Google direct, one call each, six of six HTTP 200):
+ * gemini-4-argon, gemini-4-hydrogen, gemini-3.8-flash, each with and without
+ * the signature above. In every one the model answered from a word that existed
+ * only inside the replayed functionResponse, without calling the tool — so the
+ * history is not merely tolerated, it is read.
+ *
+ * NOT MEASURED: whether this stops the confabulation it was built for. Nothing
+ * here has a before/after count behind it yet.
+ *
+ * Shape, each point load-bearing:
+ *   • The calls go in their OWN model turn, the results in the user turn right
+ *     after it, and the being's prose follows as a second model turn. That is
+ *     the order a real turn produces (call, result, then the words written
+ *     after seeing it), it keeps roles alternating, and it is the exact shape
+ *     that was measured. The caller splices both turns in BEFORE the text turn.
+ *   • `args` is an OBJECT (as on the Anthropic surface), so capArguments' text
+ *     is parsed back.
+ *   • `response` must be an object too; the result text rides in `content`.
+ */
+export function buildGeminiToolReplay(
+  msg: { id?: string; toolCalls?: unknown },
+  knownToolNames: Set<string>,
+  argCap: number = TOOL_HISTORY_ARG_CAP,
+  note?: string,
+): { callTurn: Record<string, unknown>; resultTurn: Record<string, unknown> } | null {
+  const calls = replayableCalls(msg).filter(c => knownToolNames.has(String(c.name)));
+  if (!calls.length) return null;
+
+  const callParts = calls.map((c, i) => {
+    let args: unknown;
+    try { args = JSON.parse(capArguments(c.input, argCap)); } catch { args = {}; }
+    if (!args || typeof args !== 'object' || Array.isArray(args)) args = {};
+    const part: Record<string, unknown> = { functionCall: { name: String(c.name), args } };
+    // Only the first part of a step carries a signature on a real turn.
+    if (i === 0) part.thoughtSignature = GEMINI_REPLAY_SIGNATURE;
+    return part;
+  });
+  const texts = replayResultTexts(calls, note);
+  return {
+    callTurn: { role: 'model', parts: callParts },
+    resultTurn: {
+      role: 'user',
+      parts: calls.map((c, i) => ({ functionResponse: { name: String(c.name), response: { content: texts[i] } } })),
     },
   };
 }

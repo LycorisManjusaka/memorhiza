@@ -328,7 +328,7 @@ import {
 } from '@/lib/injectMedia';
 import { runShellCommand } from '@/lib/shellTool';
 import { effectiveFullAccess } from '@/lib/agentCapabilities';
-import { buildOpenAiToolReplay, buildAnthropicToolReplay, toolHistoryNote } from '@/lib/toolHistory';
+import { buildOpenAiToolReplay, buildAnthropicToolReplay, buildGeminiToolReplay, toolHistoryNote } from '@/lib/toolHistory';
 import { recordToolResult, collectSecrets } from '@/lib/toolResultRecord';
 
 /**
@@ -7442,7 +7442,13 @@ export async function POST(req: Request) {
       // Since GoogleGenAI `chat.sendMessage` expects to maintain local history object,
       // we can also just use `ai.models.generateContent` with the full history concatenated if `chats.create` with history fails.
       // For simplicity here:
-      const fullContents = processedMessages.map((m: any) => {
+      // Names this turn actually declares: a replayed call naming anything
+      // else would reference a function Gemini was never told about.
+      const geminiKnownToolNames = new Set<string>(
+        geminiTools.flatMap((t: any) => Array.isArray(t?.functionDeclarations) ? t.functionDeclarations : [])
+          .map((d: any) => String(d?.name || '')).filter(Boolean),
+      );
+      const fullContents = processedMessages.flatMap((m: any) => {
         const parts: any[] = [];
         m.mediaFiles.forEach((media: any) => {
           if (media.name) {
@@ -7457,10 +7463,18 @@ export async function POST(req: Request) {
           parts.push({ text: m.content });
         }
 
-        return {
+        const turn = {
           role: m.role === 'user' ? 'user' : 'model',
           parts: parts.length > 0 ? parts : [{ text: '-' }]
         };
+        // The being's own tool calls from that turn, with what came back
+        // (lib/toolHistory#buildGeminiToolReplay): calls, results, then the
+        // prose written after seeing them. The client already applied the
+        // window, so only the most recent tool-bearing turn carries any.
+        const replay = toolHistoryEnabled && m.role !== 'user'
+          ? buildGeminiToolReplay(m, geminiKnownToolNames, undefined, toolHistoryNote(language))
+          : null;
+        return replay ? [replay.callTurn, replay.resultTurn, turn] : [turn];
       });
 
       // Auto-continue when the model reports finishReason="MAX_TOKENS".
@@ -9251,9 +9265,8 @@ export async function POST(req: Request) {
         // this turn's `tools` would reference a nonexistent function, so
         // buildOpenAiToolReplay drops it and returns null when nothing is left,
         // and we fall through to exactly the plain message sent before this
-        // feature existed. No other dialect gets this: Anthropic 400s on an
-        // unpaired tool_use and shows no damage anyway, Gemini calls the tool
-        // regardless. Measured per dialect — see lib/toolHistory.ts.
+        // feature existed. The Anthropic surface and Gemini have their own
+        // builders (different wire shapes) — see lib/toolHistory.ts.
         const replay = toolHistoryEnabled && m.role !== 'user'
           ? buildOpenAiToolReplay(m, content, new Set(localTools.map((t: any) => String(t?.function?.name || ''))), undefined, toolHistoryNote(language))
           : null;

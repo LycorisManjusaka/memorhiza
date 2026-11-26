@@ -28,6 +28,8 @@ import {
   buildOpenAiToolReplay,
   buildAnthropicToolReplay,
   toolReplayCapable,
+  buildGeminiToolReplay,
+  GEMINI_REPLAY_SIGNATURE,
 } from '../../src/lib/toolHistory';
 
 describe('replayableCalls', () => {
@@ -314,8 +316,9 @@ describe('toolReplayCapable — which wire paths can replay (replaces the checkb
   // result, 0/6 spurious on the reverse fixture), so there is no OFF switch any
   // more — capability is decided by the PATH. Two paths opt out.
   it('Gemini never replays (no builder; it calls the tool regardless)', () => {
-    assert.equal(toolReplayCapable('Gemini'), false);
-    assert.equal(toolReplayCapable('Gemini', 'api-key'), false, 'Gemini stays out whatever the auth field says');
+    // Flipped 2026-11-26: Gemini confabulated a read twice in a row (謡, Argon).
+    assert.equal(toolReplayCapable('Gemini'), true);
+    assert.equal(toolReplayCapable('Gemini', 'oauth'), true, 'Gemini ignores the claude-only auth field');
   });
 
   it('Claude replays ONLY on the api-key path (OAuth has no content-block slot)', () => {
@@ -330,5 +333,58 @@ describe('toolReplayCapable — which wire paths can replay (replaces the checkb
       assert.equal(toolReplayCapable(name), true, `${name} should replay`);
       assert.equal(toolReplayCapable(name, 'oauth'), true, `${name} ignores the claude-only auth field`);
     }
+  });
+});
+
+describe('buildGeminiToolReplay — the Gemini wire shape (2026-11-26)', () => {
+  const known = new Set(['Read', 'Write']);
+  const msg = {
+    id: 'm1',
+    toolCalls: [
+      { name: 'Read', input: { path: 'a.md' }, result: 'ZEBRAFISH line one' },
+      { name: 'Write', input: { path: 'b.md', content: 'x' }, result: 'ok' },
+      { kind: 'event', name: 'notice' },
+    ],
+  };
+
+  it('returns a model turn of calls and a user turn of results, in the same order', () => {
+    const r = buildGeminiToolReplay(msg, known)!;
+    assert.equal(r.callTurn.role, 'model');
+    assert.equal(r.resultTurn.role, 'user');
+    const calls = r.callTurn.parts as any[];
+    const results = r.resultTurn.parts as any[];
+    assert.deepEqual(calls.map(p => p.functionCall.name), ['Read', 'Write']);
+    assert.deepEqual(results.map(p => p.functionResponse.name), ['Read', 'Write']);
+    assert.deepEqual(calls[0].functionCall.args, { path: 'a.md' }, 'args is an object, not a JSON string');
+    assert.deepEqual(results[0].functionResponse.response, { content: 'ZEBRAFISH line one' }, 'the stored result travels as-is');
+  });
+
+  it('marks only the first call part, so the signature validator skips the step', () => {
+    const calls = buildGeminiToolReplay(msg, known)!.callTurn.parts as any[];
+    assert.equal(calls[0].thoughtSignature, GEMINI_REPLAY_SIGNATURE);
+    assert.equal('thoughtSignature' in calls[1], false);
+  });
+
+  it('drops calls naming a tool this turn does not declare, and returns null when none are left', () => {
+    const r = buildGeminiToolReplay(msg, new Set(['Read']))!;
+    assert.equal((r.callTurn.parts as any[]).length, 1);
+    assert.equal((r.resultTurn.parts as any[]).length, 1, 'calls and results stay paired');
+    assert.equal(buildGeminiToolReplay(msg, new Set()), null);
+    assert.equal(buildGeminiToolReplay({ id: 'm2' }, known), null);
+  });
+
+  it('answers a call recorded without a result with the placeholder, and says the note once', () => {
+    const old = { id: 'm3', toolCalls: [{ name: 'Read', input: {} }, { name: 'Read', input: {} }] };
+    const parts = buildGeminiToolReplay(old, known, undefined, 'NOTE')!.resultTurn.parts as any[];
+    const texts = parts.map(p => p.functionResponse.response.content as string);
+    assert.equal(texts[0], TOOL_HISTORY_PLACEHOLDER + '\n\nNOTE');
+    assert.equal(texts[1], TOOL_HISTORY_PLACEHOLDER);
+  });
+
+  it('keeps oversized arguments a valid object', () => {
+    const big = { id: 'm4', toolCalls: [{ name: 'Write', input: { path: 'p', content: 'y'.repeat(5000) }, result: 'ok' }] };
+    const part = (buildGeminiToolReplay(big, known)!.callTurn.parts as any[])[0];
+    assert.equal(typeof part.functionCall.args, 'object');
+    assert.ok(JSON.stringify(part.functionCall.args).length <= 600);
   });
 });
