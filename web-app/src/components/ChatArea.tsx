@@ -150,7 +150,7 @@ const MY_STOCK_HOLDER = `tab:${TAB_CLIENT_ID.slice(0, 8)}`;
 // `buildAllModelsFill(localModels)` below, since LM Studio's available
 // model list changes whenever the user loads/unloads a model.
 const CLOUD_MODELS_FILL =
-`# Every model NEXUS knows. Copy the rows you want by hand.
+`# Every model Memorhiza knows. Copy the rows you want by hand.
 # Format: family | specificModel | on|off | optional display label
 
 # ── Claude (Anthropic) ─────────────────────────────────────────────
@@ -234,7 +234,7 @@ GLM      | glm-4.5-air                  | off | GLM-4.5 Air (cheap)
 
 # ── GLM via DigitalOcean Inference (US-hosted, ~half Z.ai price) ───
 # Same Z.ai open weights, served at inference.do-ai.run. The digitalocean/
-# prefix is NEXUS routing marker; the wire API gets the bare id.
+# prefix is Memorhiza routing marker; the wire API gets the bare id.
 GLM      | digitalocean/glm-5.2         | on  | GLM-5.2 (DigitalOcean)
 GLM      | digitalocean/glm-5.1         | on  | GLM-5.1 (DigitalOcean)
 GLM      | digitalocean/glm-5           | on  | GLM-5 (DigitalOcean)
@@ -276,7 +276,7 @@ MiniMax  | MiniMax-M2.7                 | on  | MiniMax M2.7
 # ── OpenAI (ChatGPT / GPT-5 family) ────────────────────────────────
 # GPT-6 (2026-10-21). gpt-6.1-sol and gpt-6-astra reject reasoning_effort 'none'
 # (their vocabulary is low|medium|high|xhigh), which is the value function tools
-# need on /v1/chat/completions. NEXUS routes their tool turns through /v1/responses
+# need on /v1/chat/completions. Memorhiza routes their tool turns through /v1/responses
 # instead (added 2026-11-09), where tools work at any effort — so all of these take
 # workspace tools. gpt-6-sol and gpt-6-luna go the ordinary chat/completions route.
 # Vision measured on all. gpt-6.1-terra (added 2026-11-09) accepts 'none' unlike
@@ -3145,9 +3145,9 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // is what makes that generic prompt legible.
   const busyLabel = useBusyLabel();
   useEffect(() => {
-    const base = title ? `${title} — Nexus` : 'Nexus';
+    const base = title ? `${title} — Memorhiza` : 'Memorhiza';
     document.title = busyLabel ? `● ${busyLabel} — ${base}` : base;
-    return () => { document.title = 'Nexus'; };
+    return () => { document.title = 'Memorhiza'; };
   }, [title, busyLabel]);
 
   // ── Deep-link scroll target ──────────────────────────────────────────────

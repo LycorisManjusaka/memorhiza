@@ -9,7 +9,7 @@ cd /d "%~dp0"
 
 if not exist ".git" (
   echo [ERROR] No .git next to this script.
-  echo         UPDATE.bat must stay in the Nexus repo root.
+  echo         UPDATE.bat must stay in the Memorhiza repo root.
   echo         Looked in: %~dp0
   pause
   exit /b 1
@@ -42,7 +42,7 @@ if errorlevel 1 goto :nodeps
 echo.
 echo ==^> Dependencies changed - node_modules must be synced with "npm install".
 echo.
-echo     Do this ONLY with the Nexus server for THIS tree STOPPED. A running
+echo     Do this ONLY with the Memorhiza server for THIS tree STOPPED. A running
 echo     server locks native files (Turbopack keeps lightningcss loaded), and
 echo     an installer cannot replace a file the OS has locked - it dies with
 echo     EPERM. "npm install" touches ONLY the packages that actually changed,
@@ -69,18 +69,18 @@ call npm install
 popd
 echo.
 echo ==^> npm install done. If it failed with EPERM on a .node file, the server
-echo     or antivirus still had it locked - fully stop Nexus (and let it release),
+echo     or antivirus still had it locked - fully stop Memorhiza (and let it release),
 echo     then run INSTALL.bat.
 goto :nodeps
 
 :skipci
 echo.
-echo ==^> Skipped. Run "npm install" inside web-app yourself before starting Nexus.
+echo ==^> Skipped. Run "npm install" inside web-app yourself before starting Memorhiza.
 
 :nodeps
 
 echo.
-echo ==^> Updated. Restart Nexus if server-side code changed
+echo ==^> Updated. Restart Memorhiza if server-side code changed
 echo     ^(client-side changes are picked up without a restart^).
 
 :done

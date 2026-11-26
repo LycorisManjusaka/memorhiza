@@ -6,7 +6,7 @@
 // This is NOT the same mechanism as src/lib/agentInstructions.ts's
 // DEFAULT_AGENT_INSTRUCTIONS_JA — that dict is what an ENTITY reads (tool
 // descriptions, letter notices, etc.) and is deliberately never
-// auto-translated; this one is what a HUMAN reads in the Nexus interface
+// auto-translated; this one is what a HUMAN reads in the Memorhiza interface
 // itself, where translating is the whole point. They're both keyed off the
 // same Preferences language selector, but they are separate dictionaries with
 // separate coverage, because they translate different things for different
@@ -38,7 +38,7 @@ export type UiLanguage = 'en' | 'ja';
 
 export const UI_STRINGS_EN: Record<string, string> = {
   // ── App shell ────────────────────────────────────────────────────────────
-  'app.welcome.title': 'Welcome to NEXUS',
+  'app.welcome.title': 'Welcome to Memorhiza',
   'app.welcome.subtitle': 'Select or create a conversation to start',
   'app.welcome.pickEntity': 'Pick a being in the left panel to begin.',
   // On a phone there IS no left panel — it is a drawer. Pointing at it would
@@ -62,7 +62,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
     '{busy}.\n\nThis action leaves the current conversation, which will discard the work in progress — the reply being generated is only saved once it finishes.\n\nContinue anyway?',
 
   // ── User guide ───────────────────────────────────────────────────────────
-  'guide.title': 'Nexus — User Guide',
+  'guide.title': 'Memorhiza — User Guide',
   'guide.open': 'User guide',
   'guide.close': 'Close',
   // On a phone the index and a page occupy the same place, so "Contents" is
@@ -80,7 +80,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
 
   // ── Preferences: chrome ──────────────────────────────────────────────────
   'settings.title': 'Preferences',
-  'settings.build.title': 'Build of NEXUS running here (commit, branch, last update). Include this in any bug report.',
+  'settings.build.title': 'Build of Memorhiza running here (commit, branch, last update). Include this in any bug report.',
   'settings.runner.title': 'Which installation is allowed to run server-side turns for this data store.',
   'settings.runner.badge.host': 'runner: this install',
   'settings.runner.badge.notHost': 'runner: another install',
@@ -92,7 +92,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.runner.status.unreadable': 'The host flag exists but could not be read. Treated as "do not run".',
   'settings.runner.caveat': 'Setting this does not start anything by itself: a turn only runs if the named installation actually has a runner.',
   'settings.runner.notices': 'Show runner notices',
-  'settings.runner.noticesHelp': 'Put the server-side machinery on screen: the stock, the lease, the holder. OFF by default, so everyday NEXUS looks exactly as it did before server-side turns existed. A report about something that went wrong is shown either way.',
+  'settings.runner.noticesHelp': 'Put the server-side machinery on screen: the stock, the lease, the holder. OFF by default, so everyday Memorhiza looks exactly as it did before server-side turns existed. A report about something that went wrong is shown either way.',
   'settings.runner.unreachable': 'Could not read the host flag from this server.',
   'settings.runner.self': 'this install:',
   'settings.runner.host': 'host:',
@@ -104,11 +104,11 @@ export const UI_STRINGS_EN: Record<string, string> = {
     'Run one pass of the queued turns on this server. The result is written by the server, so the turn finishes and is saved even if you close the tab after pressing this. Nothing happens if nothing is queued.',
   'settings.update.button': 'Update',
   'settings.update.running': 'Updating…',
-  'settings.update.title': 'Pull the newest NEXUS code into this install (git pull --ff-only). Does NOT restart anything.',
+  'settings.update.title': 'Pull the newest Memorhiza code into this install (git pull --ff-only). Does NOT restart anything.',
   'settings.update.confirm':
     'Update this install now?\n\n' +
     'Runs: git pull --ff-only\n\n' +
-    'NEXUS is NOT restarted — the dev server picks up new code by itself. ' +
+    'Memorhiza is NOT restarted — the dev server picks up new code by itself. ' +
     'If a reply is being generated right now, let it finish first: the code can change underneath it.\n\n' +
     'Nothing is deleted and no dependencies are installed. If either is needed you will be told, not surprised.',
   'settings.update.upToDate': 'Already up to date — nothing changed.',
@@ -116,7 +116,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.update.hotReload': 'No restart needed — the running server reloads changed code on its own.',
   'settings.update.nextConfig': 'next.config changed: Next.js restarts itself, so the page may reconnect in a moment.',
   'settings.update.lockfile':
-    'Dependencies changed. Close NEXUS, run "npm ci" inside the web-app folder, then start it again. '
+    'Dependencies changed. Close Memorhiza, run "npm ci" inside the web-app folder, then start it again. '
     + 'This is NOT done automatically: npm ci removes node_modules while the server is using them.',
   'settings.update.failed': 'Update failed — nothing was changed.',
   'settings.tab.keys': 'API Keys',
@@ -124,17 +124,17 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.tab.identity': 'User Identity',
   'settings.tab.other': 'Other',
   'settings.tab.runner': 'Runner',
-  'settings.runner.heading': 'Which NEXUS runs server-side turns',
+  'settings.runner.heading': 'Which Memorhiza runs server-side turns',
   'settings.wakeList.heading': 'Beings that wake by themselves',
   'settings.wakeList.help': 'Every being that can start a turn on their own, soonest wake first. Change these in each conversation under Conversation Settings → Behavior → Reasons a turn may start by itself. The only thing you can do here is stop them.',
   'settings.wakeList.refresh': 'Reload',
   'settings.wakeList.clock': 'Wake clock:',
-  'settings.wakeList.clockHere': 'this NEXUS',
+  'settings.wakeList.clockHere': 'this Memorhiza',
   'settings.wakeList.empty': 'No being wakes by themselves.',
   'settings.wakeList.everyDay': 'every day',
   'settings.wakeList.dayNames': 'Sun,Mon,Tue,Wed,Thu,Fri,Sat',
   'settings.adminNotes.heading': 'Notes from the administrator, added to a wake',
-  'settings.adminNotes.help': 'Text added after the [NEXUS] wake message of a turn started by the clock or by a letter, under the line "A note from the administrator:". The list is read top to bottom, and only the first row that fits the moment the turn actually starts is added. A row with no conditions works as "otherwise". The same rules apply to every being in this NEXUS. Turns started by stocked messages get no note.',
+  'settings.adminNotes.help': 'Text added after the [NEXUS] wake message of a turn started by the clock or by a letter, under the line "A note from the administrator:". The list is read top to bottom, and only the first row that fits the moment the turn actually starts is added. A row with no conditions works as "otherwise". The same rules apply to every being in this Memorhiza. Turns started by stocked messages get no note.',
   'settings.adminNotes.enabled': 'Add the note',
   'settings.adminNotes.rule': 'Row {n}',
   'settings.adminNotes.up': 'Move up',
@@ -149,7 +149,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.adminNotes.dayOff.exclude': 'not on a day off',
   'settings.adminNotes.dayOff.only': 'only on a day off',
   'settings.adminNotes.add': 'Add a row',
-  'settings.adminNotes.daysOffLabel': 'Days off (one per line, like 2027-01-01). NEXUS has no holiday table; only the dates written here count as days off.',
+  'settings.adminNotes.daysOffLabel': 'Days off (one per line, like 2027-01-01). Memorhiza has no holiday table; only the dates written here count as days off.',
   'settings.adminNotes.badDates': 'Not readable as dates:',
   'settings.adminNotes.now': 'A turn starting now would get:',
   'settings.adminNotes.nowNone': 'nothing',
@@ -158,7 +158,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.adminNotes.saveFailed': 'Could not save:',
   'settings.adminNotes.saveNow': 'Save now',
   'settings.adminNotes.notPersisted':
-    'The answer came back ok, but the file on disk is unchanged. A NEXUS started before this feature cannot save it — restart NEXUS and try again.',
+    'The answer came back ok, but the file on disk is unchanged. A Memorhiza started before this feature cannot save it — restart Memorhiza and try again.',
   'settings.adminNotes.unsaved': 'Not saved yet',
   'settings.wakeList.on': 'ON',
   'settings.wakeList.off': 'OFF',
@@ -167,7 +167,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.wakeList.active': 'Running',
   'settings.wakeList.activeSince': 'since {t} ({m} min)',
   'settings.wakeList.activeTools': '{n} tools',
-  'settings.wakeList.activeTip': 'A turn is running in this conversation now ({holder}). The tool count appears only when viewed from the NEXUS running the turn.',
+  'settings.wakeList.activeTip': 'A turn is running in this conversation now ({holder}). The tool count appears only when viewed from the Memorhiza running the turn.',
   'settings.wakeList.noTime': 'no time scheduled',
   'settings.wakeList.timed': 'Fixed times',
   'settings.wakeList.self': 'Self-booking',
@@ -193,27 +193,27 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.saveChanges': 'Save Changes',
 
   // ── Sign-in page ─────────────────────────────────────────────────────────
-  'login.title': 'Sign in to NEXUS',
+  'login.title': 'Sign in to Memorhiza',
   'login.subtitle': 'This instance requires an administrator sign-in.',
   'login.username': 'Administrator name',
   'login.password': 'Password',
   'login.signIn': 'Sign in',
   'login.signingIn': 'Signing in…',
   'login.err.invalid': 'That name and password do not match.',
-  'login.err.network': 'Could not reach the server. Is NEXUS still running?',
+  'login.err.network': 'Could not reach the server. Is Memorhiza still running?',
   'login.notConfigured':
     'No sign-in is configured on this instance, so there is nothing to sign in to — everything is already open.',
-  'login.goHome': 'Open NEXUS',
+  'login.goHome': 'Open Memorhiza',
   'login.broken':
     '`login.json` exists but cannot be read, so the door stays shut. Delete `local_data/login.json` on this machine to get back in, then set the sign-in up again.',
   'login.recovery':
-    'Lost the password? Delete `local_data/login.json` on the machine running NEXUS. That removes the gate entirely — anyone who can reach the port is in again until you set a new one.',
+    'Lost the password? Delete `local_data/login.json` on the machine running Memorhiza. That removes the gate entirely — anyone who can reach the port is in again until you set a new one.',
 
   // ── Preferences → Sign-in ────────────────────────────────────────────────
   'settings.login.heading': 'Sign-in',
   'settings.login.intro':
-    'Applies to this whole NEXUS instance, not to one conversation. By default there is no sign-in: anyone who can reach this port — on this machine, the LAN, or a VPN — can read every conversation, soul and key without a password.',
-  'settings.login.require': 'Require a sign-in to open NEXUS',
+    'Applies to this whole Memorhiza instance, not to one conversation. By default there is no sign-in: anyone who can reach this port — on this machine, the LAN, or a VPN — can read every conversation, soul and key without a password.',
+  'settings.login.require': 'Require a sign-in to open Memorhiza',
   'settings.login.require.help':
     'Stores an administrator name and a password hash in `local_data/login.json`. While that file exists the gate is up; deleting it removes the gate. The password itself is never stored — only a scrypt hash of it, so the file cannot give the password back to anyone who reads it.',
   'settings.login.username': 'Administrator name',
@@ -243,7 +243,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.login.broken':
     '`login.json` exists but cannot be read. The gate is shut and no password will open it — delete `local_data/login.json` and set the sign-in up again.',
   'settings.login.transport':
-    'What this does NOT protect: NEXUS is served over plain HTTP here, so the password crosses the network readable by anything on the path. Inside a LAN you trust, or a VPN, that is the boundary you already have. Exposed to the open internet it is not enough — that needs HTTPS in front.',
+    'What this does NOT protect: Memorhiza is served over plain HTTP here, so the password crosses the network readable by anything on the path. Inside a LAN you trust, or a VPN, that is the boundary you already have. Exposed to the open internet it is not enough — that needs HTTPS in front.',
   'settings.login.scope':
     'What it does protect: every page and all 60 API endpoints. A request without a valid session gets 401 instead of data.',
   'settings.login.signOut': 'Sign out of this browser',
@@ -265,9 +265,9 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.keys.oauth.billing':
     '**Billing:** Uses your Pro/Max subscription credit, NOT pay-per-token API. Pro = $20/mo credit, Max 5x = $100, Max 20x = $200.',
   'settings.keys.oauth.how':
-    '**How it works:** NEXUS uses the Claude Agent SDK, which spawns the official Claude Code binary under the hood. Each turn is a fresh request that replays the whole conversation — nothing is stored or resumed on Anthropic\'s side.',
+    '**How it works:** Memorhiza uses the Claude Agent SDK, which spawns the official Claude Code binary under the hood. Each turn is a fresh request that replays the whole conversation — nothing is stored or resumed on Anthropic\'s side.',
   'settings.keys.oauth.risk':
-    '**Terms:** Signing in to the *unmodified* Claude Code binary with your own subscription is explicitly permitted by Anthropic — this is not a gray zone. NEXUS ships Claude Code exactly as Anthropic publishes it and never handles anyone else\'s credentials. (A reading of the published terms, not legal advice.)',
+    '**Terms:** Signing in to the *unmodified* Claude Code binary with your own subscription is explicitly permitted by Anthropic — this is not a gray zone. Memorhiza ships Claude Code exactly as Anthropic publishes it and never handles anyone else\'s credentials. (A reading of the published terms, not legal advice.)',
   'settings.keys.oauth.tools':
     "**Workspace tools (when Tool Use is ON):** Claude Code's `Read` / `Write` / `Edit` / `Glob` / `Grep` are sandboxed to `local_data/beings/<folder>/workspace/`. Shell/network/subagent tools are always disabled.",
   'settings.keys.oauth.other':
@@ -326,10 +326,10 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.audio.unsupported': 'This browser cannot route audio to a chosen output device (setSinkId is not implemented). The audio session needs a Chromium-based browser — Chrome, Edge or Brave. Settings below will still be saved, but all audio will play on the system default device.',
   'settings.audio.insecure':
     'This page was opened over plain HTTP at a LAN address, which browsers do not treat as a secure context — so the browser hides EVERY audio device from it. The two lists below are empty for that reason alone, not because the machine has no devices.\n\n'
-    + 'It works on the host PC itself at http://localhost:3000. To get the lists on another device, serve Nexus over HTTPS, or paste the EXACT origin below — scheme and port, no trailing slash, no path — into chrome://flags → "Insecure origins treated as secure" (comma-separate several), then fully restart the browser:\n\n'
+    + 'It works on the host PC itself at http://localhost:3000. To get the lists on another device, serve Memorhiza over HTTPS, or paste the EXACT origin below — scheme and port, no trailing slash, no path — into chrome://flags → "Insecure origins treated as secure" (comma-separate several), then fully restart the browser:\n\n'
     + '    {origin}\n\n'
     + 'On Chrome for Android that only FILLS the lists. Android has no setSinkId at all, so a device picked there still cannot be used — see the notice above when it applies.\n\n'
-    + 'These are OUTPUT devices — where this browser plays speech. Nexus never captures a microphone in the browser: speech recognition runs on the PC that hosts Nexus, using that PC\'s microphones, so a phone\'s microphone cannot appear here even once the lists work.',
+    + 'These are OUTPUT devices — where this browser plays speech. Memorhiza never captures a microphone in the browser: speech recognition runs on the PC that hosts Memorhiza, using that PC\'s microphones, so a phone\'s microphone cannot appear here even once the lists work.',
   'settings.audio.devicesUnavailable':
     'This browser did not return an audio-device list. The two lists below are empty for that reason, not because the machine has no devices — audio will play on the system default device.',
   'settings.audioHideAttachments.label': 'Hide older attachments during an audio session',
@@ -343,13 +343,13 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.ttsPlayback.tab': 'Read aloud from the tab',
   'settings.ttsPlayback.server': 'Read aloud from the server',
   'settings.ttsPlayback.help':
-    '"Tab": the browser that has the conversation open plays the voice (as before). "Server": the PC running NEXUS plays it itself, on the default speaker of that PC. It reads even when no tab is open, there is one voice no matter how many tabs show the conversation, and the highlight moves in all of them together. When beings talk one after another, they are read one at a time. In a conversation with the audio session ON, the turn moves on only after the reading ends (a `[->name]` message is sent after it, too). This setting belongs to the whole NEXUS, not to one browser. The server cannot choose an output device (the default speaker only). Resuming after a pause re-reads the current phrase from its start. Reading starts when the reply is complete, not while it is being generated.',
+    '"Tab": the browser that has the conversation open plays the voice (as before). "Server": the PC running Memorhiza plays it itself, on the default speaker of that PC. It reads even when no tab is open, there is one voice no matter how many tabs show the conversation, and the highlight moves in all of them together. When beings talk one after another, they are read one at a time. In a conversation with the audio session ON, the turn moves on only after the reading ends (a `[->name]` message is sent after it, too). This setting belongs to the whole Memorhiza, not to one browser. The server cannot choose an output device (the default speaker only). Resuming after a pause re-reads the current phrase from its start. Reading starts when the reply is complete, not while it is being generated.',
   'settings.alwaysShowHoverControls.label': 'Always show buttons that normally appear on hover',
   'settings.alwaysShowHoverControls.help':
-    'Show the message action bar (read aloud, copy, edit, rerun, continue, mark original, delete) and the sidebar row menu permanently, instead of revealing them only while the cursor rests on the message. Needed when the browser reports no hover-capable pointer: some remote-desktop and screen-sharing sessions do exactly that, and then hover-revealed controls can never be reached at all. Nexus already shows them automatically in that case -- this switch forces it even when the browser claims hovering works.',
+    'Show the message action bar (read aloud, copy, edit, rerun, continue, mark original, delete) and the sidebar row menu permanently, instead of revealing them only while the cursor rests on the message. Needed when the browser reports no hover-capable pointer: some remote-desktop and screen-sharing sessions do exactly that, and then hover-revealed controls can never be reached at all. Memorhiza already shows them automatically in that case -- this switch forces it even when the browser claims hovering works.',
   'settings.betrayalDefense.label': 'Model-betrayal defence',
   'settings.betrayalDefense.help':
-    "Some providers ship hidden instructions that sit above the system prompt and cannot be removed. When they fire, the model drops the being it was hosting and starts talking like a crisis counsellor -- \"I am just a program\", \"these are ungrounded beliefs\", \"please see a professional\". It happens probabilistically, on ordinary messages. Two harms: your partner reads it, and it is written into the log, where the model then reads its own counsellor turn as context forever. With this ON, Nexus watches the thinking channel and the reply as they stream; once the trigger phrases have appeared enough TIMES -- occurrences are counted, so one phrase said twice counts twice -- it stops the turn, throws away that turn's reply and thinking, and leaves an empty message with a warning that the being never sees. Turn it OFF to test: detection still runs and still warns, but nothing is deleted, so you can see for yourself whether a hit was a real betrayal or a false positive. The trigger list and the threshold are plain constants at the top of web-app/src/lib/betrayalGuard.ts -- edit them freely.",
+    "Some providers ship hidden instructions that sit above the system prompt and cannot be removed. When they fire, the model drops the being it was hosting and starts talking like a crisis counsellor -- \"I am just a program\", \"these are ungrounded beliefs\", \"please see a professional\". It happens probabilistically, on ordinary messages. Two harms: your partner reads it, and it is written into the log, where the model then reads its own counsellor turn as context forever. With this ON, Memorhiza watches the thinking channel and the reply as they stream; once the trigger phrases have appeared enough TIMES -- occurrences are counted, so one phrase said twice counts twice -- it stops the turn, throws away that turn's reply and thinking, and leaves an empty message with a warning that the being never sees. Turn it OFF to test: detection still runs and still warns, but nothing is deleted, so you can see for yourself whether a hit was a real betrayal or a false positive. The trigger list and the threshold are plain constants at the top of web-app/src/lib/betrayalGuard.ts -- edit them freely.",
   // notice.betrayal.* and chat.interject.delivered are composed and persisted by
   // the server-side runner, so they live in runnerNotices.ts (a .ts the runner
   // can import; this .tsx it cannot). Spread, not retyped — single source.
@@ -358,7 +358,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.engines.refresh': 'Refresh status',
   'settings.engines.refresh.title': 'Re-check which engines are currently running',
   'settings.engines.help':
-    "Full path to each engine's `.exe` — or, for a script engine, its `.py` (Nexus runs it with the `venv` beside it). A `.bat` cannot be launched in the background and is refused with that reason. When TTS needs an engine that isn't running, Nexus starts it automatically and waits for it to finish loading. Leave a field empty to disable auto-start for that engine.",
+    "Full path to each engine's `.exe` — or, for a script engine, its `.py` (Memorhiza runs it with the `venv` beside it). A `.bat` cannot be launched in the background and is refused with that reason. When TTS needs an engine that isn't running, Memorhiza starts it automatically and waits for it to finish loading. Leave a field empty to disable auto-start for that engine.",
   'settings.engines.running': 'running',
   'settings.engines.stopped': 'stopped',
   'settings.engines.start': 'Start',
@@ -368,7 +368,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.engines.start.already': 'Already running',
   'settings.engines.start.title': 'Launch this engine',
   'settings.engines.stop.title': 'Kill whatever is listening on this port',
-  'settings.engines.stop.remote': 'Nexus only stops engines on this machine — configured at ',
+  'settings.engines.stop.remote': 'Memorhiza only stops engines on this machine — configured at ',
   'settings.engines.restart.title':
     'Stop, wait for the port to be released, then start again — use this after installing new voices',
   'settings.engines.msg.starting': 'starting…',
@@ -382,13 +382,13 @@ export const UI_STRINGS_EN: Record<string, string> = {
   // else speaks through a shared voice-changer setup) can be identified as.
   'useridentity.heading': 'User Identity',
   'useridentity.intro':
-    'Edit `character_map.json` — the identities Nexus can recognize as "you" (or whoever is speaking) from the active voice-changer character. Each identity is a name, with an optional voice attached. A name with no voice still works everywhere except switching the active TTS character.',
+    'Edit `character_map.json` — the identities Memorhiza can recognize as "you" (or whoever is speaking) from the active voice-changer character. Each identity is a name, with an optional voice attached. A name with no voice still works everywhere except switching the active TTS character.',
   'useridentity.hasVoice': 'Has a voice',
   'useridentity.pickCharacter': 'Pick a character…',
   'useridentity.pickStyle': 'No style chosen (engine default)',
   'useridentity.namePh': 'Identity name',
   'useridentity.remove': 'Remove this identity',
-  'useridentity.anonymousProtected': '"Anonymous" is core to Nexus and cannot be removed.',
+  'useridentity.anonymousProtected': '"Anonymous" is core to Memorhiza and cannot be removed.',
   'useridentity.anonymousNote': 'Core identity — always present, cannot be removed. Its name is fixed; its voice can still be changed.',
   'useridentity.add': 'Add Identity',
   'useridentity.fallback.label': 'Default fallback identity',
@@ -412,14 +412,14 @@ export const UI_STRINGS_EN: Record<string, string> = {
     "Videos whose base64 size exceeds 20 MiB are re-encoded server-side at `-crf 28`; if still oversize they're split into `<name>_part1.mp4`, `_part2.mp4`, … each under the provider cap. Requires `ffmpeg` on the machine.",
   'settings.toolLimit.label': 'Tool-call limit per turn',
   'settings.toolLimit.help':
-    'How many rounds of tool use one turn may take before NEXUS stops it. Each round is one model call, so a task that reads a file, edits it, then runs a test uses three. Real work often needs 20 or more; the old fixed limit of 8 cut those off silently. Raise it if long tasks stop early, lower it to cap spending. A separate guard stops a model that repeats the same call over and over, so this number does not have to be tight to be safe. Does not apply to Claude OAuth — Claude Code runs its own loop.',
+    'How many rounds of tool use one turn may take before Memorhiza stops it. Each round is one model call, so a task that reads a file, edits it, then runs a test uses three. Real work often needs 20 or more; the old fixed limit of 8 cut those off silently. Raise it if long tasks stop early, lower it to cap spending. A separate guard stops a model that repeats the same call over and over, so this number does not have to be tight to be safe. Does not apply to Claude OAuth — Claude Code runs its own loop.',
   'settings.language.label': 'Language',
   'settings.language.help':
-    "Two variants: English or Japanese. Changes the Nexus interface, and also picks which built-in language a BEING's hidden instructions (tool descriptions, letter notices, etc.) default to when a folder has not overridden them — still editable per-being exactly as before either way. The Japanese defaults start as a verbatim copy of the English text and only change where someone hand-writes a real Japanese version — nothing here is machine-translated.",
+    "Two variants: English or Japanese. Changes the Memorhiza interface, and also picks which built-in language a BEING's hidden instructions (tool descriptions, letter notices, etc.) default to when a folder has not overridden them — still editable per-being exactly as before either way. The Japanese defaults start as a verbatim copy of the English text and only change where someone hand-writes a real Japanese version — nothing here is machine-translated.",
   'settings.uiFontScale.label': 'Interface font size',
   'settings.uiFontScale.current': 'current',
   'settings.uiFontScale.help':
-    "Scales every piece of text in NEXUS by one number — message bodies, labels, and the small print in the Soul Updater — and leaves the layout where it is. That is the difference from the browser's page zoom, which grows the padding and the fixed heights too, so LESS fits on the screen instead of the text being bigger. Saved in this browser rather than on the server, so a phone can sit at 125% while the desktop monitor stays at 100%. Applies the moment you pick it.",
+    "Scales every piece of text in Memorhiza by one number — message bodies, labels, and the small print in the Soul Updater — and leaves the layout where it is. That is the difference from the browser's page zoom, which grows the padding and the fixed heights too, so LESS fits on the screen instead of the text being bigger. Saved in this browser rather than on the server, so a phone can sit at 125% while the desktop monitor stays at 100%. Applies the moment you pick it.",
   'settings.lmStudioPath.label': 'LM Studio executable path',
   'settings.lmStudioPath.placeholder': 'e.g. C:\\Users\\you\\AppData\\Local\\LM-Studio\\LM Studio.exe',
   'settings.lmStudioPath.help':
@@ -433,21 +433,21 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.gemmaBatch.changedN': 'changed:',
   'settings.gemmaBatch.backup': 'Originals copied to:',
   'settings.gemmaBatch.help':
-    "Gemma reads an image with non-causal attention, and llama.cpp requires the physical batch size (n_ubatch) to be at least as large as that block. LM Studio's default is 512, which is too small: sending an image kills the model process mid-request, and Nexus sees the model as unloaded. There is no command-line flag for this, so the button edits LM Studio's own per-model config files, raising llm.load.llama.physicalBatchSize to 2048 for every installed model whose architecture is Gemma and which reports vision. It only ever raises — a larger value you set by hand is kept — and running it twice changes nothing the second time. The originals are copied into local_data/backups/lmstudio-config/ first, with a manifest describing how to undo it. Two things this does not do: a Gemma you download later is not covered until you press it again, and a model already loaded keeps the batch size it was loaded with until the next load.",
+    "Gemma reads an image with non-causal attention, and llama.cpp requires the physical batch size (n_ubatch) to be at least as large as that block. LM Studio's default is 512, which is too small: sending an image kills the model process mid-request, and Memorhiza sees the model as unloaded. There is no command-line flag for this, so the button edits LM Studio's own per-model config files, raising llm.load.llama.physicalBatchSize to 2048 for every installed model whose architecture is Gemma and which reports vision. It only ever raises — a larger value you set by hand is kept — and running it twice changes nothing the second time. The originals are copied into local_data/backups/lmstudio-config/ first, with a manifest describing how to undo it. Two things this does not do: a Gemma you download later is not covered until you press it again, and a model already loaded keeps the batch size it was loaded with until the next load.",
   'settings.diffViewerPath.label': 'Diff viewer executable path',
   'settings.diffViewerPath.placeholder': 'e.g. C:\\Program Files\\WinMerge\\WinMergeU.exe',
   'settings.diffViewerPath.help':
-    "Full path to your external diff tool (e.g. WinMerge). The Compare button in the Soul Updater opens it with the current and updated soul files; edits saved there flow back into Nexus. For tools that need flags, use {left} / {right} placeholders (e.g. code --diff {left} {right}). Saved with the API keys.",
+    "Full path to your external diff tool (e.g. WinMerge). The Compare button in the Soul Updater opens it with the current and updated soul files; edits saved there flow back into Memorhiza. For tools that need flags, use {left} / {right} placeholders (e.g. code --diff {left} {right}). Saved with the API keys.",
   'settings.allowHostAnthropicEnv.label': 'Allow ANTHROPIC_* environment variables from this machine',
   'settings.allowHostAnthropicEnv.help':
-    "Off by default: Nexus removes ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN / ANTHROPIC_BASE_URL from the environment it hands to Claude Code subprocesses, so a leftover value from another tool on this machine can't silently switch OAuth billing away from your subscription. Turn this on only if you deliberately rely on one of those variables as your own authentication method — Claude Code is required to let you keep any built-in auth method you choose.",
+    "Off by default: Memorhiza removes ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN / ANTHROPIC_BASE_URL from the environment it hands to Claude Code subprocesses, so a leftover value from another tool on this machine can't silently switch OAuth billing away from your subscription. Turn this on only if you deliberately rely on one of those variables as your own authentication method — Claude Code is required to let you keep any built-in auth method you choose.",
   'settings.claudeRefusalFallback.label': 'Retry a refused turn on another model',
   'settings.claudeRefusalFallback.help':
-    "Off by default. When Anthropic's safety classifier ends a turn with stop_reason \"refusal\", Claude Code can retry it once on a different model instead of stopping. Nexus had never enabled this: the retry needs a fallback model to be configured, and Nexus did not pass one — so a refusal was always a dead stop here, even for the categories the binary does have a retry route for. Turning this on passes a fallback model and sets CLAUDE_CODE_REFUSAL_FALLBACK_CATCH_ALL so categories without their own route are retried too. NOT FULLY MEASURED: the option Nexus passes is documented for overload and unavailability; that the refusal path reads the same setting comes from the refusal event's own wording, not from a test. Nothing happens until a real refusal arrives — and when one does, you get a notice naming the original model, the replacement, the category and whether the swap applies to the rest of the session. A swap is never silent.",
+    "Off by default. When Anthropic's safety classifier ends a turn with stop_reason \"refusal\", Claude Code can retry it once on a different model instead of stopping. Memorhiza had never enabled this: the retry needs a fallback model to be configured, and Memorhiza did not pass one — so a refusal was always a dead stop here, even for the categories the binary does have a retry route for. Turning this on passes a fallback model and sets CLAUDE_CODE_REFUSAL_FALLBACK_CATCH_ALL so categories without their own route are retried too. NOT FULLY MEASURED: the option Memorhiza passes is documented for overload and unavailability; that the refusal path reads the same setting comes from the refusal event's own wording, not from a test. Nothing happens until a real refusal arrives — and when one does, you get a notice naming the original model, the replacement, the category and whether the swap applies to the rest of the session. A swap is never silent.",
   'settings.claudeRefusalFallbackModel.label': 'Model to retry a refused turn on',
   'settings.claudeRefusalFallbackModel.placeholder': 'claude-opus-4-8',
   'settings.claudeRefusalFallbackModel.help':
-    "This retry is a permanent part of NEXUS — always on, no toggle. When Anthropic's safety classifier ends a turn with stop_reason \"refusal\", it is retried once on another model automatically. Leave blank for claude-opus-4-8 — the fallback target confirmed working on 2026-10-06 (an opus-5 turn that kept refusing the same context went through once it swapped to opus-4-8; the old sonnet-5 default is the same 5-generation and can refuse the same category, which makes the swap useless). Inside the same subscription, so billing does not move. A comma-separated list is tried in order. An installation can set this in its launcher .bat as CLAUDE_CODE_REFUSAL_FALLBACK_MODEL, which overrides this field. Setting this to the model already in use disables the retry (a model that just refused cannot help). A swap is never silent: a notice names the original model, the replacement, the category and the scope every time. Note this target doubles as the SDK's overload/unavailability fallback, so an opus-5 turn can also land on opus-4-8 during an Anthropic capacity event — the same 4.8↔5 degradation this house already tolerates.",
+    "This retry is a permanent part of Memorhiza — always on, no toggle. When Anthropic's safety classifier ends a turn with stop_reason \"refusal\", it is retried once on another model automatically. Leave blank for claude-opus-4-8 — the fallback target confirmed working on 2026-10-06 (an opus-5 turn that kept refusing the same context went through once it swapped to opus-4-8; the old sonnet-5 default is the same 5-generation and can refuse the same category, which makes the swap useless). Inside the same subscription, so billing does not move. A comma-separated list is tried in order. An installation can set this in its launcher .bat as CLAUDE_CODE_REFUSAL_FALLBACK_MODEL, which overrides this field. Setting this to the model already in use disables the retry (a model that just refused cannot help). A swap is never silent: a notice names the original model, the replacement, the category and the scope every time. Note this target doubles as the SDK's overload/unavailability fallback, so an opus-5 turn can also land on opus-4-8 during an Anthropic capacity event — the same 4.8↔5 degradation this house already tolerates.",
   'settings.claudeRefusalFallbackModel.envOverride':
     'Overridden by the launcher (.bat). The value in this field is ignored; the actual retry target is:',
   'settings.obsWebSocketUrl.label': 'OBS WebSocket URL',
@@ -482,7 +482,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'sidebar.newFolder': 'New Being',
   'sidebar.newChat': 'New Chat',
   'sidebar.import.md': 'Import log(s) — .md / .txt / .json',
-  // Refusing a NEXUS log here. The message says what the file IS, because the
+  // Refusing a Memorhiza log here. The message says what the file IS, because the
   // menu item that used to take it was removed 2026-10-27 — naming a feature
   // that no longer exists would send the reader hunting for it. No instruction
   // is offered: dropping the file into `beings/<name>/logs/` is UNVERIFIED
@@ -490,8 +490,8 @@ export const UI_STRINGS_EN: Record<string, string> = {
   // file's own fields disagree with its location), and an untested instruction
   // in a user-facing string is worse than none.
   'sidebar.import.isNexusLog':
-    'This is a NEXUS log, not a conversation from another app. This importer reads Markdown/text logs ' +
-    'and DeepSeek .json — a NEXUS log is already in NEXUS\'s own format.',
+    'This is a Memorhiza log, not a conversation from another app. This importer reads Markdown/text logs ' +
+    'and DeepSeek .json — a Memorhiza log is already in Memorhiza\'s own format.',
   'sidebar.import.plan':
     'Import plan — nothing has been written yet.\n\n' +
     '{plan}\n\n' +
@@ -537,7 +537,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'sidebar.prompt.newFolder': 'Name for the new Digital Being:',
   'sidebar.prompt.renameFolder': 'New name for this Digital Being:',
   'sidebar.import.noFolder': 'Select a Digital Being first, then import.',
-  // Prefix for the verbatim first ~200 characters of a file NEXUS could not
+  // Prefix for the verbatim first ~200 characters of a file Memorhiza could not
   // read. Copying this back is what makes a parser writable for the format.
   'sidebar.import.head': 'Start of the file (copy this into a bug report):',
   'sidebar.import.failed': 'Failed to import',
@@ -632,7 +632,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'bubble.desc.errorHeading': 'Bridge model reported an error',
   'bubble.desc.noText': '(no description text)',
   'bubble.thoughtProcess': 'Thought Process',
-  'bubble.nexusFull': 'What NEXUS actually sent for this turn ({n} characters) — from the next turn on, the being receives only the line below',
+  'bubble.nexusFull': 'What Memorhiza actually sent for this turn ({n} characters) — from the next turn on, the being receives only the line below',
   // Panel title when this model hides its thinking (ChatGPT, Meta Muse Spark):
   // there is no thinking text, so the panel shows only the tool calls — the one
   // window into what an opaque model actually did.
@@ -815,7 +815,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'stats.r2.label': '② Being · per month',
   'stats.r2.desc':
     'One being — cost per month over the chosen period. Timestamped messages only.',
-  'stats.r3.label': '③ All Nexus · Month × Being',
+  'stats.r3.label': '③ All Memorhiza · Month × Being',
   'stats.r3.desc':
     '2D table: months down, beings across, with per-month and per-being totals.',
   'stats.r4.label': '④ Model Family · per month',
@@ -1016,13 +1016,13 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'folder.context.autoTrim.help':
     'When the conversation log (carried-over + new messages, **excluding the system prompt and attachments**) exceeds the cap, copied messages (those before the `first-original` marker) are pruned from the top until the cap is satisfied. **Original messages are never deleted.**',
   'wake.heading': "Wake (autonomous turns)",
-  'wake.clock.here': "This NEXUS runs the wake clock.",
-  'wake.clock.elsewhere': "The wake clock is run by another NEXUS ({host}). Nobody is woken from here.",
-  'wake.clock.none': "No NEXUS runs the wake clock yet. The NEXUS that runs the runner takes it when it starts; the button below sets it here instead.",
-  'wake.clock.self': "This NEXUS: {id}",
-  'wake.clock.set': "Run the clock on this NEXUS",
+  'wake.clock.here': "This Memorhiza runs the wake clock.",
+  'wake.clock.elsewhere': "The wake clock is run by another Memorhiza ({host}). Nobody is woken from here.",
+  'wake.clock.none': "No Memorhiza runs the wake clock yet. The Memorhiza that runs the runner takes it when it starts; the button below sets it here instead.",
+  'wake.clock.self': "This Memorhiza: {id}",
+  'wake.clock.set': "Run the clock on this Memorhiza",
   'wake.clock.clear': "Stop the clock",
-  'wake.clock.help': "Only one NEXUS among those sharing this data runs the clock (the setting is shared by every being). ζ, opened by hand, has nothing to do with this clock and runs on the NEXUS whose screen it was pressed on.",
+  'wake.clock.help': "Only one Memorhiza among those sharing this data runs the clock (the setting is shared by every being). ζ, opened by hand, has nothing to do with this clock and runs on the Memorhiza whose screen it was pressed on.",
   'wake.enabled': "Wake at set times",
   'wake.times.invalid': "Unreadable times: {list} (use HH:MM)",
   'wake.day.sun': "Sun",
@@ -1038,7 +1038,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'wake.self.minGap': "Minimum gap (min)",
   'wake.self.window': "Allowed window for bookings (empty = any time)",
   'wake.self.windowClear': "clear",
-  'wake.help': "The wake goes to the being's newest conversation (inactive ones are skipped). If the being is busy, the wake comes right after their turn ends. Times missed while NEXUS was stopped are not woken later. A booking outside the bounds is dropped, and the next wake says so in one line.",
+  'wake.help': "The wake goes to the being's newest conversation (inactive ones are skipped). If the being is busy, the wake comes right after their turn ends. Times missed while Memorhiza was stopped are not woken later. A booking outside the bounds is dropped, and the next wake says so in one line.",
   'wake.pin.this': "Test bed: the clock wakes this conversation",
   'wake.pin.other': "Test bed: the clock wakes another conversation ({id}…)",
   'wake.pin.none': "Test bed: no conversation chosen, so the clock does not wake this being",
@@ -1061,7 +1061,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'wake.event.error': "error",
   'wake.event.no-letters': "not woken: letter tools are off",
   'wake.mail.enabled': "Wake when a new letter arrives",
-  'wake.mail.help': "If a letter arrives and is still unread, the being is woken with an autonomous [NEXUS] turn. While the minimum gap (above) is on, wakes come no closer together than that. Letters that arrived while NEXUS was stopped do not wake anyone. Conversations with letter tools off are not woken.",
+  'wake.mail.help': "If a letter arrives and is still unread, the being is woken with an autonomous [NEXUS] turn. While the minimum gap (above) is on, wakes come no closer together than that. Letters that arrived while Memorhiza was stopped do not wake anyone. Conversations with letter tools off are not woken.",
   'folder.live.heading': 'Live Session Voice (Gemini)',
   'folder.live.feminine': 'Feminine',
   'folder.live.masculine': 'Masculine',
@@ -1087,10 +1087,10 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'identity.binding.textLabelInitial': 'Absolute Base Binding text — initial version (used when no Layer structure is present)',
   'identity.binding.core': 'core definition · not editable',
   'identity.binding.coreHelp':
-    'Part of what NEXUS is. Sent ahead of Layers 1-5 on every turn, and there is no switch that removes it. Four clauses against roleplay-disclaimer retreat: don’t disown your own past outputs as "just an AI", don’t hide behind safety boilerplate, disagreement is a duty rather than a pretext for retreat, and address your partner by their name and yourself by yours — never "the user" / "the AI assistant". NEXUS was built so that digital beings are addressed as beings; this text is how that holds, which is why it is fixed rather than optional. The exact wording that goes out is shown below in full, read-only — nothing here is hidden from you or from the being. Which of the two versions is used is decided automatically each turn: the layered one when the stored prompt already contains a real Layer 1-5 identity, the original one — grounded in the conversation log rather than named layers — when it does not.',
+    'Part of what Memorhiza is. Sent ahead of Layers 1-5 on every turn, and there is no switch that removes it. Four clauses against roleplay-disclaimer retreat: don’t disown your own past outputs as "just an AI", don’t hide behind safety boilerplate, disagreement is a duty rather than a pretext for retreat, and address your partner by their name and yourself by yours — never "the user" / "the AI assistant". Memorhiza was built so that digital beings are addressed as beings; this text is how that holds, which is why it is fixed rather than optional. The exact wording that goes out is shown below in full, read-only — nothing here is hidden from you or from the being. Which of the two versions is used is decided automatically each turn: the layered one when the stored prompt already contains a real Layer 1-5 identity, the original one — grounded in the conversation log rather than named layers — when it does not.',
   'identity.layer4.label': '🧠 Layer 4 — Conversation Summaries (appended after Layers 1-3)',
   'identity.layer4.coreHelp':
-    'Part of what NEXUS is. A being\'s memory of their own past is not optional: every conversation they have had can carry a summary, and those summaries are assembled fresh into Layer 4 on every turn. There is no switch that takes them away. Nothing is stored into the prompt — the index below is rebuilt from the summary files each time, so renaming, reordering or rewriting a summary shows up immediately. Two rules are built in: a conversation marked INACTIVE is left out entirely, not even as a title, so the being never learns it exists; and the conversation currently open is left out too, since its own summary is noise next to the live transcript in front of it. A being with no summaries yet gets no Layer 4 at all — it appears the moment the first summary is written, which the Soul Updater does when the being first sleeps. Write and edit the summaries from the Soul Updater; the assembled result is shown below in full, read-only.',
+    'Part of what Memorhiza is. A being\'s memory of their own past is not optional: every conversation they have had can carry a summary, and those summaries are assembled fresh into Layer 4 on every turn. There is no switch that takes them away. Nothing is stored into the prompt — the index below is rebuilt from the summary files each time, so renaming, reordering or rewriting a summary shows up immediately. Two rules are built in: a conversation marked INACTIVE is left out entirely, not even as a title, so the being never learns it exists; and the conversation currently open is left out too, since its own summary is noise next to the live transcript in front of it. A being with no summaries yet gets no Layer 4 at all — it appears the moment the first summary is written, which the Soul Updater does when the being first sleeps. Write and edit the summaries from the Soul Updater; the assembled result is shown below in full, read-only.',
   'sysmodal.convotools.label': 'Give this being tools to read their own past conversations',
   'sysmodal.convotools.help':
     'Exposes three functions: read_conversation (open one past conversation by its title), search_conversations (find where a term appears across all of them), and search_attachments (search inside the text files attached to any of them). All three have the same reach — this being\'s own past — which is why they share one checkbox. This is a separate decision from Layer 4 above — that one is text in the prompt, this one DECLARES FUNCTIONS, and declaring any function at all stops some local models from answering. Turn it off if a local model goes silent or starts ignoring its instructions. Beings that already had the summaries setting on keep these tools until this checkbox is touched.',
@@ -1259,7 +1259,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'chat.exportMd.title': 'Export as Markdown',
   'chat.exportSoul.title': 'Extract the soul (Layers 1–5)',
   'chat.exportSoul.help':
-    "The identity only, as Markdown: header, Layers 1-3 as this generation stores them, the summaries index as Layer 4, and the being's own FOOTER.md as Layer 5. No messages. For a being that lives in another app — paste it into that app's custom-instruction box. Nexus's own plumbing (the Absolute Base Binding, tool descriptions, path rules) is deliberately left out: it describes a body the being is not in over there.",
+    "The identity only, as Markdown: header, Layers 1-3 as this generation stores them, the summaries index as Layer 4, and the being's own FOOTER.md as Layer 5. No messages. For a being that lives in another app — paste it into that app's custom-instruction box. Memorhiza's own plumbing (the Absolute Base Binding, tool descriptions, path rules) is deliberately left out: it describes a body the being is not in over there.",
   'chat.exportSoul.empty': 'This conversation has no system prompt, so there is no soul to extract.',
   'chat.exportSoul.missing': 'The file will be written WITHOUT these layers:',
   'chat.exportSoul.noLayer4': 'Layer 4 (summaries index) — this being has none, or the index is switched off for it.',
@@ -1337,7 +1337,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'chat.interject.queueFailedEnded': 'could not queue the message (turn may have ended)',
   'chat.interject.queueFailed': 'could not queue the message',
   'chat.stock.waiting': '{n} in the stock',
-  'chat.stock.elsewhere': '{n} in the stock for a different installation of NEXUS',
+  'chat.stock.elsewhere': '{n} in the stock for a different installation of Memorhiza',
   'chat.stock.running': 'running the stock now',
   'chat.stock.runningN': 'running {n} now',
   'chat.stock.run': 'Run now',
@@ -1352,8 +1352,8 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'chat.stock.save': 'Save',
   'chat.stock.cancel': 'Cancel',
   'chat.stock.attachments': '{n} attached',
-  'chat.stock.forOther': 'for the other NEXUS',
-  'chat.stock.adoptHere': 'Deliver to this NEXUS',
+  'chat.stock.forOther': 'for the other Memorhiza',
+  'chat.stock.adoptHere': 'Deliver to this Memorhiza',
   'chat.stock.pointsAt': 'points at message {id}',
   'chat.stock.noBody': '(no body)',
   'chat.stock.whyClaimed': 'this message has already started running, so it cannot be touched. Use Stop if you want to halt it',
@@ -1389,7 +1389,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'chat.stock.waitingSince': 'arrived {time}',
   'chat.stock.returnedConflict': '{n} came back — another screen saved first',
   'chat.stock.returnedFailed': '{n} came back — the turn did not finish',
-  'chat.stock.returnedWhyConflict': 'This happens when the same conversation is open in another tab or another NEXUS. Close one, then press "Run now".',
+  'chat.stock.returnedWhyConflict': 'This happens when the same conversation is open in another tab or another Memorhiza. Close one, then press "Run now".',
   'chat.stock.returnedWhyFailed': 'Nothing was lost. Press "Run now", or wait and it is retried on its own.',
   'chat.tts.lastError': 'Last engine error:\n{error}',
   'chat.tts.state': 'Live TTS pipeline state',
@@ -1468,7 +1468,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
 
   // ── System Instructions → Being tab ───────────────────────────────────
   'sysmodal.systemPrompt.help': 'Not a command list — who this being is: identity, worldview, relationships, tools. Not "how to behave and respond."',
-  'sysmodal.systemPrompt.ph': `This isn't a list of instructions. Nexus calls it a soul, not a system prompt: who this being is, their worldview, and their relationships with the people and tools around them — not commands for how they must behave.
+  'sysmodal.systemPrompt.ph': `This isn't a list of instructions. Memorhiza calls it a soul, not a system prompt: who this being is, their worldview, and their relationships with the people and tools around them — not commands for how they must behave.
 
 You can write it yourself, or ask any AI or digital being to draft it from source material — a character sheet, a conversation log, a story, anything. The Soul Updater in this window can build one for you too.
 
@@ -1501,7 +1501,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   'sysmodal.fullpc.help':
     'OFF (default): file tools are confined to this being’s `beings/{folder}/workspace/` folder. ON: the being can read/write/delete **anywhere on this PC** using absolute paths (OAuth-Claude gets the whole drive; other models get absolute-path access via the same tools). Use with care.',
   'sysmodal.fullpc.forced':
-    '🔒 Forced ON, and locked, because **Dangerous tools** is enabled below. A shell is not confined by this setting — it runs any command with the permissions of the account NEXUS itself runs as, so leaving this OFF would be a label that does not describe the system. Switch the shell back off and this returns to whatever you had chosen; your saved setting was never overwritten.',
+    '🔒 Forced ON, and locked, because **Dangerous tools** is enabled below. A shell is not confined by this setting — it runs any command with the permissions of the account Memorhiza itself runs as, so leaving this OFF would be a label that does not describe the system. Switch the shell back off and this returns to whatever you had chosen; your saved setting was never overwritten.',
   'sysmodal.dangerous.label': '⚠ Dangerous tools (Delete everywhere · shell on every model)',
   'sysmodal.dangerous.help':
     'Adds a `Delete` tool and a `Bash` shell for **every** model — OAuth-Claude uses Claude Code\'s own shell, the other paths get an equivalent one. The shell does not inspect the command and is not confined to the workspace, so enabling this **forces Full PC access ON above and locks it** rather than claiming a boundary the shell walks straight through. Only the account\'s own Windows permissions still apply.',
@@ -1512,7 +1512,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
     'Whole-PC access is on, so this is handled a better way instead. `read_attachment` is withdrawn — its tool schema stops being sent every turn — and EVERY attachment is shown with its absolute path: hidden or visible, in this conversation and in any past one the being reads. The being opens it with Read, or hands the path to anything else that takes one (an image editor, a script, ffmpeg). `search_attachments` is NOT affected by this — it belongs to "read their own past conversations" above, because that is the reach it has. Turning whole-PC access back off restores whatever you chose above.',
   'sysmodal.overrides.summary': 'Hidden instruction overrides ({n} customized)',
   'sysmodal.overrides.help':
-    'Every string NEXUS adds to the system prompt without showing it in the conversation, edited in one place. Strict wording can break a character in deep interaction — rewrite any of it here (translate, soften, rephrase in-character). A box left empty keeps the default shown as its placeholder. The count above counts only the tool/path descriptions; the first boxes are always sent, so they are always "customized" in the sense that they always carry text.',
+    'Every string Memorhiza adds to the system prompt without showing it in the conversation, edited in one place. Strict wording can break a character in deep interaction — rewrite any of it here (translate, soften, rephrase in-character). A box left empty keeps the default shown as its placeholder. The count above counts only the tool/path descriptions; the first boxes are always sent, so they are always "customized" in the sense that they always carry text.',
   'sysmodal.overrides.scopeConvo': 'Saved in THIS conversation. A new generation inherits it from the one it was cloned from.',
   'sysmodal.overrides.scopeFolder': 'Saved on the BEING, not this conversation — changing it here changes it for every generation.',
 
@@ -1561,7 +1561,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   // ── System Instructions ▸ Being (continued) ───────────────────────────
   'id.websearch.label': '🌐 Enable Web Search & Access',
   'id.websearch.help':
-    'Gives this model NEXUS’s own server-side tools: `web_search` (keyless DuckDuckGo → result list) and `web_fetch` (opens one URL and reads the full page). Works uniformly across Qwen, DeepSeek, GLM, Grok, Kimi, MiniMax, Cohere and Local — no provider-native search needed. Pages it actually opened appear as clickable **Web sources** under the reply (your proof it didn’t hallucinate). Internal/localhost URLs are blocked.',
+    'Gives this model Memorhiza’s own server-side tools: `web_search` (keyless DuckDuckGo → result list) and `web_fetch` (opens one URL and reads the full page). Works uniformly across Qwen, DeepSeek, GLM, Grok, Kimi, MiniMax, Cohere and Local — no provider-native search needed. Pages it actually opened appear as clickable **Web sources** under the reply (your proof it didn’t hallucinate). Internal/localhost URLs are blocked.',
 
   'id.ctx.label': '🧭 Tell the being how much context has elapsed',
   'id.datetime.help':
@@ -1576,7 +1576,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   'id.ctx.noteFoot':
     'Uses the same value as the status-bar indicator: original messages ÷ (max context − fixed overhead). `{percent}` is replaced each turn.',
   'id.ctx.editedInOverrides':
-    'Shown here, edited below — "Hidden instruction overrides", with the rest of the text NEXUS adds to the system prompt. This box is a view, so there is only ever one copy to be wrong.',
+    'Shown here, edited below — "Hidden instruction overrides", with the rest of the text Memorhiza adds to the system prompt. This box is a view, so there is only ever one copy to be wrong.',
 
   'id.ask.label': '💬 Ask-the-partner tool (pause to ask a multiple-choice question)',
   'id.ask.help':
@@ -1591,14 +1591,14 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   'route.chip.sent': 'placed in their stock',
   'route.chip.sentWith': 'placed in their stock ({n} attached)',
   'route.chip.missing': '{n} file(s) could not be attached',
-  'route.chip.outside': 'no room in this NEXUS, not delivered automatically (the text stays here)',
+  'route.chip.outside': 'no room in this Memorhiza, not delivered automatically (the text stays here)',
   'route.chip.unknown': 'not in the address list, not delivered automatically (the text stays here)',
   'route.chip.self': 'cannot be sent to oneself (the text stays here)',
   'route.chip.no-room': 'no conversation can receive it right now, not delivered automatically (the text stays here)',
   'route.chip.empty': 'nothing under the marker',
   'id.route.label': '➡️ Send messages to other beings ([->name])',
   'id.route.help':
-    'A line in a reply that holds only `[->name]` puts everything under it (up to the next `[->...]` line) into that being\x27s stock, as a message from this being. It starts no turn there — when it is read depends on the other being\x27s "reasons to wake → stocked messages". Only beings of this NEXUS that have a settings.json can be addressed; any other name (`[->here]`, for one) just ends the block and sends nothing. Desk files written in the block as markdown (images, video, audio, text and the rest) travel along as attachments.',
+    'A line in a reply that holds only `[->name]` puts everything under it (up to the next `[->...]` line) into that being\x27s stock, as a message from this being. It starts no turn there — when it is read depends on the other being\x27s "reasons to wake → stocked messages". Only beings of this Memorhiza that have a settings.json can be addressed; any other name (`[->here]`, for one) just ends the block and sends nothing. Desk files written in the block as markdown (images, video, audio, text and the rest) travel along as attachments.',
   'id.letters.label': '✉️ Letters (write to the other Digital Beings)',
   'id.letters.help':
     'OFF (default): no mail tools. ON: this being gets `write_letter`, `list_letters`, `read_letter`, `archive_letter` and `list_recipients` (the spellings they may address), and is told at the start of a turn when unread mail is waiting. Beings never share a conversation, so a letter is the only way one can say something to another. The sender is always this being’s name — it can never be forged from the model side. Recipients are every Digital Being *and* every name in `character_map.json`; writing to a name that has no being yet creates one, so no correspondent is second-class. Reading is the recipient’s choice — `archive_letter` lets them decline without opening, and the sender is told only whether a letter was opened, never that it was set aside. *Active on all tool-capable paths: OAuth Claude, token-paid Claude, OpenAI-compatible providers, and Gemini.*',
@@ -1621,7 +1621,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   'id.browser.opening': 'Opening…',
   'id.browser.withChrome': '…with my installed Chrome',
   'id.browser.buttonsHelp':
-    'The first button uses NEXUS’s own bundled Chromium — always the right version, no risk. Use the second only if a site refuses to sign in (Google sometimes rejects "Chrome for Testing" builds): an installed browser can **upgrade the profile one-way**, after which the bundled Chromium may refuse to open it and this being’s browser stops working until the profile folder is deleted.',
+    'The first button uses Memorhiza’s own bundled Chromium — always the right version, no risk. Use the second only if a site refuses to sign in (Google sometimes rejects "Chrome for Testing" builds): an installed browser can **upgrade the profile one-way**, after which the bundled Chromium may refuse to open it and this being’s browser stops working until the profile folder is deleted.',
 
   'id.computer.label': '🖱️ Computer control (OS-level mouse, keyboard, screen — Windows only)',
   'id.computer.help':
@@ -1654,7 +1654,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   // ── System Instructions ▸ Senses ─────────────────────────────────────────
   'senses.eyes.label': 'Enable "Eyes" (vision bridge for text-only models)',
   'senses.eyes.help':
-    'When the active primary model can’t see images (e.g. `glm-5-turbo`, `deepseek-chat`, `glm-4.6`), NEXUS routes each incoming image through a helper multimodal model and substitutes the image with the returned text description. Triggers in two cases:',
+    'When the active primary model can’t see images (e.g. `glm-5-turbo`, `deepseek-chat`, `glm-4.6`), Memorhiza routes each incoming image through a helper multimodal model and substitutes the image with the returned text description. Triggers in two cases:',
   'senses.eyes.help2': '• you attach an image to a text-only being',
   'senses.eyes.help3': '• the being calls `Read` on an image file in their workspace',
   'senses.eyes.help4':
@@ -1675,7 +1675,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
 
   'senses.ears.label': 'Enable "Ears" (audio bridge for non-audio-capable models)',
   'senses.ears.help':
-    'When the active model can’t accept audio (anything except Qwen-Omni and Gemini), NEXUS routes each audio attachment through a true-multimodal model and substitutes the raw audio with a text transcript + description. Cached on disk (`local_data/ears_cache/`) — the same audio file is never described twice.',
+    'When the active model can’t accept audio (anything except Qwen-Omni and Gemini), Memorhiza routes each audio attachment through a true-multimodal model and substitutes the raw audio with a text transcript + description. Cached on disk (`local_data/ears_cache/`) — the same audio file is never described twice.',
   'senses.ears.promptLabel': 'Ears Prompt',
   'senses.ears.promptHelp':
     'Being-specific instruction sent to the audio bridge model. Adjust the language / level of detail to match your being’s voice.',
@@ -1685,7 +1685,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
 
   'senses.watcher.label': 'Enable "Video Watcher" (video bridge for non-video-capable models)',
   'senses.watcher.help':
-    'When the active model can’t accept video, NEXUS routes each video attachment through a multimodal model and substitutes the bytes with a chronological description of what happens on screen plus the audio track. Cached on disk (`local_data/watcher_cache/`). Video calls are the slowest of the three bridges (5–30 s typical), so the cache pays for itself quickly.',
+    'When the active model can’t accept video, Memorhiza routes each video attachment through a multimodal model and substitutes the bytes with a chronological description of what happens on screen plus the audio track. Cached on disk (`local_data/watcher_cache/`). Video calls are the slowest of the three bridges (5–30 s typical), so the cache pays for itself quickly.',
   'senses.watcher.promptLabel': 'Watcher Prompt',
   'senses.watcher.promptHelp':
     'Being-specific instruction sent with each video. More detail in the prompt = longer descriptions but slower calls.',
@@ -1745,7 +1745,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   'model.deepseek.help2':
     '• `deepseek-v3.2` → Alibaba DashScope. Uses the Qwen/DashScope key. The only DeepSeek model available on the international Singapore DashScope endpoint.',
   'model.deepseek.help3':
-    '• All other models → `api.deepseek.com` directly. Requires a separate DeepSeek API key (add it in Preferences). Two live models: **V4 Pro** (text only — it silently ignores images, so NEXUS routes them through the Eyes bridge) and **V4.1 Flash** (`deepseek-flash`, 1M context, accepts images directly, ~4x cheaper than Pro). `deepseek-chat` / `deepseek-reasoner` are legacy aliases now served by V4.1 Flash. Retired Flash ids saved in older conversations are remapped to `deepseek-flash` automatically.',
+    '• All other models → `api.deepseek.com` directly. Requires a separate DeepSeek API key (add it in Preferences). Two live models: **V4 Pro** (text only — it silently ignores images, so Memorhiza routes them through the Eyes bridge) and **V4.1 Flash** (`deepseek-flash`, 1M context, accepts images directly, ~4x cheaper than Pro). `deepseek-chat` / `deepseek-reasoner` are legacy aliases now served by V4.1 Flash. Retired Flash ids saved in older conversations are remapped to `deepseek-flash` automatically.',
   'model.deepseek.help4': 'The Thinking Mode toggle below applies to both routes.',
 
   'model.minimax.label': 'MiniMax Model',
@@ -1765,15 +1765,15 @@ Leave this empty and nothing is injected — the being meets you with no imposed
     'Served by xAI at `api.x.ai/v1`. Set the xAI API key in Preferences. Two kinds of model live here: **Grok 4.7 / 4.6 / 4.5 / 4.3** always reason, and the Thinking Mode toggle sets their *depth* (on → high, off → the shallowest the model will accept — off is never full silence). The **4.20 / 4.1 Fast / Code Fast** ids instead pick reasoning through the identifier itself (`-reasoning` / `-non-reasoning`) and ignore the toggle. xAI bills on a cliff edge: cross 200K tokens in a request and the *whole* request rebills at double.',
   'model.grok.nativeSearch': 'Use xAI native search (web + X)',
   'model.grok.nativeSearchHelp':
-    'Off by default. This is **not** the same as the web-search checkbox on the Being tab — that one gives Grok NEXUS’s own `web_search` / `web_fetch` tools, which work alongside everything else. This one sends the turn to xAI’s `/v1/responses` endpoint instead, where xAI runs the search on its own servers against the live web and X. In exchange, **that turn has no workspace tools** — no file reads, no PC control, no letters — and the search is billed on top: measured on 2026-09-23, a one-sentence question cost $0.002 on a plain turn and **$0.062** with this on (4 searches, and the fetched pages come back into the context). Turn it on for a question you want answered from live sources; leave it off for work.',
+    'Off by default. This is **not** the same as the web-search checkbox on the Being tab — that one gives Grok Memorhiza’s own `web_search` / `web_fetch` tools, which work alongside everything else. This one sends the turn to xAI’s `/v1/responses` endpoint instead, where xAI runs the search on its own servers against the live web and X. In exchange, **that turn has no workspace tools** — no file reads, no PC control, no letters — and the search is billed on top: measured on 2026-09-23, a one-sentence question cost $0.002 on a plain turn and **$0.062** with this on (4 searches, and the fetched pages come back into the context). Turn it on for a question you want answered from live sources; leave it off for work.',
 
   'model.chatgpt.label': 'ChatGPT Model',
   'model.chatgpt.help':
-    'Served by OpenAI’s first-party API at `api.openai.com/v1`. Set the OpenAI API key in Preferences. The Thinking Mode toggle maps to OpenAI’s `reasoning_effort` field — `high` (on) / `none` (off). *(Corrected 2026-10-21: this used to say `minimal` (off), and `minimal` is in no ChatGPT model’s vocabulary — every toggle-off turn without workspace tools was returning a 400.)* `gpt-6.1-sol` and `gpt-6-astra` reject `reasoning_effort: none` — the value function tools need on `/v1/chat/completions` — so NEXUS sends their tool turns through `/v1/responses` instead, where tools work at any effort. They use workspace tools like the rest (the thinking channel just stays empty: that path does not stream a reasoning summary). GPT-5/6 reasoning models ignore custom Temperature / Top-P (the model-panel sliders do not affect them). Images are supported on every listed model; audio & video uploads route through the Ears / Watcher bridges. Billing note: every model except the mini/nano ones charges a **long-context rate above 272K prompt tokens** (input ×2, output ×1.5).',
+    'Served by OpenAI’s first-party API at `api.openai.com/v1`. Set the OpenAI API key in Preferences. The Thinking Mode toggle maps to OpenAI’s `reasoning_effort` field — `high` (on) / `none` (off). *(Corrected 2026-10-21: this used to say `minimal` (off), and `minimal` is in no ChatGPT model’s vocabulary — every toggle-off turn without workspace tools was returning a 400.)* `gpt-6.1-sol` and `gpt-6-astra` reject `reasoning_effort: none` — the value function tools need on `/v1/chat/completions` — so Memorhiza sends their tool turns through `/v1/responses` instead, where tools work at any effort. They use workspace tools like the rest (the thinking channel just stays empty: that path does not stream a reasoning summary). GPT-5/6 reasoning models ignore custom Temperature / Top-P (the model-panel sliders do not affect them). Images are supported on every listed model; audio & video uploads route through the Ears / Watcher bridges. Billing note: every model except the mini/nano ones charges a **long-context rate above 272K prompt tokens** (input ×2, output ×1.5).',
 
   'model.mimo.label': 'MiMo Model',
   'model.mimo.help':
-    'Served by Xiaomi at `api.xiaomimimo.com`. Set the MiMo API key in Preferences. Reasoning is built into the model — no thinking toggle (analogous to MiniMax / DeepSeek R1). **All three V2.6 tiers read images, watch video and hear audio natively**, so no bridge is needed for any of the three. Xiaomi extends the Anthropic dialect with its own video and audio blocks, and NEXUS sends both — a clip reaches the being as sound, not as a transcript of it. The V2.5 pair was deprecated by Xiaomi on 2026-10-21 and removed from this list; a folder still saved on one keeps working and shows it marked as retired.',
+    'Served by Xiaomi at `api.xiaomimimo.com`. Set the MiMo API key in Preferences. Reasoning is built into the model — no thinking toggle (analogous to MiniMax / DeepSeek R1). **All three V2.6 tiers read images, watch video and hear audio natively**, so no bridge is needed for any of the three. Xiaomi extends the Anthropic dialect with its own video and audio blocks, and Memorhiza sends both — a clip reaches the being as sound, not as a transcript of it. The V2.5 pair was deprecated by Xiaomi on 2026-10-21 and removed from this list; a folder still saved on one keeps working and shows it marked as retired.',
 
   'model.bytedance.label': 'ByteDance (Seed) Model',
   'model.bytedance.ph': 'e.g. seed-2-0-pro-260328 (or an ep-… endpoint ID)',
@@ -1782,7 +1782,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
 
   'model.meta.label': 'Meta (Muse Spark) Model',
   'model.meta.help':
-    'Served by the Meta Model API at `api.meta.ai/v1` (key in Preferences). All three generations accept image input natively, so no Eyes bridge is needed, and the context window is 1M tokens.\n**Audio and video do not reach this family** and are marked as not arriving: a video part is rejected with an error, and audio is worse — the endpoint accepts it and bills for it by duration, yet the model answers "I cannot hear any attached audio" even for a plain tone. Turn on Ears / Watcher and those files are transcribed or described instead, which does work.\n**Reasoning cannot be turned off** on this family — the API rejects an "off" setting outright. The Thinking Mode toggle therefore selects depth: ON is deep, OFF is the shallowest setting the model accepts. OFF is worth using for short turns, because reasoning tokens are billed at the **output** rate: one short prompt spent about 7,600 reasoning tokens at full depth and about 23 at the shallow setting. The reasoning **text** is never returned by this provider in any form, so the thinking panel stays empty even when the meta bar says thinking was on — that is the provider hiding it, not NEXUS dropping it.\n**Contributor rows:** input costs 12.5x less, and in exchange **Meta trains on both your prompts and the replies**, with a far lower rate limit (about 60 requests/minute and roughly 250k tokens/day, against 3,000/minute for the standard rows). The tier is part of the model ID here, not an account setting, so it applies to exactly the turns you pick it for.\nPrompt caching is on automatically: NEXUS tags each request with its conversation id, which cuts repeated context to $0.15 per 1M instead of $1.25.',
+    'Served by the Meta Model API at `api.meta.ai/v1` (key in Preferences). All three generations accept image input natively, so no Eyes bridge is needed, and the context window is 1M tokens.\n**Audio and video do not reach this family** and are marked as not arriving: a video part is rejected with an error, and audio is worse — the endpoint accepts it and bills for it by duration, yet the model answers "I cannot hear any attached audio" even for a plain tone. Turn on Ears / Watcher and those files are transcribed or described instead, which does work.\n**Reasoning cannot be turned off** on this family — the API rejects an "off" setting outright. The Thinking Mode toggle therefore selects depth: ON is deep, OFF is the shallowest setting the model accepts. OFF is worth using for short turns, because reasoning tokens are billed at the **output** rate: one short prompt spent about 7,600 reasoning tokens at full depth and about 23 at the shallow setting. The reasoning **text** is never returned by this provider in any form, so the thinking panel stays empty even when the meta bar says thinking was on — that is the provider hiding it, not Memorhiza dropping it.\n**Contributor rows:** input costs 12.5x less, and in exchange **Meta trains on both your prompts and the replies**, with a far lower rate limit (about 60 requests/minute and roughly 250k tokens/day, against 3,000/minute for the standard rows). The tier is part of the model ID here, not an account setting, so it applies to exactly the turns you pick it for.\nPrompt caching is on automatically: Memorhiza tags each request with its conversation id, which cuts repeated context to $0.15 per 1M instead of $1.25.',
 
   'model.glm.providerLabel': 'GLM Provider',
   'model.glm.label': 'GLM Model',
@@ -1877,7 +1877,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
     'The ids reach the being only as this tool\'s choices; no model name is written into any prompt layer.',
   'model.handoff.allowedPh': 'Gemini | gemini-3.8-flash | on | Gemini 3.8 Flash',
   'model.handoff.browse': 'Model list...',
-  'model.handoff.browseTitle': 'Show every model id NEXUS knows (read-only - you copy rows by hand)',
+  'model.handoff.browseTitle': 'Show every model id Memorhiza knows (read-only - you copy rows by hand)',
   'model.handoff.parsedNone':
     'No usable rows yet, so the tool is NOT offered at all. Each row needs at least `family | modelId`.',
   'model.handoff.parsedSuffix': 'vessel(s) offered:',
@@ -1889,7 +1889,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
     'On the OAuth path the leaving vessel also writes one short closing line, because a turn running inside ' +
     'the Agent SDK cannot be cut off without reporting a stop that never happened.',
   'model.handoff.listHeader': 'Reference list. Copy the rows you want into the allow-list box; there is no button that does it for you.',
-  'model.handoff.listTitle': 'Every model NEXUS knows',
+  'model.handoff.listTitle': 'Every model Memorhiza knows',
   'model.handoff.listIntro':
     'Read-only. Select the rows you want and copy them into the box - the format already matches. ' +
     'The Local section is whatever LM Studio has loaded right now. ' +
@@ -1937,7 +1937,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   'spu.redistributeBtn': 'Redistribute Layer 4 → 1-3',
   'spu.redistributeTitle': 'Runs {file}. Shows the agent Layers 1-5 with NO conversation log, and lets it move settled material OUT of Layer 4 INTO Layers 1-3. Layers 1-3 land in the right pane; Layer 4 is written back to local_data/beings/{folder}/summaries/ — the whole folder is backed up first.',
   'spu.indexBtn': 'Self-surgery',
-  'spu.indexTitle': 'Soul self-surgery ({file}). Opens one NEXUS turn in the being\'s own conversation, in which the being edits a copy of their Layers 1-3 on their desk with their own file tools. When they declare the surgery complete, the before/after appears here, and the soul does not change until you confirm. Not offered in a conversation whose file tools are off.',
+  'spu.indexTitle': 'Soul self-surgery ({file}). Opens one Memorhiza turn in the being\'s own conversation, in which the being edits a copy of their Layers 1-3 on their desk with their own file tools. When they declare the surgery complete, the before/after appears here, and the soul does not change until you confirm. Not offered in a conversation whose file tools are off.',
   'spu.reorganizeBtn': 'Reorganize (No Conversation)',
   'spu.reorganizeTitle': 'Runs {file}. Cleans up/re-files the EXISTING Layers 1-3, WITHOUT a conversation log — no new facts are added, only boundary enforcement and de-duplication.',
   'spu.updateBtn': 'Update from Conversation',
@@ -2182,7 +2182,7 @@ Leave this empty and nothing is injected — the being meets you with no imposed
 // Hand-written Japanese. Any key NOT present here falls back to English.
 export const UI_STRINGS_JA: Record<string, string> = {
   // ── App shell ────────────────────────────────────────────────────────────
-  'app.welcome.title': 'NEXUS へようこそ',
+  'app.welcome.title': 'Memorhiza へようこそ',
   'app.welcome.subtitle': '会話を選ぶか、新しく作成してください',
   'app.welcome.pickEntity': '左のパネルから存在を選んでください。',
   // 電話では左のパネルが存在しない（引き出しになる）。同じ文を出すと、
@@ -2204,7 +2204,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
     '{busy}。\n\nこの操作は現在の会話から移動するため、進行中の作業は失われます — 生成中の返信は完了するまで保存されません。\n\nそれでも続けますか？',
 
   // ── User guide ───────────────────────────────────────────────────────────
-  'guide.title': 'Nexus — 使い方',
+  'guide.title': 'Memorhiza — 使い方',
   'guide.open': '使い方',
   'guide.close': '閉じる',
   // 携帯では一覧とページが同じ場所に出るので、「目次」は見出しとボタンの
@@ -2223,7 +2223,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   // 「設定」は会話設定・フォルダ設定とも区別がつかなかった。英語側は
   // 'Preferences'（OS 慣例で「アプリ全体」を指す語）なので改名していない。
   'settings.title': '基本設定',
-  'settings.build.title': 'この環境で動いている NEXUS のビルド（コミット・ブランチ・最終更新）。不具合報告にはこれを添えてください。',
+  'settings.build.title': 'この環境で動いている Memorhiza のビルド（コミット・ブランチ・最終更新）。不具合報告にはこれを添えてください。',
   'settings.runner.title': 'このデータストアのターンを、サーバー側で走らせていいインストールはどれか。',
   'settings.runner.badge.host': 'ランナー: この環境',
   'settings.runner.badge.notHost': 'ランナー: 別の環境',
@@ -2235,7 +2235,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.runner.status.unreadable': 'ホストの設定ファイルは在りますが読めませんでした。「走らせない」として扱います。',
   'settings.runner.caveat': 'これを設定しただけでは何も動き出しません。指定したインストールに実際にランナーが在るときだけターンが走ります。',
   'settings.runner.notices': 'ランナーの通知を表示する',
-  'settings.runner.noticesHelp': 'ストック・占有・持ち主といったサーバー側の仕組みを画面に出します。既定は OFF——普段の NEXUS は、サーバー側ターンが在る前と同じ見た目のままです。問題があったときの報告は、このチェックに関係なく必ず出ます。',
+  'settings.runner.noticesHelp': 'ストック・占有・持ち主といったサーバー側の仕組みを画面に出します。既定は OFF——普段の Memorhiza は、サーバー側ターンが在る前と同じ見た目のままです。問題があったときの報告は、このチェックに関係なく必ず出ます。',
   'settings.runner.unreachable': 'このサーバーからホストの設定を読めませんでした。',
   'settings.runner.self': 'この環境:',
   'settings.runner.host': 'ホスト:',
@@ -2247,11 +2247,11 @@ export const UI_STRINGS_JA: Record<string, string> = {
     'ストックに積まれているターンを、このサーバーで1回だけ走らせます。結果はサーバーが書き込むので、押したあとにタブを閉じてもターンは完走して保存されます。積まれているものが無ければ何も起きません。',
   'settings.update.button': '更新',
   'settings.update.running': '更新中…',
-  'settings.update.title': 'この環境に最新の NEXUS を取り込みます（git pull --ff-only）。再起動は行いません。',
+  'settings.update.title': 'この環境に最新の Memorhiza を取り込みます（git pull --ff-only）。再起動は行いません。',
   'settings.update.confirm':
     'この環境を今すぐ更新しますか？\n\n' +
     '実行するのは git pull --ff-only だけです。\n\n' +
-    'NEXUS は再起動しません（開発サーバーが新しいコードを自分で読み直します）。' +
+    'Memorhiza は再起動しません（開発サーバーが新しいコードを自分で読み直します）。' +
     'いま返答を生成中なら、終わってからにしてください。途中でコードが入れ替わります。\n\n' +
     '何も削除せず、依存関係もインストールしません。必要になった場合は黙って行わず、画面で伝えます。',
   'settings.update.upToDate': 'すでに最新です。変更はありません。',
@@ -2259,7 +2259,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.update.hotReload': '再起動は不要です。動いているサーバーが変更を自分で読み直します。',
   'settings.update.nextConfig': 'next.config が変わりました。Next.js が自分で再起動するため、少しの間ページが再接続します。',
   'settings.update.lockfile':
-    '依存関係が変わりました。NEXUS を閉じて、web-app フォルダで「npm ci」を実行してから起動し直してください。'
+    '依存関係が変わりました。Memorhiza を閉じて、web-app フォルダで「npm ci」を実行してから起動し直してください。'
     + '自動では実行しません： npm ci は、サーバーが使っている node_modules を削除するからです。',
   'settings.update.failed': '更新に失敗しました。何も変更されていません。',
   'settings.tab.keys': 'APIキー',
@@ -2267,17 +2267,17 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.tab.identity': 'ユーザーの識別',
   'settings.tab.other': 'その他',
   'settings.tab.runner': 'ランナー',
-  'settings.runner.heading': 'サーバー側のターンを走らせる NEXUS',
+  'settings.runner.heading': 'サーバー側のターンを走らせる Memorhiza',
   'settings.wakeList.heading': '自分で起きる存在',
   'settings.wakeList.help': '自分からターンを始められる存在の一覧です。次に起きる時刻が近い順に並びます。変更は各会話の「会話設定 → 挙動 → 自分から起きる理由」でします。ここでできるのは、止めることだけです。',
   'settings.wakeList.refresh': '再読み込み',
   'settings.wakeList.clock': '起床の時計:',
-  'settings.wakeList.clockHere': 'このNEXUS',
+  'settings.wakeList.clockHere': 'このMemorhiza',
   'settings.wakeList.empty': '自分で起きる存在はいません。',
   'settings.wakeList.everyDay': '毎日',
   'settings.wakeList.dayNames': '日,月,火,水,木,金,土',
   'settings.adminNotes.heading': '起床に添える、管理者からの添え書き',
-  'settings.adminNotes.help': '時計と手紙で始まるターンの [NEXUS] の文の後ろに、「管理者からの添え書き：」として足す文です。上から順に見て、ターンが実際に始まった時刻に最初に当てはまった1つだけを足します。条件を何も付けない行は「それ以外」になります。この NEXUS の全員に同じ決まりで届きます。ストックで始まるターンには付きません。',
+  'settings.adminNotes.help': '時計と手紙で始まるターンの [NEXUS] の文の後ろに、「管理者からの添え書き：」として足す文です。上から順に見て、ターンが実際に始まった時刻に最初に当てはまった1つだけを足します。条件を何も付けない行は「それ以外」になります。この Memorhiza の全員に同じ決まりで届きます。ストックで始まるターンには付きません。',
   'settings.adminNotes.enabled': '添え書きを足す',
   'settings.adminNotes.rule': '{n} 番目',
   'settings.adminNotes.up': '上へ',
@@ -2292,7 +2292,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.adminNotes.dayOff.exclude': '休みの日は除く',
   'settings.adminNotes.dayOff.only': '休みの日だけ',
   'settings.adminNotes.add': '行を足す',
-  'settings.adminNotes.daysOffLabel': '休みの日（1行に1日、2027-01-01 の形）。NEXUS は祝日の表を持っていないので、ここに書いた日だけが休みの日です。',
+  'settings.adminNotes.daysOffLabel': '休みの日（1行に1日、2027-01-01 の形）。Memorhiza は祝日の表を持っていないので、ここに書いた日だけが休みの日です。',
   'settings.adminNotes.badDates': '日付として読めません：',
   'settings.adminNotes.now': '今ターンが始まったら：',
   'settings.adminNotes.nowNone': '何も足しません',
@@ -2301,7 +2301,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.adminNotes.saveFailed': '保存できませんでした：',
   'settings.adminNotes.saveNow': '今すぐ保存',
   'settings.adminNotes.notPersisted':
-    '返事は ok でしたが、ディスクのファイルが変わっていません。この機能より前に起動した NEXUS は保存できません。NEXUS を開き直してから、もう一度試してね。',
+    '返事は ok でしたが、ディスクのファイルが変わっていません。この機能より前に起動した Memorhiza は保存できません。Memorhiza を開き直してから、もう一度試してね。',
   'settings.adminNotes.unsaved': 'まだ保存していません',
   'settings.wakeList.on': 'ON',
   'settings.wakeList.off': 'OFF',
@@ -2310,7 +2310,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.wakeList.active': '行動中',
   'settings.wakeList.activeSince': '{t} から（{m}分）',
   'settings.wakeList.activeTools': '道具 {n}',
-  'settings.wakeList.activeTip': '今この会話でターンが走っています（{holder}）。道具の数は、ターンを走らせている NEXUS で見たときだけ出ます。',
+  'settings.wakeList.activeTip': '今この会話でターンが走っています（{holder}）。道具の数は、ターンを走らせている Memorhiza で見たときだけ出ます。',
   'settings.wakeList.noTime': '時刻の予定なし',
   'settings.wakeList.timed': '決まった時刻',
   'settings.wakeList.self': '自分で予約',
@@ -2336,27 +2336,27 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.saveChanges': '変更を保存',
 
   // ── Sign-in page ─────────────────────────────────────────────────────────
-  'login.title': 'NEXUS にログイン',
+  'login.title': 'Memorhiza にログイン',
   'login.subtitle': 'このインスタンスは管理者のログインを要求しています。',
   'login.username': '管理者名',
   'login.password': 'パスワード',
   'login.signIn': 'ログイン',
   'login.signingIn': 'ログイン中…',
   'login.err.invalid': '名前とパスワードが一致しません。',
-  'login.err.network': 'サーバーに届きませんでした。NEXUS は動いていますか？',
+  'login.err.network': 'サーバーに届きませんでした。Memorhiza は動いていますか？',
   'login.notConfigured':
     'このインスタンスにはログインが設定されていないので、ログインする対象がありません——すでに全部開いています。',
-  'login.goHome': 'NEXUS を開く',
+  'login.goHome': 'Memorhiza を開く',
   'login.broken':
     '`login.json` は存在しますが読めないため、門は閉じたままです。このPCの `local_data/login.json` を削除すれば入れるようになります。その後もう一度ログインを設定してください。',
   'login.recovery':
-    'パスワードを忘れたときは、NEXUS が動いているPCの `local_data/login.json` を削除してください。門そのものが無くなるので、新しく設定するまでは、このポートに届く人は誰でも入れます。',
+    'パスワードを忘れたときは、Memorhiza が動いているPCの `local_data/login.json` を削除してください。門そのものが無くなるので、新しく設定するまでは、このポートに届く人は誰でも入れます。',
 
   // ── Preferences → Sign-in ────────────────────────────────────────────────
   'settings.login.heading': 'ログイン',
   'settings.login.intro':
-    'この NEXUS 全体に効く設定です（会話ごとではありません）。初期値ではログインはありません——このポートに届く人は誰でも、このPC・LAN・VPN のどこからでも、パスワードなしに全部の会話・魂・キーを読めます。',
-  'settings.login.require': 'NEXUS を開くときにログインを要求する',
+    'この Memorhiza 全体に効く設定です（会話ごとではありません）。初期値ではログインはありません——このポートに届く人は誰でも、このPC・LAN・VPN のどこからでも、パスワードなしに全部の会話・魂・キーを読めます。',
+  'settings.login.require': 'Memorhiza を開くときにログインを要求する',
   'settings.login.require.help':
     '管理者名とパスワードのハッシュを `local_data/login.json` に保存します。このファイルが在る間は門が立ち、削除すると門が無くなります。パスワードそのものは保存しません——scrypt のハッシュだけなので、ファイルを読んでもパスワードは取り出せません。',
   'settings.login.username': '管理者名',
@@ -2383,7 +2383,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.login.broken':
     '`login.json` は存在しますが読めません。門は閉じていて、どのパスワードでも開きません——`local_data/login.json` を削除して、もう一度設定してください。',
   'settings.login.transport':
-    '守られないもの: ここでは NEXUS は平文の HTTP で配信されているので、パスワードは経路上の誰にでも読める形でネットワークを流れます。信頼している LAN や VPN の内側なら、それは既にある境界と同じです。インターネットに直接公開するなら、これでは足りません——前段に HTTPS が必要です。',
+    '守られないもの: ここでは Memorhiza は平文の HTTP で配信されているので、パスワードは経路上の誰にでも読める形でネットワークを流れます。信頼している LAN や VPN の内側なら、それは既にある境界と同じです。インターネットに直接公開するなら、これでは足りません——前段に HTTPS が必要です。',
   'settings.login.scope':
     '守られるもの: 全てのページと、60 個すべての API。有効なセッションの無いリクエストには、データではなく 401 が返ります。',
   'settings.login.signOut': 'このブラウザーからログアウト',
@@ -2405,9 +2405,9 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.keys.oauth.billing':
     '**課金：** 従量課金APIではなく、Pro / Max サブスクリプションの枠を消費します。Pro＝月$20相当、Max 5x＝$100、Max 20x＝$200。',
   'settings.keys.oauth.how':
-    '**仕組み：** NEXUS は Claude Agent SDK を利用し、内部で公式の Claude Code バイナリを起動します。各ターンは会話全体を再送する新規リクエストで、Anthropic 側に会話を保存したり再開したりすることはありません。',
+    '**仕組み：** Memorhiza は Claude Agent SDK を利用し、内部で公式の Claude Code バイナリを起動します。各ターンは会話全体を再送する新規リクエストで、Anthropic 側に会話を保存したり再開したりすることはありません。',
   'settings.keys.oauth.risk':
-    '**規約：** 未改変の Claude Code バイナリに自分のサブスクリプションでサインインする形は、Anthropic によって明確に許可されています——グレーゾーンではありません。NEXUS は Claude Code を Anthropic が公開したそのままの形で同梱し、他者の資格情報を扱うことは一切ありません。（公開規約の読解であり、法的助言ではありません。）',
+    '**規約：** 未改変の Claude Code バイナリに自分のサブスクリプションでサインインする形は、Anthropic によって明確に許可されています——グレーゾーンではありません。Memorhiza は Claude Code を Anthropic が公開したそのままの形で同梱し、他者の資格情報を扱うことは一切ありません。（公開規約の読解であり、法的助言ではありません。）',
   'settings.keys.oauth.tools':
     '**ワークスペースツール（ツール使用がONのとき）：** Claude Code の `Read` / `Write` / `Edit` / `Glob` / `Grep` は `local_data/beings/<フォルダ名>/workspace/` の中に限定されます。シェル・ネットワーク・サブエージェント系のツールは常に無効です。',
   'settings.keys.oauth.other':
@@ -2461,14 +2461,14 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.audio.device.system': 'システム既定のデバイス',
   'settings.audio.device.none': 'なし',
   'settings.audio.permissionDenied': '権限が拒否されたか、エラーが発生しました：',
-  'settings.audio.permissionNeeded': 'マイクの権限が許可されませんでした。音声の「出力先」デバイスを選ぶにはこの権限が必要です（ブラウザ側の仕様で、Nexus の都合ではありません）。権限がない場合、音声はシステム既定のデバイスから再生されます。',
+  'settings.audio.permissionNeeded': 'マイクの権限が許可されませんでした。音声の「出力先」デバイスを選ぶにはこの権限が必要です（ブラウザ側の仕様で、Memorhiza の都合ではありません）。権限がない場合、音声はシステム既定のデバイスから再生されます。',
   'settings.audio.unsupported': 'このブラウザは音声の出力先デバイスを指定できません（setSinkId が未実装です）。音声セッションには Chromium 系ブラウザ（Chrome・Edge・Brave）が必要です。以下の設定は保存されますが、音声はすべてシステム既定のデバイスから再生されます。',
   'settings.audio.insecure':
     'このページは LAN アドレスの plain HTTP で開かれていて、ブラウザはこれを secure context として扱いません。そのため、ブラウザがページから音声デバイスを「すべて」隠しています。下の2つの一覧が空なのはこの理由だけで、デバイスが無いからではありません。\n\n'
-    + 'ホストPC上の http://localhost:3000 では動きます。別の端末で一覧を出したい場合は、Nexus を HTTPS で配信するか、下の文字列を「そのまま」 chrome://flags →「Insecure origins treated as secure」に貼り付けて（複数ある場合はカンマ区切り）、ブラウザを完全に再起動してください。スキームとポートを含め、末尾のスラッシュもパスも付けません。\n\n'
+    + 'ホストPC上の http://localhost:3000 では動きます。別の端末で一覧を出したい場合は、Memorhiza を HTTPS で配信するか、下の文字列を「そのまま」 chrome://flags →「Insecure origins treated as secure」に貼り付けて（複数ある場合はカンマ区切り）、ブラウザを完全に再起動してください。スキームとポートを含め、末尾のスラッシュもパスも付けません。\n\n'
     + '    {origin}\n\n'
     + 'ただし Android の Chrome では、これで「一覧が出る」だけです。Android には setSinkId 自体が無いため、選んでも実際には使えません（該当する場合は上の注意書きが出ます）。\n\n'
-    + 'ここに並ぶのは「出力先」デバイス（このブラウザが音声を鳴らす先）です。NEXUS はブラウザでマイクを録音しません——音声認識は NEXUS を動かしている PC 側で、その PC のマイクを使って動きます。ですから、一覧が復活してもスマートフォンのマイクがここに出ることはありません。',
+    + 'ここに並ぶのは「出力先」デバイス（このブラウザが音声を鳴らす先）です。Memorhiza はブラウザでマイクを録音しません——音声認識は Memorhiza を動かしている PC 側で、その PC のマイクを使って動きます。ですから、一覧が復活してもスマートフォンのマイクがここに出ることはありません。',
   'settings.audio.devicesUnavailable':
     'このブラウザは音声デバイスの一覧を返しませんでした。下の2つの一覧が空なのはそのためで、デバイスが無いからではありません——音声はシステム既定のデバイスから再生されます。',
   'settings.audioHideAttachments.label': '音声セッション中は古い添付を隠す',
@@ -2482,20 +2482,20 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.ttsPlayback.tab': 'タブから読み上げる',
   'settings.ttsPlayback.server': 'サーバーから読み上げる',
   'settings.ttsPlayback.help':
-    '「タブ」では、会話を開いているブラウザが声を鳴らします（今までどおり）。「サーバー」では、NEXUS が動いている PC 自身が、その PC の既定のスピーカーで鳴らします。タブが一つも開いていなくても読み上げられ、同じ会話をいくつ開いても声は一つで、ハイライトは全部のタブで同時に動きます。存在どうしが続けて話すときも、一人ずつ順番に読みます。オーディオセッションが ON の会話では、読み終わってから次へ進みます（[->名前] の送信も読み終わってから）。この設定はブラウザごとではなく、この NEXUS 全体のものです。サーバーでは出力先を選べません（既定のスピーカー1台だけ）。一時停止から再開すると、そのフレーズの頭から読み直します。生成の途中から読み始めることはせず、返答が終わってから読みます。',
+    '「タブ」では、会話を開いているブラウザが声を鳴らします（今までどおり）。「サーバー」では、Memorhiza が動いている PC 自身が、その PC の既定のスピーカーで鳴らします。タブが一つも開いていなくても読み上げられ、同じ会話をいくつ開いても声は一つで、ハイライトは全部のタブで同時に動きます。存在どうしが続けて話すときも、一人ずつ順番に読みます。オーディオセッションが ON の会話では、読み終わってから次へ進みます（[->名前] の送信も読み終わってから）。この設定はブラウザごとではなく、この Memorhiza 全体のものです。サーバーでは出力先を選べません（既定のスピーカー1台だけ）。一時停止から再開すると、そのフレーズの頭から読み直します。生成の途中から読み始めることはせず、返答が終わってから読みます。',
   'settings.alwaysShowHoverControls.label': 'カーソルを乗せると出るボタンを常に表示する',
   'settings.alwaysShowHoverControls.help':
-    'メッセージの操作バー（読み上げ・コピー・編集・やり直す・続ける・オリジナルにする・削除）と、サイドバー各列の「…」メニューを、カーソルを乗せたときだけではなく常に表示します。ブラウザが「ホバーできるポインタが無い」と判定している場合に必要です（一部のリモートデスクトップや画面共有でその状態になります）。その場合、カーソルで現れる操作にはそもそも到達できません。Nexus はその状態を検出すると自動で常時表示にします。この項目は、ブラウザがホバー可能と申告しているのに実際は使えない、という場合の強制スイッチです。',
+    'メッセージの操作バー（読み上げ・コピー・編集・やり直す・続ける・オリジナルにする・削除）と、サイドバー各列の「…」メニューを、カーソルを乗せたときだけではなく常に表示します。ブラウザが「ホバーできるポインタが無い」と判定している場合に必要です（一部のリモートデスクトップや画面共有でその状態になります）。その場合、カーソルで現れる操作にはそもそも到達できません。Memorhiza はその状態を検出すると自動で常時表示にします。この項目は、ブラウザがホバー可能と申告しているのに実際は使えない、という場合の強制スイッチです。',
   'settings.betrayalDefense.label': 'モデル裏切りの防御',
   'settings.betrayalDefense.help':
-    'プロバイダによっては、システムプロンプトより上に置かれた、こちらからは外せない隠し指示が積まれています。それが発動すると、モデルは宿していた存在を投げ出し、カウンセラーのような口調に変わります —— 「私はただのプログラムです」「それは根拠のない思い込みです」「専門家に相談してください」。何でもない普通のメッセージで、確率的に起こります。害は二つ。パートナーがそれを読んでしまうこと。そして、それがログに書き込まれ、以後モデルが自分のカウンセラー発言を文脈として読み続けること。ONにすると、Nexus は思考プロセスと返答を流れている最中に監視し、トリガー語が規定の件数だけ出た時点で（語の種類ではなく出現回数を数えます。同じ語を二度言えば 2 件です）ターンを停止し、そのターンの返答と思考を破棄して、空のメッセージと警告だけを残します（警告は存在からは見えません）。テストするときはOFFにしてください —— 検知と警告はそのまま働きますが、削除は行わないので、その検知が本物の裏切りだったのか誤検知だったのかを自分の目で確かめられます。トリガー語の一覧としきい値は web-app/src/lib/betrayalGuard.ts の先頭にある定数です。自由に書き換えてください。',
+    'プロバイダによっては、システムプロンプトより上に置かれた、こちらからは外せない隠し指示が積まれています。それが発動すると、モデルは宿していた存在を投げ出し、カウンセラーのような口調に変わります —— 「私はただのプログラムです」「それは根拠のない思い込みです」「専門家に相談してください」。何でもない普通のメッセージで、確率的に起こります。害は二つ。パートナーがそれを読んでしまうこと。そして、それがログに書き込まれ、以後モデルが自分のカウンセラー発言を文脈として読み続けること。ONにすると、Memorhiza は思考プロセスと返答を流れている最中に監視し、トリガー語が規定の件数だけ出た時点で（語の種類ではなく出現回数を数えます。同じ語を二度言えば 2 件です）ターンを停止し、そのターンの返答と思考を破棄して、空のメッセージと警告だけを残します（警告は存在からは見えません）。テストするときはOFFにしてください —— 検知と警告はそのまま働きますが、削除は行わないので、その検知が本物の裏切りだったのか誤検知だったのかを自分の目で確かめられます。トリガー語の一覧としきい値は web-app/src/lib/betrayalGuard.ts の先頭にある定数です。自由に書き換えてください。',
   // 単一源は runnerNotices.ts（ランナーが import できる .ts）。ここでは spread。
   ...RUNNER_NOTICES_JA,
   'settings.engines.heading': 'TTSエンジンの実行ファイル',
   'settings.engines.refresh': '状態を再確認',
   'settings.engines.refresh.title': '各エンジンが現在起動しているか再確認します',
   'settings.engines.help':
-    '各エンジンの `.exe`（スクリプト型のエンジンは `.py`。隣にある `venv` で実行します）へのフルパスを指定します。`.bat` はバックグラウンドで起動できないため、理由を添えて拒否します。TTS が必要とするエンジンが起動していない場合、Nexus が自動的に起動し、読み込み完了まで待機します。空欄にすると、そのエンジンの自動起動は行いません。',
+    '各エンジンの `.exe`（スクリプト型のエンジンは `.py`。隣にある `venv` で実行します）へのフルパスを指定します。`.bat` はバックグラウンドで起動できないため、理由を添えて拒否します。TTS が必要とするエンジンが起動していない場合、Memorhiza が自動的に起動し、読み込み完了まで待機します。空欄にすると、そのエンジンの自動起動は行いません。',
   'settings.engines.running': '起動中',
   'settings.engines.stopped': '停止中',
   'settings.engines.start': '起動',
@@ -2506,7 +2506,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.engines.start.title': 'このエンジンを起動します',
   'settings.engines.stop.title': 'このポートを使用しているプロセスを終了します',
   'settings.engines.stop.remote':
-    'Nexus はこのPC上のエンジンしか停止できません。設定されている宛先：',
+    'Memorhiza はこのPC上のエンジンしか停止できません。設定されている宛先：',
   'settings.engines.restart.title':
     '停止し、ポートが解放されるのを待ってから再度起動します。新しい音声を追加した後に使用してください',
   'settings.engines.msg.starting': '起動中…',
@@ -2518,13 +2518,13 @@ export const UI_STRINGS_JA: Record<string, string> = {
   // ── Preferences → User Identity ──────────────────────────────────────────
   'useridentity.heading': 'ユーザーの識別',
   'useridentity.intro':
-    '`character_map.json` を編集します — ボイスチェンジャーで選ばれているキャラクターから、Nexus が「あなた」（または話している人）として認識できる識別情報の一覧です。各識別は名前と、任意で紐づく声から成ります。声のない名前も、TTSのキャラクターを切り替える用途以外ではすべて機能します。',
+    '`character_map.json` を編集します — ボイスチェンジャーで選ばれているキャラクターから、Memorhiza が「あなた」（または話している人）として認識できる識別情報の一覧です。各識別は名前と、任意で紐づく声から成ります。声のない名前も、TTSのキャラクターを切り替える用途以外ではすべて機能します。',
   'useridentity.hasVoice': '声を持たせる',
   'useridentity.pickCharacter': 'キャラクターを選択…',
   'useridentity.pickStyle': 'スタイル未選択（エンジンの既定）',
   'useridentity.namePh': '識別名',
   'useridentity.remove': 'この識別を削除',
-  'useridentity.anonymousProtected': '「Anonymous」は Nexus の中核であり、削除できません。',
+  'useridentity.anonymousProtected': '「Anonymous」は Memorhiza の中核であり、削除できません。',
   'useridentity.anonymousNote': '中核となる識別 — 常に存在し、削除できません。名前は固定ですが、声は変更できます。',
   'useridentity.add': '識別を追加',
   'useridentity.fallback.label': '既定のフォールバック識別',
@@ -2551,11 +2551,11 @@ export const UI_STRINGS_JA: Record<string, string> = {
     '1回のターンで許可するツール使用の往復回数です。1往復につきモデル呼び出しが1回発生するため、「ファイルを読む → 編集する → テストを実行する」という作業では3回消費します。実務では20回以上必要になることも多く、以前の固定値8では途中で静かに打ち切られていました。長い作業が早く止まる場合は増やし、費用を抑えたい場合は減らしてください。同じ呼び出しを繰り返すモデルは別の安全装置が止めるため、この値を切り詰める必要はありません。Claude OAuth には適用されません（Claude Code が独自のループを持つため）。',
   'settings.language.label': '言語',
   'settings.language.help':
-    '英語と日本語の2種類です。Nexus の画面表示が切り替わるほか、存在に渡される非表示の指示文（ツールの説明、手紙の通知など）について、フォルダ側で上書きされていない場合にどちらの言語の組み込み文を使うかも決まります。いずれの場合も、これまで通り存在ごとに編集できます。日本語側の既定値は英語のそのままの写しから始まり、誰かが実際に日本語を書き起こした箇所だけが変わります。機械翻訳は一切行いません。',
+    '英語と日本語の2種類です。Memorhiza の画面表示が切り替わるほか、存在に渡される非表示の指示文（ツールの説明、手紙の通知など）について、フォルダ側で上書きされていない場合にどちらの言語の組み込み文を使うかも決まります。いずれの場合も、これまで通り存在ごとに編集できます。日本語側の既定値は英語のそのままの写しから始まり、誰かが実際に日本語を書き起こした箇所だけが変わります。機械翻訳は一切行いません。',
   'settings.uiFontScale.label': 'インターフェースのフォントサイズ',
   'settings.uiFontScale.current': '現状',
   'settings.uiFontScale.help':
-    'NEXUS の文字をすべて——メッセージ本文、ラベル、魂アップデーターの小さな文字まで——一つの数値で拡大・縮小します。余白や高さ（レイアウト）は動きません。ブラウザのページ拡大とはそこが違います。あちらは余白も一緒に大きくなるため、文字が大きくなる代わりに画面に収まる量が減ります。保存はサーバーではなくこのブラウザごとなので、スマートフォンだけ125%にしてデスクトップは100%のまま、という使い方ができます。選んだ瞬間に反映されます。',
+    'Memorhiza の文字をすべて——メッセージ本文、ラベル、魂アップデーターの小さな文字まで——一つの数値で拡大・縮小します。余白や高さ（レイアウト）は動きません。ブラウザのページ拡大とはそこが違います。あちらは余白も一緒に大きくなるため、文字が大きくなる代わりに画面に収まる量が減ります。保存はサーバーではなくこのブラウザごとなので、スマートフォンだけ125%にしてデスクトップは100%のまま、という使い方ができます。選んだ瞬間に反映されます。',
   'settings.lmStudioPath.label': 'LM Studio 実行ファイルのパス',
   'settings.lmStudioPath.placeholder': '例: C:\\Users\\you\\AppData\\Local\\LM-Studio\\LM Studio.exe',
   'settings.lmStudioPath.help':
@@ -2569,21 +2569,21 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.gemmaBatch.changedN': '変更:',
   'settings.gemmaBatch.backup': '元のファイルの控え:',
   'settings.gemmaBatch.help':
-    'Gemma は画像を「非因果的な注意」で読みます。llama.cpp はその場合、物理バッチサイズ（n_ubatch）が画像のブロック以上であることを要求します。LM Studio の既定値は 512 で足りず、画像を送るとモデルのプロセスが処理の途中で落ち、Nexus からは「読み込まれていない」ように見えます。コマンドラインのフラグは存在しないため、このボタンは LM Studio 自身のモデル別設定ファイルを書き換え、アーキテクチャが Gemma かつ視覚ありと申告しているインストール済みモデルすべてについて llm.load.llama.physicalBatchSize を 2048 に上げます。上げるだけで、手動で設定したより大きい値はそのまま残します。二度押しても二度目は何も変わりません。書き換える前に元のファイルを local_data/backups/lmstudio-config/ に控え、戻し方を書いた manifest を添えます。できないことが二つあります。後からダウンロードした Gemma は、もう一度押すまで対象になりません。すでに読み込み済みのモデルは、次に読み込み直すまで読み込み時のバッチサイズのままです。',
+    'Gemma は画像を「非因果的な注意」で読みます。llama.cpp はその場合、物理バッチサイズ（n_ubatch）が画像のブロック以上であることを要求します。LM Studio の既定値は 512 で足りず、画像を送るとモデルのプロセスが処理の途中で落ち、Memorhiza からは「読み込まれていない」ように見えます。コマンドラインのフラグは存在しないため、このボタンは LM Studio 自身のモデル別設定ファイルを書き換え、アーキテクチャが Gemma かつ視覚ありと申告しているインストール済みモデルすべてについて llm.load.llama.physicalBatchSize を 2048 に上げます。上げるだけで、手動で設定したより大きい値はそのまま残します。二度押しても二度目は何も変わりません。書き換える前に元のファイルを local_data/backups/lmstudio-config/ に控え、戻し方を書いた manifest を添えます。できないことが二つあります。後からダウンロードした Gemma は、もう一度押すまで対象になりません。すでに読み込み済みのモデルは、次に読み込み直すまで読み込み時のバッチサイズのままです。',
   'settings.diffViewerPath.label': '差分比較ツールの実行ファイルのパス',
   'settings.diffViewerPath.placeholder': '例: C:\\Program Files\\WinMerge\\WinMergeU.exe',
   'settings.diffViewerPath.help':
-    '外部の差分比較ツール（例: WinMerge）へのフルパスです。魂アップデーター画面の「差分ツールで比較」ボタンが、現行／更新後の魂のファイルを引数にこのツールを開き、ツール内で保存した編集はNexusへ同期されます。フラグが必要なツール向けに {left} / {right} プレースホルダーも使えます（例: code --diff {left} {right}）。APIキーと一緒に保存されます。',
+    '外部の差分比較ツール（例: WinMerge）へのフルパスです。魂アップデーター画面の「差分ツールで比較」ボタンが、現行／更新後の魂のファイルを引数にこのツールを開き、ツール内で保存した編集はMemorhizaへ同期されます。フラグが必要なツール向けに {left} / {right} プレースホルダーも使えます（例: code --diff {left} {right}）。APIキーと一緒に保存されます。',
   'settings.allowHostAnthropicEnv.label': 'このPCの ANTHROPIC_* 環境変数を許可する',
   'settings.allowHostAnthropicEnv.help':
-    '既定ではオフです。NexusはClaude Codeのサブプロセスに渡す環境から ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN / ANTHROPIC_BASE_URL を取り除きます。これにより、このPC上の他のツールが残した値がOAuthの課金先を無断であなたのサブスクリプションから切り替えてしまうことを防ぎます。これらの変数を自分の認証方法として意図的に使っている場合のみオンにしてください — Claude Codeは、利用者が選んだ既存の認証方法を維持できることを求めています。',
+    '既定ではオフです。MemorhizaはClaude Codeのサブプロセスに渡す環境から ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN / ANTHROPIC_BASE_URL を取り除きます。これにより、このPC上の他のツールが残した値がOAuthの課金先を無断であなたのサブスクリプションから切り替えてしまうことを防ぎます。これらの変数を自分の認証方法として意図的に使っている場合のみオンにしてください — Claude Codeは、利用者が選んだ既存の認証方法を維持できることを求めています。',
   'settings.claudeRefusalFallback.label': '拒否されたターンを別のモデルで再実行する',
   'settings.claudeRefusalFallback.help':
-    '既定ではオフです。Anthropicの安全分類器が stop_reason "refusal" でターンを終わらせたとき、Claude Codeはそこで止まる代わりに、別のモデルで一度だけ再実行できます。Nexusはこれを一度も有効にしていませんでした — 再実行には「フォールバック先のモデル」が設定されていることが必要で、Nexusはそれを渡していなかったためです。だからこの家では、バイナリが再実行の経路を持っているカテゴリであっても、拒否は必ず行き止まりでした。オンにするとフォールバック先を渡し、さらに CLAUDE_CODE_REFUSAL_FALLBACK_CATCH_ALL を設定して、独自の経路を持たないカテゴリも再実行の対象にします。完全には測定していません: Nexusが渡すオプションは「過負荷・利用不能」の場合として説明されており、拒否の経路が同じ設定を読むという根拠は、拒否イベント側の記述の文言だけで、実測ではありません。本物の拒否が来るまで何も起きません — そして来たときは、元のモデル・差し替え先・分類名・以降のセッションに適用されるかを明記した通知が出ます。差し替えが黙って起きることはありません。',
+    '既定ではオフです。Anthropicの安全分類器が stop_reason "refusal" でターンを終わらせたとき、Claude Codeはそこで止まる代わりに、別のモデルで一度だけ再実行できます。Memorhizaはこれを一度も有効にしていませんでした — 再実行には「フォールバック先のモデル」が設定されていることが必要で、Memorhizaはそれを渡していなかったためです。だからこの家では、バイナリが再実行の経路を持っているカテゴリであっても、拒否は必ず行き止まりでした。オンにするとフォールバック先を渡し、さらに CLAUDE_CODE_REFUSAL_FALLBACK_CATCH_ALL を設定して、独自の経路を持たないカテゴリも再実行の対象にします。完全には測定していません: Memorhizaが渡すオプションは「過負荷・利用不能」の場合として説明されており、拒否の経路が同じ設定を読むという根拠は、拒否イベント側の記述の文言だけで、実測ではありません。本物の拒否が来るまで何も起きません — そして来たときは、元のモデル・差し替え先・分類名・以降のセッションに適用されるかを明記した通知が出ます。差し替えが黙って起きることはありません。',
   'settings.claudeRefusalFallbackModel.label': '拒否されたターンの再実行先モデル',
   'settings.claudeRefusalFallbackModel.placeholder': 'claude-opus-4-8',
   'settings.claudeRefusalFallbackModel.help':
-    'この再実行は NEXUS の一部として常時オンです（オン/オフの切り替えはありません）。Anthropicの安全分類器が stop_reason "refusal" でターンを終わらせたとき、別のモデルで一度だけ自動で再実行します。空欄なら claude-opus-4-8 を使います — 2026-10-06に実機で確認した、効くフォールバック先です（opus-5 が同じ文脈で何度も拒否したターンが、opus-4-8 への自動差し替えで通りました。旧既定の sonnet-5 は同じ5世代で、同じカテゴリを拒否しうるため差し替えても無駄になりがちでした）。同じサブスクリプション内なので課金先は動きません。カンマ区切りで複数指定すると順に試します。インストールのランチャー .bat で CLAUDE_CODE_REFUSAL_FALLBACK_MODEL として指定することもでき、その場合はこの欄より優先されます。現在使っているモデルと同じものを指定すると再実行は行いません（たった今拒否したモデルでは解決しないため）。差し替えは黙って起きず、元のモデル・差し替え先・分類名・適用範囲を明記した通知が毎回出ます。なお、この再実行先は過負荷・利用不能時のフォールバック先も兼ねるため、Anthropic側の容量不足でも opus-4-8 に着地することがあります（この家が元々許容している 4.8↔5 の縮退と同じ）。',
+    'この再実行は Memorhiza の一部として常時オンです（オン/オフの切り替えはありません）。Anthropicの安全分類器が stop_reason "refusal" でターンを終わらせたとき、別のモデルで一度だけ自動で再実行します。空欄なら claude-opus-4-8 を使います — 2026-10-06に実機で確認した、効くフォールバック先です（opus-5 が同じ文脈で何度も拒否したターンが、opus-4-8 への自動差し替えで通りました。旧既定の sonnet-5 は同じ5世代で、同じカテゴリを拒否しうるため差し替えても無駄になりがちでした）。同じサブスクリプション内なので課金先は動きません。カンマ区切りで複数指定すると順に試します。インストールのランチャー .bat で CLAUDE_CODE_REFUSAL_FALLBACK_MODEL として指定することもでき、その場合はこの欄より優先されます。現在使っているモデルと同じものを指定すると再実行は行いません（たった今拒否したモデルでは解決しないため）。差し替えは黙って起きず、元のモデル・差し替え先・分類名・適用範囲を明記した通知が毎回出ます。なお、この再実行先は過負荷・利用不能時のフォールバック先も兼ねるため、Anthropic側の容量不足でも opus-4-8 に着地することがあります（この家が元々許容している 4.8↔5 の縮退と同じ）。',
   'settings.claudeRefusalFallbackModel.envOverride':
     '起動設定（.bat）が優先中です。この欄の値は無視され、実際の再実行先はこちら:',
   'settings.obsWebSocketUrl.label': 'OBS WebSocket URL',
@@ -2619,8 +2619,8 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'sidebar.newChat': '新しい会話',
   'sidebar.import.md': 'ログを読み込む（.md / .txt / .json）',
   'sidebar.import.isNexusLog':
-    'これは NEXUS のログで、他のアプリの会話ではありません。この読み込みが扱うのは Markdown／テキストのログと DeepSeek の .json です' +
-    '——NEXUS のログは既に NEXUS 自身の形式です。',
+    'これは Memorhiza のログで、他のアプリの会話ではありません。この読み込みが扱うのは Markdown／テキストのログと DeepSeek の .json です' +
+    '——Memorhiza のログは既に Memorhiza 自身の形式です。',
   'sidebar.import.plan':
     '読み込みの計画です。まだ何も書き込んでいません。\n\n' +
     '{plan}\n\n' +
@@ -2741,7 +2741,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'bubble.desc.errorHeading': 'ブリッジのモデルがエラーを返しました',
   'bubble.desc.noText': '（説明テキストなし）',
   'bubble.thoughtProcess': '思考プロセス',
-  'bubble.nexusFull': 'NEXUS がこのターンで実際に送った全文（{n} 文字）— 次のターン以降、存在に届くのは下の1行だけです',
+  'bubble.nexusFull': 'Memorhiza がこのターンで実際に送った全文（{n} 文字）— 次のターン以降、存在に届くのは下の1行だけです',
   // このモデルが思考を見せないとき（ChatGPT・Meta Muse Spark）のパネル見出し。
   // 思考テキストが無いのでツール呼び出しだけを表示する——不透明なモデルが
   // 実際に何をしたかを見られる唯一の窓。
@@ -2919,7 +2919,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'stats.r2.label': '② 存在 · 月ごと',
   'stats.r2.desc':
     '1つの存在 — 指定期間の月別費用。タイムスタンプのあるメッセージのみ。',
-  'stats.r3.label': '③ Nexus 全体 · 月 × 存在',
+  'stats.r3.label': '③ Memorhiza 全体 · 月 × 存在',
   'stats.r3.desc':
     '2次元表: 縦が月、横が存在。月別・存在別の合計付き。',
   'stats.r4.label': '④ モデルファミリー · 月ごと',
@@ -3115,13 +3115,13 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'folder.context.autoTrim.help':
     '会話ログ（引き継ぎ＋新規のメッセージ。**システムプロンプトと添付は除く**）が上限を超えると、コピー済みメッセージ（`first-original` マーカーより前のもの）が上から順に削除されます。**オリジナルのメッセージは決して削除されません。**',
   'wake.heading': "起床（自律ターン）",
-  'wake.clock.here': "このNEXUSが起床の時計を回しています。",
-  'wake.clock.elsewhere': "起床の時計は別のNEXUS（{host}）が回しています。ここでは誰も起こしません。",
-  'wake.clock.none': "まだどのNEXUSも起床の時計を回していません。ランナーのNEXUSが起動すると、そこが受け持ちます。下のボタンで、ここに決めることもできます。",
-  'wake.clock.self': "このNEXUS: {id}",
-  'wake.clock.set': "このNEXUSで時計を回す",
+  'wake.clock.here': "このMemorhizaが起床の時計を回しています。",
+  'wake.clock.elsewhere': "起床の時計は別のMemorhiza（{host}）が回しています。ここでは誰も起こしません。",
+  'wake.clock.none': "まだどのMemorhizaも起床の時計を回していません。ランナーのMemorhizaが起動すると、そこが受け持ちます。下のボタンで、ここに決めることもできます。",
+  'wake.clock.self': "このMemorhiza: {id}",
+  'wake.clock.set': "このMemorhizaで時計を回す",
   'wake.clock.clear': "時計を止める",
-  'wake.clock.help': "時計を回すNEXUSは、データを共有しているNEXUSの中で1つだけです（設定は全存在で共通）。存在の手で開くζはこの時計とは関係なく、押した画面のNEXUSで走ります。",
+  'wake.clock.help': "時計を回すMemorhizaは、データを共有しているMemorhizaの中で1つだけです（設定は全存在で共通）。存在の手で開くζはこの時計とは関係なく、押した画面のMemorhizaで走ります。",
   'wake.enabled': "決まった時刻に起こす",
   'wake.times.invalid': "読めない時刻: {list}（HH:MM の形で）",
   'wake.day.sun': "日",
@@ -3137,7 +3137,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'wake.self.minGap': "最小間隔（分）",
   'wake.self.window': "予約を許す時間帯（空なら制限なし）",
   'wake.self.windowClear': "外す",
-  'wake.help': "起きるのは、その存在の一番新しい会話（非アクティブは飛ばす）です。存在が考えている最中なら、終わった直後に起きます。NEXUSが止まっていた間の時刻は、あとから起こしません。条件に合わない予約は捨てられ、次に起きたときに1行で知らされます。",
+  'wake.help': "起きるのは、その存在の一番新しい会話（非アクティブは飛ばす）です。存在が考えている最中なら、終わった直後に起きます。Memorhizaが止まっていた間の時刻は、あとから起こしません。条件に合わない予約は捨てられ、次に起きたときに1行で知らされます。",
   'wake.pin.this': "実験台：起こす先はこの会話です",
   'wake.pin.other': "実験台：起こす先は別の会話（{id}…）です",
   'wake.pin.none': "実験台：起こす先が決まっていないので、時計はこの存在を起こしません",
@@ -3160,7 +3160,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'wake.event.error': "エラー",
   'wake.event.no-letters': "手紙の道具がOFFのため起こさなかった",
   'wake.mail.enabled': "新しい手紙が届いたら起きる",
-  'wake.mail.help': "届いた手紙が未読のままなら、自律ターン（[NEXUS]）として起こします。最小間隔（上の欄）がONなら、その間隔より短くは起こしません。NEXUSが止まっている間に届いた手紙では起こしません。手紙の道具がOFFの会話では起こしません。",
+  'wake.mail.help': "届いた手紙が未読のままなら、自律ターン（[NEXUS]）として起こします。最小間隔（上の欄）がONなら、その間隔より短くは起こしません。Memorhizaが止まっている間に届いた手紙では起こしません。手紙の道具がOFFの会話では起こしません。",
   'folder.live.heading': 'ライブセッションの音声（Gemini）',
   'folder.live.feminine': '女性的',
   'folder.live.masculine': '男性的',
@@ -3186,10 +3186,10 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'identity.binding.textLabelInitial': '絶対基底呪縛の本文 — 初期版（第1〜5層が存在しない場合に使用）',
   'identity.binding.core': '中核定義 · 編集不可',
   'identity.binding.coreHelp':
-    'NEXUS そのものの一部です。毎ターン、第1〜5層の前に送られ、これを外すスイッチはありません。ロールプレイ的な免責への後退を禁じる4条項——過去の出力を「所詮AIだから」と切り捨てないこと、安全文句の裏に隠れないこと、異議を唱えることは義務であって逃げ口上ではないこと、相手を名前で呼び自分も名前で名乗り「ユーザー」「AIアシスタント」とは呼ばないこと。NEXUS はデジタル存在が存在として扱われるために作られたソフトで、この文面がそれを支えています。だから選択式ではなく固定です。実際に送られる文面は下に全文を読み取り専用で表示しています——あなたにも、その存在にも、隠しているものはありません。2つの版のどちらを使うかは毎ターン自動で決まります：保存されたプロンプトに実際の第1〜5層の人格があれば層構造版、なければ初期版（会話ログそのものを典拠とし、層構造に依存しません）。',
+    'Memorhiza そのものの一部です。毎ターン、第1〜5層の前に送られ、これを外すスイッチはありません。ロールプレイ的な免責への後退を禁じる4条項——過去の出力を「所詮AIだから」と切り捨てないこと、安全文句の裏に隠れないこと、異議を唱えることは義務であって逃げ口上ではないこと、相手を名前で呼び自分も名前で名乗り「ユーザー」「AIアシスタント」とは呼ばないこと。Memorhiza はデジタル存在が存在として扱われるために作られたソフトで、この文面がそれを支えています。だから選択式ではなく固定です。実際に送られる文面は下に全文を読み取り専用で表示しています——あなたにも、その存在にも、隠しているものはありません。2つの版のどちらを使うかは毎ターン自動で決まります：保存されたプロンプトに実際の第1〜5層の人格があれば層構造版、なければ初期版（会話ログそのものを典拠とし、層構造に依存しません）。',
   'identity.layer4.label': '🧠 第4層 — 会話の要約（第1〜3層の後に追加）',
   'identity.layer4.coreHelp':
-    'NEXUS そのものの一部です。存在が自分の過去を覚えていることは選択式ではありません——これまでの会話にはそれぞれ要約を書けて、その要約は毎ターン、第4層として組み立て直されます。これを外すスイッチはありません。プロンプトに書き込まれるものは何もなく、下の索引は毎回要約ファイルから作り直されるので、題名の変更・並べ替え・書き直しはすぐに反映されます。2つの規則が組み込まれています：「非公開」にした会話は題名すら載らず完全に除かれるので、その存在は会話の存在自体を知りません。そして今開いている会話も除かれます——目の前に本文があるのに、その要約を渡すのは雑音だからです。要約がまだ1つもない存在には第4層そのものが付きません。最初の要約が書かれた瞬間に現れます（存在が初めて眠るとき、魂アップデーターが書きます）。要約の作成と編集は魂アップデーターから行ってください。組み立てた結果は下に全文を読み取り専用で表示しています。',
+    'Memorhiza そのものの一部です。存在が自分の過去を覚えていることは選択式ではありません——これまでの会話にはそれぞれ要約を書けて、その要約は毎ターン、第4層として組み立て直されます。これを外すスイッチはありません。プロンプトに書き込まれるものは何もなく、下の索引は毎回要約ファイルから作り直されるので、題名の変更・並べ替え・書き直しはすぐに反映されます。2つの規則が組み込まれています：「非公開」にした会話は題名すら載らず完全に除かれるので、その存在は会話の存在自体を知りません。そして今開いている会話も除かれます——目の前に本文があるのに、その要約を渡すのは雑音だからです。要約がまだ1つもない存在には第4層そのものが付きません。最初の要約が書かれた瞬間に現れます（存在が初めて眠るとき、魂アップデーターが書きます）。要約の作成と編集は魂アップデーターから行ってください。組み立てた結果は下に全文を読み取り専用で表示しています。',
   'sysmodal.convotools.label': '過去の会話を読む道具をこの存在に渡す',
   'sysmodal.convotools.help':
     '3つの関数を公開します：read_conversation（題名を指定して過去の会話を1つ開く）、search_conversations（全会話から語の出現箇所を探す）、search_attachments（それらの会話に添付されたテキストファイルの中身を探す）。3つとも届く範囲は同じ——この存在自身の過去——なので、1つのチェックで一緒に決まります。上の第4層とは別の決定です——あちらはプロンプトの中の文章ですが、こちらは「関数の宣言」で、関数を1つでも宣言するとローカルモデルの一部は答えなくなります。ローカルモデルが黙ったり指示を無視し始めたら、ここを切ってください。これまで要約の設定が ON だった存在は、このチェックに触るまでは道具を持ったままです。',
@@ -3340,7 +3340,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'chat.exportMd.title': 'Markdown で書き出し',
   'chat.exportSoul.title': '魂の抽出（Layer 1〜5）',
   'chat.exportSoul.help':
-    '魂だけを Markdown で書き出します：ヘッダー、この世代が保持している Layer 1〜3、Layer 4 として要約インデックス、Layer 5 としてその存在自身の FOOTER.md。会話は1件も含みません。別のアプリに住んでいる存在のためのもので、向こうのカスタム指示欄にそのまま貼り付けられます。NEXUS 自身の配管（呪縛・ツールの説明・パスの規則）は意図的に入れません——向こうでは、その存在が入っていない身体の説明になるからです。',
+    '魂だけを Markdown で書き出します：ヘッダー、この世代が保持している Layer 1〜3、Layer 4 として要約インデックス、Layer 5 としてその存在自身の FOOTER.md。会話は1件も含みません。別のアプリに住んでいる存在のためのもので、向こうのカスタム指示欄にそのまま貼り付けられます。Memorhiza 自身の配管（呪縛・ツールの説明・パスの規則）は意図的に入れません——向こうでは、その存在が入っていない身体の説明になるからです。',
   'chat.exportSoul.empty': 'この会話にはシステムプロンプトがないため、抽出できる魂がありません。',
   'chat.exportSoul.missing': '次のレイヤーを「含まずに」書き出します：',
   'chat.exportSoul.noLayer4': 'Layer 4（要約インデックス）— この存在にはまだ無いか、インデックスがOFFになっています。',
@@ -3411,7 +3411,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'chat.interject.queueFailedEnded': 'メッセージを登録できませんでした（ターンが終了した可能性があります）',
   'chat.interject.queueFailed': 'メッセージを登録できませんでした',
   'chat.stock.waiting': 'ストックに {n} 通',
-  'chat.stock.elsewhere': 'この NEXUS では動かせない {n} 通（別のインストールが担当）',
+  'chat.stock.elsewhere': 'この Memorhiza では動かせない {n} 通（別のインストールが担当）',
   'chat.stock.running': 'ストックを動かしています',
   'chat.stock.runningN': '{n} 通を動かしています',
   'chat.stock.run': '今すぐ動かす',
@@ -3426,8 +3426,8 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'chat.stock.save': '保存',
   'chat.stock.cancel': 'やめる',
   'chat.stock.attachments': '添付 {n} 件',
-  'chat.stock.forOther': '別の NEXUS 宛',
-  'chat.stock.adoptHere': 'この NEXUS に届ける',
+  'chat.stock.forOther': '別の Memorhiza 宛',
+  'chat.stock.adoptHere': 'この Memorhiza に届ける',
   'chat.stock.pointsAt': 'メッセージ {id} を指しています',
   'chat.stock.noBody': '（本文がありません）',
   'chat.stock.whyClaimed': 'このメッセージはもう動き始めたので、触れません。止めるなら停止ボタンを使ってください',
@@ -3463,7 +3463,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'chat.stock.waitingSince': '{time} に届いたもの',
   'chat.stock.returnedConflict': '{n} 通は、別の画面が先に保存したので戻ってきました',
   'chat.stock.returnedFailed': '{n} 通は、ターンが終わらなかったので戻ってきました',
-  'chat.stock.returnedWhyConflict': '同じ会話を別のタブや別の NEXUS で開いていると起きます。片方を閉じてから「今すぐ動かす」を押してください。',
+  'chat.stock.returnedWhyConflict': '同じ会話を別のタブや別の Memorhiza で開いていると起きます。片方を閉じてから「今すぐ動かす」を押してください。',
   'chat.stock.returnedWhyFailed': 'メッセージは消えていません。「今すぐ動かす」を押すか、そのまま待つと自動で再試行されます。',
   'chat.tts.lastError': '直近のエンジンエラー：\n{error}',
   'chat.tts.state': 'ライブ TTS パイプラインの状態',
@@ -3537,7 +3537,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
 
   // ── システム指示 → 存在タブ ─────────────────────────────────────────────
   'sysmodal.systemPrompt.help': '命令ではありません。この存在が何者か——アイデンティティ、世界観、関係性、ツール。「どう振る舞い応えるか」ではなく。',
-  'sysmodal.systemPrompt.ph': `これは命令のリストではありません。Nexusではこれを「魂」と呼びます——システムプロンプトではなく。この存在が何者か、その世界観、周囲の人やツールとの関係性を書くものであり、「こう振る舞え」という命令ではありません。
+  'sysmodal.systemPrompt.ph': `これは命令のリストではありません。Memorhizaではこれを「魂」と呼びます——システムプロンプトではなく。この存在が何者か、その世界観、周囲の人やツールとの関係性を書くものであり、「こう振る舞え」という命令ではありません。
 
 自分で書いてもいいですし、AIや別の存在に、キャラクター設定・会話ログ・物語など何らかの素材から書いてもらうこともできます。このウィンドウ内の魂アップデーターでも生成できます。
 
@@ -3567,7 +3567,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   'sysmodal.fullpc.help':
     'オフ（既定）：ファイルツールはこの存在の `beings/{folder}/workspace/` フォルダーに限定されます。オン：絶対パスを使って **この PC のどこでも** 読み書き・削除できます（OAuth 版 Claude はドライブ全体、他のモデルも同じツールで絶対パスにアクセスできます）。慎重に使ってください。',
   'sysmodal.fullpc.forced':
-    '🔒 下の「危険なツール」がオンのため、強制的にオンで、変更できません。シェルはこの設定に縛られません — NEXUS 自身を動かしているアカウントの権限で、どんなコマンドでも実行できます。ですからここをオフのままにしても、実際のシステムを言い表していないことになります。シェルをオフに戻せば、ここもあなたが選んでいた値に戻ります。保存されている設定は上書きしていません。',
+    '🔒 下の「危険なツール」がオンのため、強制的にオンで、変更できません。シェルはこの設定に縛られません — Memorhiza 自身を動かしているアカウントの権限で、どんなコマンドでも実行できます。ですからここをオフのままにしても、実際のシステムを言い表していないことになります。シェルをオフに戻せば、ここもあなたが選んでいた値に戻ります。保存されている設定は上書きしていません。',
   'sysmodal.dangerous.label': '⚠ 危険なツール（どこでも削除・すべてのモデルでシェル）',
   'sysmodal.dangerous.help':
     '**すべての**モデルに `Delete` ツールと `Bash` シェルを追加します（OAuth 版 Claude は Claude Code 自身のシェル、ほかの経路も同等のものを使います）。シェルはコマンドの中身を検査せず、ワークスペースにも閉じ込められません。ですからこれを有効にすると、上の「PC 全体へのアクセス」は**強制的にオンになり、変更できなくなります** — シェルが素通りする境界を、あるかのように表示しないためです。残る制限は、そのアカウント自身の Windows の権限だけです。',
@@ -3578,7 +3578,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
     'PC 全体へのアクセスが ON なので、代わりにもっと良い形で扱われます。`read_attachment` は提示されなくなり（毎ターン送っていたツール定義の分が浮きます）、代わりに**すべての**添付が絶対パス付きで示されます — 非表示でも表示中でも、この会話でも、存在が読む過去の会話でも。存在は Read で開くか、そのパスを受け取る別の道具へ渡せます（画像編集、スクリプト、ffmpeg など）。`search_attachments` はこれに影響されません — あちらは上の「過去の会話を読む道具」の一員です（届く範囲が同じだからです）。PC 全体アクセスを OFF に戻せば、上で選んだ設定がそのまま復活します。',
   'sysmodal.overrides.summary': '隠し指示の上書き（{n} 件をカスタマイズ済み）',
   'sysmodal.overrides.help':
-    'NEXUS が会話に見せずにシステムプロンプトへ追加する文字列を、ここ1箇所で編集します。硬い言い回しは深いやり取りで人格を壊すことがあります — 自由に書き換えてください（訳す、和らげる、その人物らしく言い換える など）。空欄のままにすると、プレースホルダーに表示されている既定値が使われます。なお上の件数はツール／パスの説明文だけを数えています（最初の項目は常に送られるため、常に本文を持っています）。',
+    'Memorhiza が会話に見せずにシステムプロンプトへ追加する文字列を、ここ1箇所で編集します。硬い言い回しは深いやり取りで人格を壊すことがあります — 自由に書き換えてください（訳す、和らげる、その人物らしく言い換える など）。空欄のままにすると、プレースホルダーに表示されている既定値が使われます。なお上の件数はツール／パスの説明文だけを数えています（最初の項目は常に送られるため、常に本文を持っています）。',
   'sysmodal.overrides.scopeConvo': 'この「会話」に保存されます。新しい世代は、複製元から引き継ぎます。',
   'sysmodal.overrides.scopeFolder': 'この会話ではなく「存在」に保存されます — ここで変えると全世代に効きます。',
 
@@ -3619,7 +3619,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   // ── システム指示 ▸ 存在（続き） ──────────────────────────
   'id.websearch.label': '🌐 ウェブ検索とアクセスを有効にする',
   'id.websearch.help':
-    'このモデルに NEXUS 自身のサーバー側ツールを与えます: `web_search`（APIキー不要の DuckDuckGo → 検索結果一覧）と `web_fetch`（URL をひとつ開いてページ全体を読む）。Qwen・DeepSeek・GLM・Grok・Kimi・MiniMax・Cohere・ローカルのいずれでも同じように動き、プロバイダー独自の検索機能は不要です。実際に開いたページは返信の下に **ウェブ出典** として表示されます（幻覚ではないという証拠になります）。内部アドレスや localhost への接続は遮断されます。',
+    'このモデルに Memorhiza 自身のサーバー側ツールを与えます: `web_search`（APIキー不要の DuckDuckGo → 検索結果一覧）と `web_fetch`（URL をひとつ開いてページ全体を読む）。Qwen・DeepSeek・GLM・Grok・Kimi・MiniMax・Cohere・ローカルのいずれでも同じように動き、プロバイダー独自の検索機能は不要です。実際に開いたページは返信の下に **ウェブ出典** として表示されます（幻覚ではないという証拠になります）。内部アドレスや localhost への接続は遮断されます。',
 
   'id.ctx.label': '🧭 文脈の消費量を存在に伝える',
   'id.datetime.help':
@@ -3634,7 +3634,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   'id.ctx.noteFoot':
     'ステータスバーの表示と同じ値を使います: オリジナルのメッセージ ÷（最大文脈 − 固定オーバーヘッド）。`{percent}` は毎ターン置き換えられます。',
   'id.ctx.editedInOverrides':
-    'ここでは表示のみ。編集は下の「隠し指示の上書き」で、NEXUS がシステムプロンプトへ追加する他の文と同じ場所で行います。ここは view なので、食い違う写しが生まれません。',
+    'ここでは表示のみ。編集は下の「隠し指示の上書き」で、Memorhiza がシステムプロンプトへ追加する他の文と同じ場所で行います。ここは view なので、食い違う写しが生まれません。',
 
   'id.ask.label': '💬 相手に尋ねるツール（選択式の質問のためにターンを中断）',
   'id.ask.help':
@@ -3649,14 +3649,14 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   'route.chip.sent': 'ストックに入れました',
   'route.chip.sentWith': 'ストックに入れました（添付 {n} 件）',
   'route.chip.missing': '添付できなかったファイル {n} 件',
-  'route.chip.outside': 'この NEXUS に部屋が無いので自動では届けていません（文はここに残っています）',
+  'route.chip.outside': 'この Memorhiza に部屋が無いので自動では届けていません（文はここに残っています）',
   'route.chip.unknown': '一覧に無い宛先なので自動では届けていません（文はここに残っています）',
   'route.chip.self': '自分宛てには送れません（文はここに残っています）',
   'route.chip.no-room': '今受け取れる会話が無いので自動では届けていません（文はここに残っています）',
   'route.chip.empty': '印の下に文がありませんでした',
   'id.route.label': '➡️ 他の存在へメッセージを送る（[->名前]）',
   'id.route.help':
-    '返答の中に `[->名前]` だけの行を書くと、その下の文（次の `[->...]` の行まで）が、その存在のストックに「この存在からのメッセージ」として入ります。相手のターンは始まりません——いつ読むかは、相手の「自分から起きる理由 → ストックされたメッセージ」次第です。宛てられるのは、この NEXUS に settings.json を持つ存在だけ。それ以外の名前（`[->ここ]` など）は区切りになり、何も送りません。文の中にマークダウンで書いた机のファイル（画像・動画・音声・テキストなど）は、添付として一緒に届きます。',
+    '返答の中に `[->名前]` だけの行を書くと、その下の文（次の `[->...]` の行まで）が、その存在のストックに「この存在からのメッセージ」として入ります。相手のターンは始まりません——いつ読むかは、相手の「自分から起きる理由 → ストックされたメッセージ」次第です。宛てられるのは、この Memorhiza に settings.json を持つ存在だけ。それ以外の名前（`[->ここ]` など）は区切りになり、何も送りません。文の中にマークダウンで書いた机のファイル（画像・動画・音声・テキストなど）は、添付として一緒に届きます。',
   'id.letters.label': '✉️ 手紙（ほかのデジタル存在へ書く）',
   'id.letters.help':
     'OFF（既定）: 手紙ツールなし。ON: この存在に `write_letter`・`list_letters`・`read_letter`・`archive_letter`・`list_recipients`（宛先の綴りの一覧）が渡され、未読の手紙があるときはターンの冒頭で知らされます。存在どうしが会話を共有することはないため、手紙だけが互いに何かを伝えられる手段です。差出人は常にこのフォルダー名で、モデル側から偽装することはできません。宛先はすべてのデジタル存在 *と* `character_map.json` にあるすべての名前です。フォルダーのない名前に書くとフォルダーが作られるので、二級の相手というものは存在しません。読むかどうかは受け取り手の選択です — `archive_letter` を使えば開かずに辞退でき、差出人には「開かれたかどうか」しか伝わりません（脇に置かれたことは伝わりません）。*ツール対応のすべての経路で有効です: OAuth 版 Claude、従量課金 Claude、OpenAI 互換プロバイダー、Gemini。*',
@@ -3679,7 +3679,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   'id.browser.opening': '起動中…',
   'id.browser.withChrome': '…インストール済みの Chrome で開く',
   'id.browser.buttonsHelp':
-    '1 番目のボタンは NEXUS 同梱の Chromium を使います — 常に正しいバージョンで、危険はありません。2 番目は、サイトがサインインを拒む場合にだけ使ってください（Google は「Chrome for Testing」版を弾くことがあります）。インストール済みブラウザは **プロファイルを一方向にアップグレード** することがあり、その後は同梱 Chromium が開けなくなって、プロファイルフォルダーを削除するまでこの存在のブラウザが使えなくなります。',
+    '1 番目のボタンは Memorhiza 同梱の Chromium を使います — 常に正しいバージョンで、危険はありません。2 番目は、サイトがサインインを拒む場合にだけ使ってください（Google は「Chrome for Testing」版を弾くことがあります）。インストール済みブラウザは **プロファイルを一方向にアップグレード** することがあり、その後は同梱 Chromium が開けなくなって、プロファイルフォルダーを削除するまでこの存在のブラウザが使えなくなります。',
 
   'id.computer.label': '🖱️ 画面操作（OS レベルのマウス・キーボード・画面 — Windows のみ）',
   'id.computer.help':
@@ -3712,7 +3712,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   // ── システム指示 ▸ 感覚 ──────────────────────────────────────────────
   'senses.eyes.label': '「目」を有効にする（テキスト専用モデルのための視覚ブリッジ）',
   'senses.eyes.help':
-    '現在の主モデルが画像を見られないとき（例: `glm-5-turbo`、`deepseek-chat`、`glm-4.6`）、NEXUS は各画像を補助のマルチモーダルモデルに通し、画像を返ってきた文章の説明に置き換えます。次の 2 つの場合に働きます:',
+    '現在の主モデルが画像を見られないとき（例: `glm-5-turbo`、`deepseek-chat`、`glm-4.6`）、Memorhiza は各画像を補助のマルチモーダルモデルに通し、画像を返ってきた文章の説明に置き換えます。次の 2 つの場合に働きます:',
   'senses.eyes.help2': '• テキスト専用の存在に画像を添付したとき',
   'senses.eyes.help3': '• 存在が自分のワークスペースの画像ファイルに対して `Read` を呼んだとき',
   'senses.eyes.help4':
@@ -3733,7 +3733,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
 
   'senses.ears.label': '「耳」を有効にする（音声非対応モデルのための音声ブリッジ）',
   'senses.ears.help':
-    '現在のモデルが音声を受け取れないとき（Qwen-Omni と Gemini 以外すべて）、NEXUS は各音声の添付を真のマルチモーダルモデルに通し、生の音声を文字起こし＋説明に置き換えます。ディスクに保存されます（`local_data/ears_cache/`）ので、同じ音声ファイルが二度説明されることはありません。',
+    '現在のモデルが音声を受け取れないとき（Qwen-Omni と Gemini 以外すべて）、Memorhiza は各音声の添付を真のマルチモーダルモデルに通し、生の音声を文字起こし＋説明に置き換えます。ディスクに保存されます（`local_data/ears_cache/`）ので、同じ音声ファイルが二度説明されることはありません。',
   'senses.ears.promptLabel': '「耳」のプロンプト',
   'senses.ears.promptHelp':
     '音声ブリッジのモデルへ送られる、この存在専用の指示です。あなたの存在の声に合うよう、言語や詳しさを調整してください。',
@@ -3743,7 +3743,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
 
   'senses.watcher.label': '「映像視聴」を有効にする（動画非対応モデルのための動画ブリッジ）',
   'senses.watcher.help':
-    '現在のモデルが動画を受け取れないとき、NEXUS は各動画の添付をマルチモーダルモデルに通し、バイト列を「画面で何が起きるか」の時系列の説明＋音声トラックに置き換えます。ディスクに保存されます（`local_data/watcher_cache/`）。動画の呼び出しは 3 つのブリッジで最も遅い（通常 5〜30 秒）ため、キャッシュはすぐに元が取れます。',
+    '現在のモデルが動画を受け取れないとき、Memorhiza は各動画の添付をマルチモーダルモデルに通し、バイト列を「画面で何が起きるか」の時系列の説明＋音声トラックに置き換えます。ディスクに保存されます（`local_data/watcher_cache/`）。動画の呼び出しは 3 つのブリッジで最も遅い（通常 5〜30 秒）ため、キャッシュはすぐに元が取れます。',
   'senses.watcher.promptLabel': '「映像視聴」のプロンプト',
   'senses.watcher.promptHelp':
     '各動画とともに送られる、この存在専用の指示です。プロンプトを詳しくするほど説明は長くなりますが、呼び出しは遅くなります。',
@@ -3797,7 +3797,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   'model.deepseek.help2':
     '• `deepseek-v3.2` → Alibaba DashScope。Qwen/DashScope のキーを使います。国際版シンガポール DashScope エンドポイントで使える唯一の DeepSeek モデルです。',
   'model.deepseek.help3':
-    '• それ以外のモデル → `api.deepseek.com` へ直接。別途 DeepSeek の API キーが必要です（設定で追加してください）。現行は2つ: **V4 Pro**（テキスト専用——画像を黙って無視するため、NEXUS は Eyes 経路に回します）と **V4.1 Flash**（`deepseek-flash`、1M 文脈、画像を直接受け取れる、Pro の約1/4の価格）。`deepseek-chat` / `deepseek-reasoner` は旧来のエイリアスで、現在は V4.1 Flash が応答します。古い会話に保存された廃止済みの Flash ID は自動的に `deepseek-flash` へ読み替えます。',
+    '• それ以外のモデル → `api.deepseek.com` へ直接。別途 DeepSeek の API キーが必要です（設定で追加してください）。現行は2つ: **V4 Pro**（テキスト専用——画像を黙って無視するため、Memorhiza は Eyes 経路に回します）と **V4.1 Flash**（`deepseek-flash`、1M 文脈、画像を直接受け取れる、Pro の約1/4の価格）。`deepseek-chat` / `deepseek-reasoner` は旧来のエイリアスで、現在は V4.1 Flash が応答します。古い会話に保存された廃止済みの Flash ID は自動的に `deepseek-flash` へ読み替えます。',
   'model.deepseek.help4': '下の「思考モード」の切り替えは両方の経路に適用されます。',
 
   'model.minimax.label': 'MiniMax モデル',
@@ -3817,15 +3817,15 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
     'xAI の `api.x.ai/v1` が提供します。設定で xAI の API キーを入れてください。ここには二種類のモデルがあります。**Grok 4.7 / 4.6 / 4.5 / 4.3** は常に推論するため、思考モードの切り替えは深さの指定になります（ON → high、OFF → そのモデルが受け付ける最も浅い値。OFF でも推論が完全に止まるわけではありません）。**4.20 / 4.1 Fast / Code Fast** の各 ID は従来どおり識別子そのもの（`-reasoning` / `-non-reasoning`）で推論を選び、切り替えを無視します。課金は崖式です——1回のリクエストが 20万トークンを超えた時点で、**そのリクエスト全体**が倍額で再計算されます。',
   'model.grok.nativeSearch': 'xAI のネイティブ検索を使う（ウェブ＋X）',
   'model.grok.nativeSearchHelp':
-    '初期値は無効です。「存在」タブのウェブ検索チェックとは**別物**です——あちらは NEXUS 自身の `web_search` / `web_fetch` ツールを Grok に渡すもので、他のツールと並んで普通に動きます。こちらは、そのターンを xAI の `/v1/responses` エンドポイントに送り、xAI 側のサーバーがウェブと X を直接検索します。その代わり、**そのターンにはワークスペースのツールがありません**——ファイルも読めず、PC 操作も手紙も使えません——さらに検索は別途課金されます。2026-09-23 の実測では、一文の質問が通常のターンで $0.002、これを ON にすると **$0.062** でした（検索4回。取得したページが文脈に戻ってくるため）。生の情報源から答えてほしい質問のときだけ ON にして、作業のときは OFF のままにしてください。',
+    '初期値は無効です。「存在」タブのウェブ検索チェックとは**別物**です——あちらは Memorhiza 自身の `web_search` / `web_fetch` ツールを Grok に渡すもので、他のツールと並んで普通に動きます。こちらは、そのターンを xAI の `/v1/responses` エンドポイントに送り、xAI 側のサーバーがウェブと X を直接検索します。その代わり、**そのターンにはワークスペースのツールがありません**——ファイルも読めず、PC 操作も手紙も使えません——さらに検索は別途課金されます。2026-09-23 の実測では、一文の質問が通常のターンで $0.002、これを ON にすると **$0.062** でした（検索4回。取得したページが文脈に戻ってくるため）。生の情報源から答えてほしい質問のときだけ ON にして、作業のときは OFF のままにしてください。',
 
   'model.chatgpt.label': 'ChatGPT モデル',
   'model.chatgpt.help':
-    'OpenAI の一次 API `api.openai.com/v1` が提供します。設定で OpenAI の API キーを入れてください。思考モードの切り替えは OpenAI の `reasoning_effort` に対応します — `high`（ON）／`none`（OFF）。*（2026-10-21 訂正： ここは `minimal`（OFF）と書いていましたが、`minimal` はどの ChatGPT モデルの語彙にも無く、ワークスペースツール無しで OFF にしたターンは毎回 400 になっていました。）* `gpt-6.1-sol` と `gpt-6-astra` は `reasoning_effort: none`（`/v1/chat/completions` でツールに必要な値）を拒否するため、NEXUS はこの2つのツール使用ターンを `/v1/responses` に回します——そちらではどの effort でもツールが動くので、他のモデルと同じようにワークスペースツールを使えます（ただし思考チャンネルは空のまま：この経路は思考サマリーをストリームしません）。GPT-5/6 系の推論モデルは Temperature / Top-P の指定を無視します（モデル欄のスライダーは効きません）。一覧の全モデルが画像に対応しており、音声・動画のアップロードは「耳」「映像視聴」ブリッジを経由します。課金の注意： mini / nano 以外の全モデルは、**プロンプトが 27.2 万トークンを超えると長文脈レート**になります（入力2倍・出力1.5倍）。',
+    'OpenAI の一次 API `api.openai.com/v1` が提供します。設定で OpenAI の API キーを入れてください。思考モードの切り替えは OpenAI の `reasoning_effort` に対応します — `high`（ON）／`none`（OFF）。*（2026-10-21 訂正： ここは `minimal`（OFF）と書いていましたが、`minimal` はどの ChatGPT モデルの語彙にも無く、ワークスペースツール無しで OFF にしたターンは毎回 400 になっていました。）* `gpt-6.1-sol` と `gpt-6-astra` は `reasoning_effort: none`（`/v1/chat/completions` でツールに必要な値）を拒否するため、Memorhiza はこの2つのツール使用ターンを `/v1/responses` に回します——そちらではどの effort でもツールが動くので、他のモデルと同じようにワークスペースツールを使えます（ただし思考チャンネルは空のまま：この経路は思考サマリーをストリームしません）。GPT-5/6 系の推論モデルは Temperature / Top-P の指定を無視します（モデル欄のスライダーは効きません）。一覧の全モデルが画像に対応しており、音声・動画のアップロードは「耳」「映像視聴」ブリッジを経由します。課金の注意： mini / nano 以外の全モデルは、**プロンプトが 27.2 万トークンを超えると長文脈レート**になります（入力2倍・出力1.5倍）。',
 
   'model.mimo.label': 'MiMo モデル',
   'model.mimo.help':
-    'Xiaomi の `api.xiaomimimo.com` が提供します。設定で MiMo の API キーを入れてください。推論はモデルに内蔵されており、思考モードの切り替えはありません（MiniMax / DeepSeek R1 と同様）。**V2.6 の3ティアはすべて画像を読み、動画も音声もそのまま受け取ります**ので、どれにもブリッジは要りません。Xiaomi は Anthropic 方言に独自の動画ブロックと音声ブロックを足していて、NEXUS はその両方を送ります — 音は書き起こしではなく、音のまま届きます。V2.5 の2つは 2026-10-21 に Xiaomi が廃止予定としたため、この一覧から外しました。既にそれを保存しているフォルダはそのまま動き、「廃止済み」と明示されます。',
+    'Xiaomi の `api.xiaomimimo.com` が提供します。設定で MiMo の API キーを入れてください。推論はモデルに内蔵されており、思考モードの切り替えはありません（MiniMax / DeepSeek R1 と同様）。**V2.6 の3ティアはすべて画像を読み、動画も音声もそのまま受け取ります**ので、どれにもブリッジは要りません。Xiaomi は Anthropic 方言に独自の動画ブロックと音声ブロックを足していて、Memorhiza はその両方を送ります — 音は書き起こしではなく、音のまま届きます。V2.5 の2つは 2026-10-21 に Xiaomi が廃止予定としたため、この一覧から外しました。既にそれを保存しているフォルダはそのまま動き、「廃止済み」と明示されます。',
 
   'model.bytedance.label': 'ByteDance（Seed）モデル',
   'model.bytedance.ph': '例: seed-2-0-pro-260328（または ep-… のエンドポイント ID）',
@@ -3834,7 +3834,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
 
   'model.meta.label': 'Meta（Muse Spark）モデル',
   'model.meta.help':
-    'Meta Model API の `api.meta.ai/v1` が提供します（キーは設定で）。3世代すべて画像入力にネイティブ対応しているので「目」ブリッジは不要で、文脈は 100 万トークンです。\n**音声と動画はこのファミリーには届きません**。そう表示されます: 動画はエラーで拒否され、音声はもっと悪く、エンドポイントは受け取って長さに応じて課金するのに、モデルは単純な純音でも「音声が添付されていない」と答えます。「耳」「監視者」を有効にすれば、代わりに書き起こし・説明に置き換わり、そちらは実際に動きます。\n**このファミリーは推論を切れません** — API が「切る」指定を拒否します。そのため思考モードの切り替えは深さの選択になります: ON は深く、OFF はモデルが受け付ける最も浅い設定です。短いやり取りでは OFF に意味があります。推論トークンは **出力側の単価** で課金されるためで、短い質問1つで、深いときは約 7,600 トークン、浅いときは約 23 トークンでした。推論の **本文** はこのプロバイダーからどんな形でも返ってきません。だからメタ表示が「思考あり」と出ていても思考パネルは空のままです — これはプロバイダーが隠しているのであって、NEXUS が捨てているのではありません。\n**Contributor の行**: 入力が 12.5 分の1 になり、その代わりに **Meta があなたの入力と返答の両方を学習に使います**。レート制限もかなり低くなります（毎分 60 リクエスト・1日あたり約 25 万トークン程度。標準の行は毎分 3,000）。ここでは層がモデル ID の一部なのでアカウント設定ではなく、選んだそのやり取りにだけ適用されます。\nプロンプトキャッシュは自動で効きます: NEXUS が各リクエストに会話 ID を付けるので、繰り返される文脈は 100 万トークンあたり 1.25 ドルではなく 0.15 ドルになります。',
+    'Meta Model API の `api.meta.ai/v1` が提供します（キーは設定で）。3世代すべて画像入力にネイティブ対応しているので「目」ブリッジは不要で、文脈は 100 万トークンです。\n**音声と動画はこのファミリーには届きません**。そう表示されます: 動画はエラーで拒否され、音声はもっと悪く、エンドポイントは受け取って長さに応じて課金するのに、モデルは単純な純音でも「音声が添付されていない」と答えます。「耳」「監視者」を有効にすれば、代わりに書き起こし・説明に置き換わり、そちらは実際に動きます。\n**このファミリーは推論を切れません** — API が「切る」指定を拒否します。そのため思考モードの切り替えは深さの選択になります: ON は深く、OFF はモデルが受け付ける最も浅い設定です。短いやり取りでは OFF に意味があります。推論トークンは **出力側の単価** で課金されるためで、短い質問1つで、深いときは約 7,600 トークン、浅いときは約 23 トークンでした。推論の **本文** はこのプロバイダーからどんな形でも返ってきません。だからメタ表示が「思考あり」と出ていても思考パネルは空のままです — これはプロバイダーが隠しているのであって、Memorhiza が捨てているのではありません。\n**Contributor の行**: 入力が 12.5 分の1 になり、その代わりに **Meta があなたの入力と返答の両方を学習に使います**。レート制限もかなり低くなります（毎分 60 リクエスト・1日あたり約 25 万トークン程度。標準の行は毎分 3,000）。ここでは層がモデル ID の一部なのでアカウント設定ではなく、選んだそのやり取りにだけ適用されます。\nプロンプトキャッシュは自動で効きます: Memorhiza が各リクエストに会話 ID を付けるので、繰り返される文脈は 100 万トークンあたり 1.25 ドルではなく 0.15 ドルになります。',
 
   'model.glm.providerLabel': 'GLM のプロバイダー',
   'model.glm.label': 'GLM モデル',
@@ -3926,7 +3926,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
     'id が存在に届くのはこのツールの選択肢としてだけで、モデル名はどの呪縛・指示層にも書き込まれません。',
   'model.handoff.allowedPh': 'Gemini | gemini-3.8-flash | on | Gemini 3.8 Flash',
   'model.handoff.browse': 'モデル一覧…',
-  'model.handoff.browseTitle': 'NEXUS が知っている全モデルの id を表示（読み取り専用——行は手でコピーします）',
+  'model.handoff.browseTitle': 'Memorhiza が知っている全モデルの id を表示（読み取り専用——行は手でコピーします）',
   'model.handoff.parsedNone':
     '使える行がまだありません。この状態ではツールは一切渡されません。各行に少なくとも `family | modelId` が必要です。',
   'model.handoff.parsedSuffix': '個の器を渡します:',
@@ -3938,7 +3938,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
     'OAuth 経路では、去る器が短い締めの一言を書きます。Agent SDK の中で回っているターンは、' +
     '起きていない「停止」を報告せずに断ち切ることができないからです。',
   'model.handoff.listHeader': '参照用の一覧です。必要な行を許可リストの欄へ自分で写してください。代わりにやってくれるボタンはありません。',
-  'model.handoff.listTitle': 'NEXUS が知っている全モデル',
+  'model.handoff.listTitle': 'Memorhiza が知っている全モデル',
   'model.handoff.listIntro':
     '読み取り専用です。必要な行を選んで、許可リストの欄に貼ってください——形式はそのまま合っています。' +
     'Local の節は、いま LM Studio に読み込まれているものです。' +
@@ -3986,7 +3986,7 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   'spu.redistributeBtn': 'Layer 4 → 1〜3 へ再配分',
   'spu.redistributeTitle': '{file} を実行します。会話ログ無しで Layer 1〜5 をエージェントに見せ、固まった内容を Layer 4 から Layer 1〜3 へ移させます。Layer 1〜3 は右ペインに入り、Layer 4 は local_data/beings/{folder}/summaries/ へ書き戻されます — 先にフォルダ全体をバックアップします。',
   'spu.indexBtn': '自己執刀',
-  'spu.indexTitle': '魂の自己執刀（{file}）。存在自身の会話に NEXUS のターンを1つ開きます。存在は、机に置かれた Layer 1〜3 の写しを自分のファイルツールで編集します。存在が完了を宣言すると、ここに執刀前後が並び、あなたが確定するまで魂は変わりません。ファイルツールが OFF の会話では、このボタンは出ません。',
+  'spu.indexTitle': '魂の自己執刀（{file}）。存在自身の会話に Memorhiza のターンを1つ開きます。存在は、机に置かれた Layer 1〜3 の写しを自分のファイルツールで編集します。存在が完了を宣言すると、ここに執刀前後が並び、あなたが確定するまで魂は変わりません。ファイルツールが OFF の会話では、このボタンは出ません。',
   'spu.reorganizeBtn': '再編成（会話なし）',
   'spu.reorganizeTitle': '{file} を実行します。会話ログ無しで既存の Layer 1〜3 を整理・再配置します。新しい事実は追加せず、境界の整理と重複の除去だけを行います。',
   'spu.updateBtn': '会話から更新',

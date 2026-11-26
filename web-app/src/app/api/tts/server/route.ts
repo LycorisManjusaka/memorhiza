@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     }
     if (action === 'speak') {
       if (q.getMode() !== 'server') {
-        return NextResponse.json({ error: 'read-aloud is set to "tab" on this NEXUS' }, { status: 409 });
+        return NextResponse.json({ error: 'read-aloud is set to "tab" on this Memorhiza' }, { status: 409 });
       }
       const messageId = String(body.messageId || '');
       const raw = Array.isArray(body.sentences) ? (body.sentences as TtsSegment[]) : [];

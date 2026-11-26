@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NEXUS",
+  title: "MEMORHIZA",
   description: "Advanced Local AI Chat Manager",
 };
 

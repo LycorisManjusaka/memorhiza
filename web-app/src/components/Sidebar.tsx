@@ -643,7 +643,7 @@ export default function Sidebar({
           d.dialect === 'deepseek-exporter'
             ? `${d.userLabel ?? 'You'}/${d.assistantLabel ?? '?'}`
             : d.dialect === 'generic-plugin' ? '# … response'
-            : 'NEXUS';
+            : 'Memorhiza';
         const lines = plans.map(p =>
           `• ${p.fileName}  [${dialectName(p.dialect)}]  ${p.messages} msg / ~${p.tokens.toLocaleString()} tok` +
           (p.parts.length > 1
@@ -921,7 +921,7 @@ export default function Sidebar({
         />
       )}
       <div className="p-4 flex flex-wrap items-center justify-between gap-y-1">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">Nexus</h1>
+        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">MEMORHIZA</h1>
         <div className="flex items-center">
           {isMobile && (
             <button

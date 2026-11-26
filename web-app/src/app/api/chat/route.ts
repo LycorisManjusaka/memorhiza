@@ -704,7 +704,7 @@ function makeRepeatGuard() {
 // the message and never sends back to the model.
 function toolLimitNotice(rounds: number): string {
   return `Stopped after ${rounds} rounds of tool use — the turn hit the tool-call limit before finishing.`
-    + ` NEXUS asked the model to write its final answer with tools disabled, so the reply reflects everything gathered up to that point. Raise "Tool-call limit per turn" in Preferences → Other if the task genuinely needs more steps.`;
+    + ` Memorhiza asked the model to write its final answer with tools disabled, so the reply reflects everything gathered up to that point. Raise "Tool-call limit per turn" in Preferences → Other if the task genuinely needs more steps.`;
 }
 function toolRepeatNotice(name: string): string {
   return `Stopped: \`${name}\` was called ${TOOL_REPEAT_LIMIT} times in a row with identical arguments,`
@@ -3010,7 +3010,7 @@ async function streamClaudeViaAgentSDK(args: {
               const over = /(\d[\d,]{4,})\s*tokens?\s*>\s*(\d[\d,]{4,})/i.exec(aem)
                 || /~?(\d[\d,]{4,})\s*tokens?\s*\(\s*limit\s*(\d[\d,]{4,})/i.exec(aem);
               const sizes = over ? ` The request was ${over[1]} tokens against a ${over[2]} limit.` : '';
-              notes.push(`the request was too large for the model${apiErrorStatus ? ` (HTTP ${apiErrorStatus})` : ''}.${sizes} Nothing was charged — a rejected request bills zero. Lower the conversation-log cap (maxConversationLog) and resend; restored messages are not lost, they stay in the generations they came from. NOTE: NEXUS's own token estimate runs 13–25% BELOW Anthropic's count, and the gap widens the further back a restore reaches, so the setting is not the number the API sees.`);
+              notes.push(`the request was too large for the model${apiErrorStatus ? ` (HTTP ${apiErrorStatus})` : ''}.${sizes} Nothing was charged — a rejected request bills zero. Lower the conversation-log cap (maxConversationLog) and resend; restored messages are not lost, they stay in the generations they came from. NOTE: Memorhiza's own token estimate runs 13–25% BELOW Anthropic's count, and the gap widens the further back a restore reaches, so the setting is not the number the API sees.`);
             } else if (/^Autocompact is thrashing/.test(apiErrorMessage)) {
               notes.push(apiErrorMessage);
             } else {
@@ -6565,7 +6565,7 @@ export async function POST(req: Request) {
                     content: (hadText ? '\n\n' : '')
                       + '⚠️ _[Response hit the token limit (thinking + output share one budget) and was cut off'
                       + (hadText
-                          ? ` mid-answer. NEXUS continued it ${MAX_CONTINUATIONS} times and it is still unfinished — lower the **Thinking Level (effort)** or ask for a shorter answer`
+                          ? ` mid-answer. Memorhiza continued it ${MAX_CONTINUATIONS} times and it is still unfinished — lower the **Thinking Level (effort)** or ask for a shorter answer`
                           : ' before any answer was produced — thinking consumed the whole budget. Lower the **Thinking Level (effort)** for this conversation, or resend to retry')
                       + '.]_',
                   });
@@ -8432,7 +8432,7 @@ export async function POST(req: Request) {
 
       if (useDeepSeekDirect && !keys.deepseek) {
         return NextResponse.json({
-          error: `${specificModel} runs on DeepSeek's first-party API — add a DeepSeek API key in Preferences. (deepseek-v3.2 is the only model NEXUS can serve via your Alibaba/Qwen DashScope key, because the international DashScope endpoint doesn't host the others.)`,
+          error: `${specificModel} runs on DeepSeek's first-party API — add a DeepSeek API key in Preferences. (deepseek-v3.2 is the only model Memorhiza can serve via your Alibaba/Qwen DashScope key, because the international DashScope endpoint doesn't host the others.)`,
         }, { status: 400 });
       }
       if (isDashScope && !useDeepSeekDirect && !keys.qwen) {

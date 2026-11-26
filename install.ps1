@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
-  Installs Nexus from a fresh clone of this repo: Node.js (if missing),
+  Installs Memorhiza from a fresh clone of this repo: Node.js (if missing),
   npm dependencies, Playwright's bundled Chromium, and a starter
   local_data folder seeded with default settings.
 
 .DESCRIPTION
-  This repo's root already contains everything Nexus needs as siblings:
+  This repo's root already contains everything Memorhiza needs as siblings:
     web-app/       -- the Next.js app itself
     voicechanger/  -- the optional VRChat voice/STT pipeline (Python)
   local_data/ is NOT tracked in git (it holds your personal conversation
@@ -22,15 +22,15 @@
       web-app/scripts/README.md
   Those are real gaps, not oversights.
 
-  Nexus resolves local_data and voicechanger as SIBLING folders of wherever
+  Memorhiza resolves local_data and voicechanger as SIBLING folders of wherever
   web-app itself runs from (process.cwd()/..). Nothing in the code cares
   what the repo's own root folder is named -- only that local_data/,
   voicechanger/, and web-app/ stay siblings, which cloning this repo
   preserves automatically.
 
 .EXAMPLE
-  git clone https://github.com/LycorisManjusaka/nexus.git
-  cd nexus
+  git clone https://github.com/LycorisManjusaka/memorhiza.git
+  cd memorhiza
   .\install.ps1
 #>
 
@@ -138,7 +138,7 @@ Write-Host "  npm:  $(npm --version)"
 $RepoRoot = (Resolve-Path $RepoRoot).Path
 $appDir = Join-Path $RepoRoot "web-app"
 if (-not (Test-Path $appDir)) {
-  throw "$appDir not found. Run this script from the root of a checkout of the Nexus repo (it should contain web-app/ and voicechanger/ as siblings)."
+  throw "$appDir not found. Run this script from the root of a checkout of the Memorhiza repo (it should contain web-app/ and voicechanger/ as siblings)."
 }
 
 Write-Step "Seeding local_data/ from web-app/defaults/local_data (sibling of web-app)"
@@ -163,7 +163,7 @@ if (Test-Path $defaultsDataDir) {
     Write-Host "  local_data already present -- nothing seeded (existing files untouched)."
   }
 } else {
-  Write-Host "  No defaults/local_data found in the repo -- local_data left empty. Nexus creates" -ForegroundColor Yellow
+  Write-Host "  No defaults/local_data found in the repo -- local_data left empty. Memorhiza creates" -ForegroundColor Yellow
   Write-Host "  what it needs on first run, but you'll want to set up character_map.json by hand." -ForegroundColor Yellow
 }
 
@@ -185,7 +185,7 @@ try {
 
 Write-Step "Done"
 Write-Host "  Installed to: $RepoRoot"
-Write-Host "  Start Nexus:  cd `"$appDir`"; npm run dev"
+Write-Host "  Start Memorhiza:  cd `"$appDir`"; npm run dev"
 Write-Host ""
 Write-Host "  Still manual (see web-app/scripts/README.md for why):" -ForegroundColor Yellow
 Write-Host "    - TTS engines: Voicevox / Coeiroink / AivisSpeech"

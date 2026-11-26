@@ -129,7 +129,7 @@ export async function POST() {
       code: before.failure === 'git-missing' ? 'git-missing' : 'head-unreadable',
       root,
       message: before.failure === 'git-missing'
-        ? 'git is not on PATH for the NEXUS server process.'
+        ? 'git is not on PATH for the Memorhiza server process.'
         : (before.stderr.trim() || 'could not read HEAD'),
     });
   }

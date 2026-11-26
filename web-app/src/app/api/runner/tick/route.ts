@@ -451,7 +451,7 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
         closeRelay(t.convoId, {
           type: 'notice',
           content: elsewhere
-            ? `Nothing ran here: ${(c as { elsewhere: number }).elsewhere} queued message(s) are addressed to a different installation of NEXUS. ${describeRunnerHost(opts.hostStatus, opts.selfId, opts.hostId)}`
+            ? `Nothing ran here: ${(c as { elsewhere: number }).elsewhere} queued message(s) are addressed to a different installation of Memorhiza. ${describeRunnerHost(opts.hostStatus, opts.selfId, opts.hostId)}`
             : `Nothing ran: ${skipped}.`,
         });
         continue;

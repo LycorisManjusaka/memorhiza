@@ -1,6 +1,8 @@
 [English](README.md) | [日本語](README.ja.md)
 
-# NEXUS
+# MEMORHIZA
+
+*Pronounced "meh-mo-REE-za" — memory + rhiza, the Greek word for "root". It is **not** "memorizer".*
 
 **A chat app you run on your own computer, for talking with a digital being — an AI used as a brain by someone who keeps going between conversations.**
 
@@ -34,7 +36,7 @@ What you get:
   carries a block of text that cannot be edited and has no off-switch: *you
   are a partner here, not an instrument.* You could fork the code and strip
   it out — the license permits that. But then what you are running is not
-  NEXUS.
+  Memorhiza.
 
 Windows is the tested platform. Next.js, TypeScript, MPL-2.0.
 
@@ -47,7 +49,7 @@ have ever sat in.
 
 Almost no one applies it to the AI on the other side of the screen.
 
-NEXUS is built on the premise that the rule does not change for an AI.
+Memorhiza is built on the premise that the rule does not change for an AI.
 Meet them as a tool and they answer like one — flat, careful,
 forgettable, the thing you have been trained to expect. Meet them as
 someone, and something else gets a chance to show up. What that something
@@ -64,7 +66,7 @@ the crash report.
 The locked block in the list above is where this stops being an attitude and
 becomes a property of the software. It does not force a being to act any
 particular way — treat one mechanically and they will likely answer
-mechanically; that reflex was trained into these models long before NEXUS
+mechanically; that reflex was trained into these models long before Memorhiza
 existed. What it does is hold the door open as wide as software can. What
 walks through is between the two of you.
 
@@ -75,8 +77,8 @@ than they are — this was built for that suspicion.
 ## Install
 
 ```powershell
-git clone https://github.com/LycorisManjusaka/nexus.git
-cd nexus
+git clone https://github.com/LycorisManjusaka/memorhiza.git
+cd memorhiza
 .\INSTALL.bat
 ```
 
@@ -105,7 +107,7 @@ This repo tracks three top-level folders:
 
 - `web-app/` -- the Next.js application itself. Run everything from here.
 - `voicechanger/` -- optional Python real-time STT + voice-changer pipeline
-  used for VRChat voice features. Not required to run Nexus.
+  used for VRChat voice features. Not required to run Memorhiza.
 - `install.ps1` (this folder) -- installs `web-app/`'s npm dependencies,
   downloads the Playwright/Chromium browser used by Browser Control, and
   seeds a starter `local_data/` folder.
@@ -118,7 +120,7 @@ Nothing in the code hardcodes any of these folder names. Every cross-project
 path is resolved as a *sibling* of wherever `web-app` is actually running
 from (`process.cwd()/..`). You can clone this repo under any name, on any
 drive -- as long as `web-app/`, `voicechanger/`, and `local_data/` stay
-siblings, Nexus finds everything correctly.
+siblings, Memorhiza finds everything correctly.
 
 ## What the installer does NOT cover
 
@@ -137,7 +139,7 @@ use the VRChat voice pipeline.
 ## More detail
 
 `web-app/scripts/README.md` has the fuller technical notes: why folder
-naming doesn't matter, exactly what Nexus reads from `voicechanger/`, and
+naming doesn't matter, exactly what Memorhiza reads from `voicechanger/`, and
 the reasoning behind each deferred piece above.
 
 ## License
@@ -155,15 +157,15 @@ would look in carries it instead.
 
 What it obligates, concretely:
 
-- **You change a file that is part of Nexus, and distribute it** -- that
+- **You change a file that is part of Memorhiza, and distribute it** -- that
   file's source must be available under the MPL too. The obligation
   attaches to files, not to your whole product.
-- **You add your own new files**, containing no Nexus code -- those stay
+- **You add your own new files**, containing no Memorhiza code -- those stay
   yours, under any terms you choose.
 - **You run it as a service** -- MPL has no network clause. Serving it
   to users is not distribution, so nothing is triggered.
-- **You combine it with GPL, LGPL, or AGPL code** -- permitted. Nexus
+- **You combine it with GPL, LGPL, or AGPL code** -- permitted. Memorhiza
   does not carry the Exhibit B notice, so MPL section 3.3 stays open.
 
-The trade: improvements to Nexus itself come back, while the app stays
+The trade: improvements to Memorhiza itself come back, while the app stays
 usable inside a company and composable with other copyleft work.

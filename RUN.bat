@@ -33,7 +33,7 @@ REM Open the browser once the dev server is actually answering on :3000.
 REM Runs detached so it can poll while `npm run dev` holds this window.
 REM Polls for up to ~90s; if the server never comes up, it just gives up
 REM silently rather than opening a browser tab pointed at nothing.
-echo Nexus is starting - your browser will open when the server is ready.
+echo Memorhiza is starting - your browser will open when the server is ready.
 start "" /b powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$url='http://localhost:3000/';" ^
   "for ($i=0; $i -lt 90; $i++) {" ^

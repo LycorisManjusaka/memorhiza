@@ -117,7 +117,7 @@ export default function DevicePage() {
         lineHeight: 1.5,
       }}
     >
-      <h1 style={{ fontSize: 18, margin: '0 0 4px' }}>NEXUS device probe</h1>
+      <h1 style={{ fontSize: 18, margin: '0 0 4px' }}>Memorhiza device probe</h1>
       <p style={{ color: '#888', margin: '0 0 16px' }}>
         Read-only. Nothing here changes the app. Open this page from the device you want to
         classify.
