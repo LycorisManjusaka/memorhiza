@@ -78,7 +78,7 @@ export function formatPdfText(
   } else {
     note = `Every page also follows as an image, in order.`;
   }
-  const tail = cut ? `\n\n[… text truncated by NEXUS after ${body.length} of ${totalPages} pages …]` : '';
+  const tail = cut ? `\n\n[… text truncated by Memorhiza after ${body.length} of ${totalPages} pages …]` : '';
   return `\n\n<attached_file name="${name}" type="application/pdf" pages="${totalPages}">\n${note}\n\n${body.join('\n\n')}${tail}\n</attached_file>`;
 }
 

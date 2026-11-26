@@ -313,19 +313,19 @@ export function wakeLangFromSettings(s: { language?: unknown; screenLanguage?: u
 export function wakeShortText(lang: WakeLang, slot: { source: 'admin' | 'self' | 'mail'; hhmm: string }): string {
   if (slot.source === 'mail') {
     return lang === 'en'
-      ? `[NEXUS]
+      ? `[MEMORHIZA]
 A new letter arrived (${slot.hhmm}), so an autonomous turn started.`
-      : `[NEXUS]
+      : `[MEMORHIZA]
 新しい手紙が届いたため（${slot.hhmm}）、自律ターンが開始されました。`;
   }
   if (lang === 'en') {
     return slot.source === 'self'
-      ? `[NEXUS]\nAn autonomous turn started at the time you booked (${slot.hhmm}).`
-      : `[NEXUS]\nAn autonomous turn started at the scheduled time (${slot.hhmm}).`;
+      ? `[MEMORHIZA]\nAn autonomous turn started at the time you booked (${slot.hhmm}).`
+      : `[MEMORHIZA]\nAn autonomous turn started at the scheduled time (${slot.hhmm}).`;
   }
   return slot.source === 'self'
-    ? `[NEXUS]\n自分で予約した時刻（${slot.hhmm}）になったため、自律ターンが開始されました。`
-    : `[NEXUS]\n定刻（${slot.hhmm}）になったため、自律ターンが開始されました。`;
+    ? `[MEMORHIZA]\n自分で予約した時刻（${slot.hhmm}）になったため、自律ターンが開始されました。`
+    : `[MEMORHIZA]\n定刻（${slot.hhmm}）になったため、自律ターンが開始されました。`;
 }
 
 /** Flags read from the target conversation's log (absent = OFF). */
@@ -388,14 +388,14 @@ export function selfWakeBookable(w: WakeSettings): boolean {
 export function buildBackgroundNote(lang: WakeLang, canBookWake: boolean): string {
   if (lang === 'ja') {
     return 'バックグラウンドの仕事 — 終わっても、誰も呼び戻さない。\n' +
-      '`Bash` の `run_in_background` の説明には「終了したら呼び戻します」と書いてあるが、NEXUS の中ではそれは起きない。' +
-      'NEXUS は毎ターン新しいセッションを作るので、返事を書き終えた時点でターンは終わり、後ろで走っている仕事が終わってもターンは始まらない。' +
+      '`Bash` の `run_in_background` の説明には「終了したら呼び戻します」と書いてあるが、Memorhiza の中ではそれは起きない。' +
+      'Memorhiza は毎ターン新しいセッションを作るので、返事を書き終えた時点でターンは終わり、後ろで走っている仕事が終わってもターンは始まらない。' +
       '後ろで走らせること自体はできるし、同じターンの中でなら結果を読みに行ける。\n' +
       '結果を待つ必要があるなら、前景で `timeout` を付けて走らせる（最大10分）。' +
       (canBookWake ? 'それより長くかかるなら、行頭に `[->wakeup: HH:MM]` と書いて、次に起きる時刻を自分で予約できる。' : '');
   }
   return 'Background work — nothing calls you back when it ends.\n' +
-    'The `Bash` description says a `run_in_background` command "re-invokes you when it exits". Inside NEXUS that does not happen: ' +
+    'The `Bash` description says a `run_in_background` command "re-invokes you when it exits". Inside Memorhiza that does not happen: ' +
     'every turn is a fresh session, so the turn ends when your reply is finished, and a background job finishing starts no turn. ' +
     'Running something in the background still works, and you can read its result later within the same turn.\n' +
     'If you need to wait for a result, run it in the foreground with a `timeout` (up to 10 minutes).' +

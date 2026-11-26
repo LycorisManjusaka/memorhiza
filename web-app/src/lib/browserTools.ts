@@ -257,7 +257,7 @@ function checkUrl(raw: string, ctx: BrowserToolCtx): string | null {
   return (
     `Error: ${u.hostname} is not on this being's allowed-hosts list.\n` +
     `Currently allowed: ${list.join(', ')}\n` +
-    `Nexus blocked the request rather than opening it. Ask the machine's owner to add the host ` +
+    `Memorhiza blocked the request rather than opening it. Ask the machine's owner to add the host ` +
     `in Being settings if it is genuinely needed — do not try to route around this.`
   );
 }

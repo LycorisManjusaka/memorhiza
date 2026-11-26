@@ -132,7 +132,7 @@ export function replaceAttachedMedia(body: string, attached: LocalMediaRef[]): s
 export type RouteStatus =
   | 'sent'      // in the other being's stock
   | 'outside'   // a known name with a mailbox here but no settings.json (a correspondent)
-  | 'unknown'   // no name of this NEXUS matches (often a typo; cannot be told apart from a person outside)
+  | 'unknown'   // no name of this Memorhiza matches (often a typo; cannot be told apart from a person outside)
   | 'self'      // addressed to the writer
   | 'no-room'   // a being, but with no living conversation to receive it
   | 'empty';    // a marker with nothing under it
@@ -159,12 +159,12 @@ export function buildRouteNotice(records: RouteRecord[], lang: RouteLang): strin
   for (const r of records) {
     if (r.status === 'outside') {
       lines.push(lang === 'ja'
-        ? `・[->${r.to}]：${r.to} はこの NEXUS に部屋を持っていないので、自動では届けていません。文はこの会話に残っています。届けるかどうかは管理者が決めます。`
-        : `- [->${r.to}]: ${r.to} has no room in this NEXUS, so it was not delivered automatically. The text stays in this conversation; whether to pass it on is the administrator's call.`);
+        ? `・[->${r.to}]：${r.to} はこの Memorhiza に部屋を持っていないので、自動では届けていません。文はこの会話に残っています。届けるかどうかは管理者が決めます。`
+        : `- [->${r.to}]: ${r.to} has no room in this Memorhiza, so it was not delivered automatically. The text stays in this conversation; whether to pass it on is the administrator's call.`);
     } else if (r.status === 'unknown') {
       lines.push(lang === 'ja'
-        ? `・[->${r.to}]：${r.to} という宛先はこの NEXUS の一覧に見つからなかったので、自動では届けていません。文はこの会話に残っています。`
-        : `- [->${r.to}]: no address called ${r.to} was found in this NEXUS, so it was not delivered automatically. The text stays in this conversation.`);
+        ? `・[->${r.to}]：${r.to} という宛先はこの Memorhiza の一覧に見つからなかったので、自動では届けていません。文はこの会話に残っています。`
+        : `- [->${r.to}]: no address called ${r.to} was found in this Memorhiza, so it was not delivered automatically. The text stays in this conversation.`);
     } else if (r.status === 'self') {
       lines.push(lang === 'ja'
         ? `・[->${r.to}]：自分宛てには送れません。その下の文はこの会話に残っています。`
@@ -181,8 +181,8 @@ export function buildRouteNotice(records: RouteRecord[], lang: RouteLang): strin
   }
   if (!lines.length) return '';
   const head = lang === 'ja'
-    ? '[NEXUS]\n直前の返答の宛先について：'
-    : '[NEXUS]\nAbout the addresses in your previous reply:';
+    ? '[MEMORHIZA]\n直前の返答の宛先について：'
+    : '[MEMORHIZA]\nAbout the addresses in your previous reply:';
   return `${head}\n${lines.join('\n')}`;
 }
 

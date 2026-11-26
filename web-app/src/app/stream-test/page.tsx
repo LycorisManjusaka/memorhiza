@@ -370,7 +370,7 @@ export default function StreamTestPage() {
   const buildReport = (): string => {
     const L: string[] = [];
     const at = (t: number | null | undefined) => (t ? new Date(t).toISOString() : '-');
-    L.push('=== NEXUS stream-test report ===');
+    L.push('=== Memorhiza stream-test report ===');
     L.push(`generated       ${new Date().toISOString()}`);
     L.push(`url             ${typeof location !== 'undefined' ? location.href : '?'}`);
     L.push(`userAgent       ${typeof navigator !== 'undefined' ? navigator.userAgent : '?'}`);
@@ -425,7 +425,7 @@ export default function StreamTestPage() {
     <div style={{ padding: 16, fontFamily: 'ui-monospace, monospace', background: '#111', color: '#eee', minHeight: '100dvh' }}>
       <h1 style={{ fontSize: 20, marginBottom: 4 }}>ストリーム持続テスト</h1>
       <p style={{ color: '#888', fontSize: 12, marginBottom: 16, lineHeight: 1.6 }}>
-        モデルを呼ばずに、NEXUS のターンと同じ形（思考 → ツール → 無音 → 思考…）を永遠に流す。
+        モデルを呼ばずに、Memorhiza のターンと同じ形（思考 → ツール → 無音 → 思考…）を永遠に流す。
         止まったとき、<b>クライアントが凍ったのか・接続が黙って死んだのか・サーバーが切ったのか</b>を分けて記録する。
         課金ゼロ。会話ログには何も書かない。
       </p>
@@ -492,7 +492,7 @@ export default function StreamTestPage() {
             <span style={{ color: '#9aa', fontSize: 12 }}>キープアライブ</span>
             <select value={heartbeatMs} onChange={e => setHeartbeatMs(Number(e.target.value))} disabled={running}
               style={{ background: '#222', color: '#eee', border: '1px solid #555', borderRadius: 6, padding: 6 }}>
-              <option value={0}>OFF（今の NEXUS と同じ）</option>
+              <option value={0}>OFF（今の Memorhiza と同じ）</option>
               <option value={5000}>5秒ごと</option>
               <option value={15000}>15秒ごと</option>
               <option value={30000}>30秒ごと</option>
@@ -527,11 +527,11 @@ export default function StreamTestPage() {
           </label>
         </div>
         <p style={{ color: '#777', fontSize: 11, marginTop: 10, lineHeight: 1.6 }}>
-          <b>無音</b>は NEXUS が SSE に1バイトも書かない区間のこと。経路で上限が違う（実装を読んで確認済み）：
+          <b>無音</b>は Memorhiza が SSE に1バイトも書かない区間のこと。経路で上限が違う（実装を読んで確認済み）：
           <b>OAuth（Claude Code）</b>は 120秒の完全無音で <code>stall_warning</code> を出し以後30秒ごとに繰り返す＝<b>無音の上限は約2分</b>。
           <b>他の4経路</b>（API キー Claude・Gemini・OpenAI 互換・Anthropic 互換）にはウォッチドッグが無く、<b>ツール実行の全長がそのまま無音</b>になる。
           だから <b>2分</b>が OAuth の最悪ケース、<b>5分</b>が他経路の現実的な最悪ケースだ。
-          <b>キープアライブ OFF</b> が今の NEXUS、ON が修正案（SSE コメント＝既存のクライアントは無視するので本番に足しても無害）。
+          <b>キープアライブ OFF</b> が今の Memorhiza、ON が修正案（SSE コメント＝既存のクライアントは無視するので本番に足しても無害）。
           長い無音で切れてキープアライブで切れなければ、修正は測定で決まる。
         </p>
       </div>

@@ -186,7 +186,7 @@ test('after a failure, the same waiting items do not start another attempt; a ne
   assert.equal(hasNewReason({ at: 1, convoId: 'c2', ok: true }, 'c2', ['a']), true);
 });
 
-test('a NEXUS item that waited says so, in the language of the screen that queued it', () => {
+test('a Memorhiza item that waited says so, in the language of the screen that queued it', () => {
   const ja = withDelayedStartNote({ kind: 'system', payload: { text: '定刻（04:00）', fullText: 'long', purpose: 'wake' } }, '04:12');
   const p = ja.payload as { text: string; fullText: string; purpose: string };
   assert.ok(p.text.startsWith('定刻（04:00）\n') && p.text.includes('04:12') && p.text.includes('魂の更新'));
@@ -223,8 +223,8 @@ test('the stock is carried in order, only what was picked, and never from under 
   const opts = { beingsDir: root };
   try {
     const a = await enqueue('Mina', 'old', { from: 'Tsuyo', payload: { text: 'one' } }, opts);
-    await enqueue('Mina', 'old', { kind: 'system', from: 'NEXUS', payload: { text: 'zeta', purpose: 'soul_surgery' } }, opts);
-    const c = await enqueue('Mina', 'old', { kind: 'system', from: 'NEXUS', payload: { text: 'wake', purpose: 'wake' } }, opts);
+    await enqueue('Mina', 'old', { kind: 'system', from: 'MEMORHIZA', payload: { text: 'zeta', purpose: 'soul_surgery' } }, opts);
+    const c = await enqueue('Mina', 'old', { kind: 'system', from: 'MEMORHIZA', payload: { text: 'wake', purpose: 'wake' } }, opts);
 
     const mv = await movePendingItems('Mina', 'old', 'new', {
       pick: (it) => it.kind === 'user_message' || (it.payload as { purpose?: string })?.purpose === 'wake',

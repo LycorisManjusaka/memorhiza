@@ -91,7 +91,7 @@ export function describeProviderError(raw: any): string {
   if (isQuotaError(blob)) {
     return `Provider rate limit reached${quotaFacts(blob)}.`
       + ` This is a per-minute input-token quota, not a refusal — the request was rejected before the model ran, so nothing was generated or billed.`
-      + ` Nexus waits the delay the provider asks for and resumes automatically; this notice means the retries were also refused.`
+      + ` Memorhiza waits the delay the provider asks for and resumes automatically; this notice means the retries were also refused.`
       + ` Waiting a minute and re-running usually works. Shorter context, fewer tool rounds, or putting the sense bridges on a different model all reduce how much of the quota one turn spends.`;
   }
 

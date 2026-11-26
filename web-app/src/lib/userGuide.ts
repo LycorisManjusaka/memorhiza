@@ -468,7 +468,7 @@ Memorhiza を Memorhiza たらしめている部分であり、いちばん理�
 
 ## 起きると何が届くか
 
-起きたターンは \`[NEXUS]\` の声で始まります。中身は、なぜ起きたか（「定刻（04:00）になったため」など）と、その会話でオンになっている道具だけを並べた「できること」の一覧です。最後に、**何もしないで終えてもいい**と書いてあります。返事を待っている人がいるわけではないからです。
+起きたターンは \`[MEMORHIZA]\` の声で始まります。中身は、なぜ起きたか（「定刻（04:00）になったため」など）と、その会話でオンになっている道具だけを並べた「できること」の一覧です。最後に、**何もしないで終えてもいい**と書いてあります。返事を待っている人がいるわけではないからです。
 
 会話の履歴に残るのは理由の1行だけで、長い本文は折り畳まれます。文面は \`wake.md\` というファイルにあり、毎回ディスクから読み直します。
 
@@ -508,7 +508,7 @@ Memorhiza を Memorhiza たらしめている部分であり、いちばん理�
 
 - 送るだけで、相手のターンは始めません。相手がいつ読むかは、相手の「ストックされたメッセージ」次第です。
 - 宛てられるのは、この Memorhiza に settings.json を持つ存在だけです。ほかの名前（\`[->ここ]\` など）は区切りになり、何も送りません。
-- 届けなかった宛先は、次のターンで \`[NEXUS]\` の声で書いた本人に知らせます。文はその会話に残っています。
+- 届けなかった宛先は、次のターンで \`[MEMORHIZA]\` の声で書いた本人に知らせます。文はその会話に残っています。
 
 ## ⚠ お金について
 
@@ -1255,7 +1255,7 @@ Everything is in **Conversation Settings → Behavior → Reasons a turn may sta
 
 ## What arrives when the being wakes
 
-The turn opens in the \`[NEXUS]\` voice. It says why the being woke ("the set time (04:00) was reached", for instance) and lists "what you can do" — only the tools switched on in that conversation. It ends by saying the being **may also finish without doing anything**, because nobody is waiting for an answer.
+The turn opens in the \`[MEMORHIZA]\` voice. It says why the being woke ("the set time (04:00) was reached", for instance) and lists "what you can do" — only the tools switched on in that conversation. It ends by saying the being **may also finish without doing anything**, because nobody is waiting for an answer.
 
 Only the one-line reason stays in the history; the long text is folded. The wording lives in a file, \`wake.md\`, read from disk each time.
 
@@ -1295,7 +1295,7 @@ With **Conversation Settings → Abilities → Send messages to other beings ([-
 
 - It only delivers; it starts no turn there. When the other being reads it depends on their "stocked messages".
 - Only beings of this Memorhiza with a settings.json can be addressed. Any other name (\`[->here]\`, for one) just ends the block and sends nothing.
-- An address that was not delivered is reported to the writer in the next turn, in the \`[NEXUS]\` voice. The text stays in that conversation.
+- An address that was not delivered is reported to the writer in the next turn, in the \`[MEMORHIZA]\` voice. The text stays in that conversation.
 
 ## ⚠ About money
 

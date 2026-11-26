@@ -315,7 +315,7 @@ async function fireSlot(being: string, w: WakeSettings, slot: DueSlot, selfId: s
     });
     await enqueue(being, convoId, {
       kind: 'system',
-      from: 'NEXUS',
+      from: 'MEMORHIZA',
       payload: { text: short, attachments: [], fullText: full, purpose: WAKE_PURPOSE },
       host: selfId,
       uiLang: lang,

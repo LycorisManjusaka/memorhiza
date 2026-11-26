@@ -43,13 +43,13 @@ test('user message: labels are positions, the target is last and in full', () =>
   const m = buildAnchorUserMsg({ messages: convo, targetId: 'a2', beingName: '謡', lang: 'ja' })!;
   assert.ok(m.includes('[対話相手]\nおはよう'));
   assert.ok(m.includes('[謡]\nおはよう、つよ。'));
-  assert.ok(m.includes('[NEXUS]\n起きた理由: 4:00'));
+  assert.ok(m.includes('[MEMORHIZA]\n起きた理由: 4:00'));
   assert.ok(m.trimEnd().endsWith('ファイルを保存した。'));
   assert.ok(m.includes('3 (Read×2, Write×1)'));
-  assert.ok(m.includes('[NEXUS] が開いたターン'), 'the opener of the judged turn is named');
+  assert.ok(m.includes('[MEMORHIZA] が開いたターン'), 'the opener of the judged turn is named');
 });
 
-test('user message: the NEXUS full text (what the being was actually sent) is not shown', () => {
+test('user message: the Memorhiza full text (what the being was actually sent) is not shown', () => {
   const m = buildAnchorUserMsg({ messages: convo, targetId: 'a2', beingName: '謡', lang: 'ja' })!;
   assert.ok(!m.includes('LONG PROTOCOL TEXT'));
 });

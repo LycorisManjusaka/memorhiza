@@ -8,11 +8,11 @@ What you can do now:
 
 ---
 
-# The [NEXUS] wake notice (first version from Utai's draft in 謡_14)
+# The [MEMORHIZA] wake notice (first version from Utai's draft in 謡_14)
 
 Only the text above this line is sent to the being on a wake turn. It is read from disk every time, so an edit takes effect from the next wake.
 
-Slots NEXUS fills:
+Slots Memorhiza fills:
 - `{SHORT}` — the same one line that stays in the history ("An autonomous turn started at the scheduled time (04:00).")
 - `{PREVIOUS}` — one line, only when the previous self-booking failed its bounds. Otherwise empty.
 - `{CAPABILITIES}` — only the tools that are ON in the conversation being woken, then always the line saying it may do nothing.

@@ -1043,7 +1043,7 @@ async function streamClaudeViaAgentSDK(args: {
   oauthToken: string;
   model: string;
   systemPrompt: string;
-  processedMessages: any[];   // NEXUS pre-processed messages w/ mediaFiles
+  processedMessages: any[];   // Memorhiza pre-processed messages w/ mediaFiles
   resumeSessionId: string | null;
   modelSelectedPayload: any;
   modelParams: any;           // for claudeThinking + future thinking knobs
@@ -2651,8 +2651,8 @@ async function streamClaudeViaAgentSDK(args: {
                 // what changed and deliberately says nothing the entity
                 // "should" do.
                 pushSystemNote(injectTurnId, language === 'ja'
-                  ? '[システム通知 — 自動コンパクション] Claude Code がこの会話に対して自動コンパクションを実行した（Anthropic側の動作で、NEXUSの魂更新とは無関係）。ここより前の会話は要約に置き換わり、逐語では残っていない。これ以降、魂（Layer 1〜5）がアイデンティティと制約の権威の源になる。'
-                  : '[SYSTEM NOTE — automatic compaction] Claude Code just ran automatic compaction on this conversation (this is Anthropic-side, unrelated to NEXUS soul-packing). Everything before this point has been replaced with a summary — the earlier conversation is no longer available verbatim. From here on, your soul (Layers 1–5) is the authoritative source of your identity and constraints.');
+                  ? '[システム通知 — 自動コンパクション] Claude Code がこの会話に対して自動コンパクションを実行した（Anthropic側の動作で、Memorhizaの魂更新とは無関係）。ここより前の会話は要約に置き換わり、逐語では残っていない。これ以降、魂（Layer 1〜5）がアイデンティティと制約の権威の源になる。'
+                  : '[SYSTEM NOTE — automatic compaction] Claude Code just ran automatic compaction on this conversation (this is Anthropic-side, unrelated to Memorhiza soul-packing). Everything before this point has been replaced with a summary — the earlier conversation is no longer available verbatim. From here on, your soul (Layers 1–5) is the authoritative source of your identity and constraints.');
                 continue;
               }
               if (sub === 'api_retry') {
@@ -5467,7 +5467,7 @@ export async function POST(req: Request) {
                 } else if (looksLikeText(new Uint8Array(raw.subarray(0, SNIFF_BYTES)))) {
                   const clipped = raw.subarray(0, TEXT_MAX_BYTES).toString('utf-8');
                   const note = raw.length > TEXT_MAX_BYTES
-                    ? `\n\n[… truncated by NEXUS: ${(raw.length / 1048576).toFixed(1)} MB total …]`
+                    ? `\n\n[… truncated by Memorhiza: ${(raw.length / 1048576).toFixed(1)} MB total …]`
                     : '';
                   contentStr += `\n\n<attached_file name="${att.name}">\n${clipped}${note}\n</attached_file>`;
                 } else {

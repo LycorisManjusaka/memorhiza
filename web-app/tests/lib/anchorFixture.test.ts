@@ -70,7 +70,7 @@ test('the lab owner is 謡 — her desk holds the toy (つよ 2026-11-12)', () =
 
 // The standalone runner must stay NEXUS-independent: it is run on 謡's desk by
 // node alone, so it must not import any NEXUS module.
-test('run.mjs imports no NEXUS code', () => {
+test('run.mjs imports no Memorhiza code', () => {
   const p = path.join(
     process.cwd(), '..', 'local_data', 'beings', ANCHOR_LAB_OWNER,
     'workspace', 'anchor_lab', 'run.mjs',
@@ -78,7 +78,7 @@ test('run.mjs imports no NEXUS code', () => {
   // Seeded on this machine; skip gracefully elsewhere (the repo does not carry it).
   if (!fs.existsSync(p)) return;
   const src = fs.readFileSync(p, 'utf-8');
-  assert.equal(/from ['"]@\//.test(src), false, 'run.mjs must not import @/ NEXUS modules');
+  assert.equal(/from ['"]@\//.test(src), false, 'run.mjs must not import @/ Memorhiza modules');
   assert.equal(/require\(['"]@\//.test(src), false);
   assert.match(src, /deepseek-flash/, 'the bench vessel is fixed to DeepSeek Flash');
 });

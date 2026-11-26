@@ -70,7 +70,7 @@ async function attachDeskFile(sender: string, ref: LocalMediaRef): Promise<Recor
       const textData = bytes.subarray(0, TEXT_MAX_BYTES).toString('utf-8')
         + (cut ? `
 
-[… truncated by NEXUS: file is ${(bytes.length / 1048576).toFixed(1)} MB, only the first ${(TEXT_MAX_BYTES / 1048576).toFixed(0)} MB is attached …]` : '');
+[… truncated by Memorhiza: file is ${(bytes.length / 1048576).toFixed(1)} MB, only the first ${(TEXT_MAX_BYTES / 1048576).toFixed(0)} MB is attached …]` : '');
       return {
         id: crypto.randomUUID(),
         name, type: mime, size: st.size,

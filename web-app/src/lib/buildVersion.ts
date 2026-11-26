@@ -54,5 +54,5 @@ export function setBuildTag(label: string): void {
  * whoever maintains this code, the build has to travel WITH the complaint.
  */
 export function withBuildTag(message: string): string {
-  return cachedLabel ? `${message}\n\n[NEXUS ${cachedLabel}]` : message;
+  return cachedLabel ? `${message}\n\n[Memorhiza ${cachedLabel}]` : message;
 }

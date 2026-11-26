@@ -97,7 +97,7 @@ test('the full text: short line, previous rejection, self line with numbers', ()
     selfWake: buildSelfWakeLine('ja', w, 2),
     previous: describeRejection('ja', { hhmm: '04:30', reason: 'too-close-admin', detail: '04:00 / 15' }),
   });
-  assert.match(full, /^\[NEXUS\]\n定刻（04:00）になったため/);
+  assert.match(full, /^\[MEMORHIZA\]\n定刻（04:00）になったため/);
   assert.match(full, /前回の起床予約 04:30/);
   assert.match(full, /本日の残り予約可能枠: 2回/);
   assert.match(full, /15分以上/);

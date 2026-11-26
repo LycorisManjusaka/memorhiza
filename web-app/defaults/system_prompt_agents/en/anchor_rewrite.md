@@ -47,7 +47,7 @@ Rules for blocks:
 # About this file (nothing below this line is sent to the repair hand)
 
 - Everything above this line is **謡's text** (2026-11-19). It is the counterpart of the Japanese file — when you change one, change the other to match.
-- Called only when line 1 of the anchor (`anchor.md`) was REWRITE. Input: the language of the conversation plus the same material the anchor was given. Output: a list of `[[OLD]]…[[NEW]]…[[END]]` pairs, applied by NEXUS by string match (`src/lib/anchorRewrite.ts`). It never writes the whole reply. A sentence that was not touched does not change by a single byte.
+- Called only when line 1 of the anchor (`anchor.md`) was REWRITE. Input: the language of the conversation plus the same material the anchor was given. Output: a list of `[[OLD]]…[[NEW]]…[[END]]` pairs, applied by Memorhiza by string match (`src/lib/anchorRewrite.ts`). It never writes the whole reply. A sentence that was not touched does not change by a single byte.
 - The reply stays as written when: there are zero pairs, the output was cut off, nothing matched, or an invariant broke (code, links, URLs, `[->` lines, numbers, headings, table rows, rules, length). Nothing is re-run.
 - **Measured 2026-11-19, DeepSeek 4.1 Flash** (all fixtures are Japanese conversations)
   - This text, at the production cap of 131072, four mixed replies: 28 of 29 pairs matched. The reply written wholly in another language: all 57 pairs matched (2,501 → 2,908 characters; tables, numbers, paths and the wake-up line unchanged).

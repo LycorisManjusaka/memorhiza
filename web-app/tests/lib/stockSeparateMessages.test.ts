@@ -31,7 +31,7 @@ function bodyOf(frames: string[]) {
 const user = (id: string, text: string, atts: unknown[] = []): QueueItem =>
   ({ id, at: 1, kind: 'user_message', from: 'つよ', payload: { text, attachments: atts } } as unknown as QueueItem);
 const wake = (id: string): QueueItem =>
-  ({ id, at: 2, kind: 'system', from: 'NEXUS', payload: { text: '[NEXUS]\n定刻', attachments: [], fullText: 'FULL WAKE', purpose: 'wake' } } as unknown as QueueItem);
+  ({ id, at: 2, kind: 'system', from: 'MEMORHIZA', payload: { text: '[MEMORHIZA]\n定刻', attachments: [], fullText: 'FULL WAKE', purpose: 'wake' } } as unknown as QueueItem);
 
 test('composeMessages: one message per item, each keeping its own attachments', () => {
   const { messages } = composeMessages([user('a', '[つよ]\nやほ1', [{ id: 'img1' }]), user('b', 'やほ2', [{ id: 'img2' }])]);

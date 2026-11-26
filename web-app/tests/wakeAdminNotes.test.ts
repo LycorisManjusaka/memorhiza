@@ -122,7 +122,7 @@ function rig() {
 
 test('runner: a wake turn gets the note of the moment it starts, under the wake text', async () => {
   const r = rig();
-  const wake = { id: 'w1', at: 1000, kind: 'system', from: 'NEXUS', payload: { text: 'short', fullText: 'WAKE TEXT', purpose: WAKE_PURPOSE } } as unknown as QueueItem;
+  const wake = { id: 'w1', at: 1000, kind: 'system', from: 'MEMORHIZA', payload: { text: 'short', fullText: 'WAKE TEXT', purpose: WAKE_PURPOSE } } as unknown as QueueItem;
   const res = await runTurnForQueue('謡', 'c1', [wake], r.deps);
   assert.equal(res.ok, true);
   assert.deepEqual(r.asked, [7000], 'asked once, with the turn start time');

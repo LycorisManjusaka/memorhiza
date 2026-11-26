@@ -441,7 +441,7 @@ const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenera
             // read is a context-window accident waiting to happen. Truncate
             // loudly — a silent cut would look like the model ignoring content.
             const head = await file.slice(0, TEXT_MAX_BYTES).text();
-            textData = `${head}\n\n[… truncated by NEXUS: file is ${(file.size / 1048576).toFixed(1)} MB, ` +
+            textData = `${head}\n\n[… truncated by Memorhiza: file is ${(file.size / 1048576).toFixed(1)} MB, ` +
               `only the first ${(TEXT_MAX_BYTES / 1048576).toFixed(0)} MB is attached …]`;
           } else {
             textData = await file.text();

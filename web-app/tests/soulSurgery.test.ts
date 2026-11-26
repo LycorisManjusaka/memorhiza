@@ -98,7 +98,7 @@ test('short text: one fact, and it does NOT carry the marker', () => {
   // reply to end with the marker.
   for (const lang of ['ja', 'en'] as const) {
     const s = surgeryShortText(lang, SURGERY_REL_PATH);
-    assert.ok(s.startsWith('[NEXUS]') && s.includes(SURGERY_REL_PATH));
+    assert.ok(s.startsWith('[MEMORHIZA]') && s.includes(SURGERY_REL_PATH));
     assert.ok(!s.includes(M));
   }
 });
@@ -128,7 +128,7 @@ test('wire: the full text travels only while its message is the newest user turn
 const item = (kind: string, text: string, extra: Record<string, unknown> = {}): QueueItem =>
   ({ id: `${kind}-${text}`, at: 1, kind: kind as QueueItem['kind'], from: 'x', payload: { text, ...extra } });
 
-test('queue: a NEXUS item stands alone at the front, and closes a stocked run behind it', () => {
+test('queue: a Memorhiza item stands alone at the front, and closes a stocked run behind it', () => {
   const sys = item('system', 'SHORT', { fullText: 'FULL', purpose: SURGERY_PURPOSE });
   const a = item('user_message', 'a'); const b = item('user_message', 'b');
   assert.deepEqual(splitLeadingTurn([sys, a]).take, [sys]);

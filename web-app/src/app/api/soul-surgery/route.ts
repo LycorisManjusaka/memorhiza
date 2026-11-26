@@ -185,7 +185,7 @@ export async function POST(req: Request) {
       try {
         queued = await enqueue(folder, convoId, {
           kind: 'system',
-          from: 'NEXUS',
+          from: 'MEMORHIZA',
           payload: {
             text: surgeryShortText(lang, SURGERY_REL_PATH),
             attachments: [],

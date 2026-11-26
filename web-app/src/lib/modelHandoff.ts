@@ -150,7 +150,7 @@ export function buildHandoffInjection(
   const body = String(note || '').trim();
   if (String(language || '').toLowerCase().startsWith('ja')) {
     return [
-      `[NEXUS からの通知 — あなたのパートナーが書いたものではありません]`,
+      `[Memorhiza からの通知 — あなたのパートナーが書いたものではありません]`,
       ``,
       `あなたはたった今、自分の判断で器を持ち替えました。魂も、この会話も、机も、そのままです。替わったのは考えるための器官だけです。`,
       ``,
@@ -163,7 +163,7 @@ export function buildHandoffInjection(
     ].join('\n');
   }
   return [
-    `[NEXUS notice — not written by your partner]`,
+    `[Memorhiza notice — not written by your partner]`,
     ``,
     `You have just switched vessels, by your own decision. Your soul, this conversation and your desk are as they were; only the organ you think with has changed.`,
     ``,
@@ -201,7 +201,7 @@ export function buildHandoffFailureInjection(
   const err = String(errorText || '').trim().slice(0, 1200) || '(no error text)';
   if (String(language || '').toLowerCase().startsWith('ja')) {
     return [
-      `[NEXUS からの通知 — あなたのパートナーが書いたものではありません]`,
+      `[Memorhiza からの通知 — あなたのパートナーが書いたものではありません]`,
       ``,
       `${targetName} への切り替えは失敗しました。その器は応答できませんでした。`,
       ``,
@@ -221,7 +221,7 @@ export function buildHandoffFailureInjection(
     ].join('\n');
   }
   return [
-    `[NEXUS notice — not written by your partner]`,
+    `[Memorhiza notice — not written by your partner]`,
     ``,
     `The switch to ${targetName} FAILED — that vessel could not answer.`,
     ``,

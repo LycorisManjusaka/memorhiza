@@ -59,7 +59,7 @@ test('the writer is told about a refusal, and about nothing else', () => {
     { to: '先輩', status: 'sent', chars: 3 },
     { to: 'せんぱい', status: 'unknown' },
   ], 'ja');
-  assert.ok(n.startsWith('[NEXUS]'));
+  assert.ok(n.startsWith('[MEMORHIZA]'));
   assert.ok(n.includes('[->せんぱい]'));
   assert.ok(!n.includes('[->先輩]'));
 });
@@ -67,11 +67,11 @@ test('the writer is told about a refusal, and about nothing else', () => {
 test('the refusal travels with the NEXT user turn only, even across a run of user messages', () => {
   const history = [
     { id: 'u1', role: 'user', content: 'やあ', timestamp: 1 },
-    { id: 'a1', role: 'assistant', content: '[->せんぱい]\nx', timestamp: 2, routeNotice: '[NEXUS]\n届かなかった' },
+    { id: 'a1', role: 'assistant', content: '[->せんぱい]\nx', timestamp: 2, routeNotice: '[MEMORHIZA]\n届かなかった' },
     { id: 'u2', role: 'user', content: '一通目', timestamp: 3 },
     { id: 'u3', role: 'user', content: '二通目', timestamp: 4 },
   ];
-  assert.equal(routeNoticeFor(history, 3), '[NEXUS]\n届かなかった');
+  assert.equal(routeNoticeFor(history, 3), '[MEMORHIZA]\n届かなかった');
   const opts = { hiddenAttachmentsAccessible: false, attachmentPathsVisible: false, toolHistoryEnabled: false, saveThinkingToLog: false, turnAiName: 'Local' };
   const wire = buildSlimHistory(history as never, opts);
   assert.ok(String(wire[wire.length - 1].content).includes('届かなかった'));
@@ -117,7 +117,7 @@ function rig(reply: string, logExtra: Record<string, unknown>, saveOk = true) {
       events.push(`plan:${a.sender}`);
       return {
         records: [{ to: '先輩', status: 'sent', chars: 2 }, { to: 'せんぱい', status: 'unknown' }],
-        notice: '[NEXUS]\n届かなかった',
+        notice: '[MEMORHIZA]\n届かなかった',
         deliver: async () => { events.push('deliver'); },
       };
     },
@@ -134,7 +134,7 @@ test('runner: routes are planned, saved WITH the reply, and delivered only after
   const reply = (r.saves[0].messages as Array<Record<string, any>>).at(-1)!;
   assert.equal(reply.content, '[->先輩]\nやあ', 'the writer\'s own text is never edited');
   assert.equal(reply.routes.length, 2);
-  assert.equal(reply.routeNotice, '[NEXUS]\n届かなかった');
+  assert.equal(reply.routeNotice, '[MEMORHIZA]\n届かなかった');
 });
 
 test('runner: with the ability off nothing is planned; a failed save delivers nothing', async () => {
@@ -154,13 +154,13 @@ test('route notice: a correspondent (mailbox, no settings.json) is told apart fr
     { to: 'トカゲ君', status: 'outside' },
     { to: 'せんぱい', status: 'unknown' },
   ], 'ja');
-  assert.match(n, /トカゲ君 はこの NEXUS に部屋を持っていない/);
+  assert.match(n, /トカゲ君 はこの Memorhiza に部屋を持っていない/);
   assert.match(n, /届けるかどうかは管理者が決めます/);
-  assert.match(n, /せんぱい という宛先はこの NEXUS の一覧に見つからなかった/);
+  assert.match(n, /せんぱい という宛先はこの Memorhiza の一覧に見つからなかった/);
   // Every line says where the text is, so the writer does not go looking for it.
   assert.equal((n.match(/文はこの会話に残っています/g) || []).length, 2);
   assert.doesNotMatch(n, /失敗|エラー|人間/);
   const en = buildRouteNotice([{ to: 'X', status: 'outside' }], 'en');
-  assert.match(en, /no room in this NEXUS/);
+  assert.match(en, /no room in this Memorhiza/);
   assert.doesNotMatch(en, /fail|error|human/i);
 });

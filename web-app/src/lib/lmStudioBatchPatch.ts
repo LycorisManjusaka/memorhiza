@@ -318,7 +318,7 @@ export async function patchGemmaBatchSize(dryRun = false): Promise<PatchReport> 
         path.join(backupDir, 'manifest.json'),
         JSON.stringify(
           {
-            what: `NEXUS raised ${BATCH_KEY} to ${TARGET_BATCH} for Gemma vision models in LM Studio.`,
+            what: `Memorhiza raised ${BATCH_KEY} to ${TARGET_BATCH} for Gemma vision models in LM Studio.`,
             when: new Date().toISOString(),
             configDir,
             undo: 'Files with existedBefore=true: copy the .json back over configPath. Files with existedBefore=false: delete configPath.',

@@ -83,8 +83,8 @@ export function buildUpdateUserMsg(a: UpdateScaffoldArgs): string {
         ? `There is no new conversation log. Reorganize and restructure the "Existing System Prompt" itself into Layers 1-3 according to your agent protocol (enforcing boundaries, fixing duplicates and misplacements, applying (abbreviate)/(delete), etc.). Do not add new facts; work only with the existing information.`
         : `新しい会話ログはありません。以下の「既存システムプロンプト」自体を対象に、Layer 1〜3 をエージェントのプロトコルに従って整理・再構造化してください（境界線の執行、重複・誤配置の修正、（省略）（削除）の適用など）。新しい事実は追加せず、既存の情報のみを対象とします。`);
   const refOnly = L
-    ? `Layers 4, the header, and the footer are reference-only. You may ignore them, but never include them in your output (NEXUS manages them separately).`
-    : `Layer 4、ヘッダー、フッターは参照専用です。無視して構いませんが、出力には絶対に含めないでください（NEXUSが別管理します）。`;
+    ? `Layers 4, the header, and the footer are reference-only. You may ignore them, but never include them in your output (Memorhiza manages them separately).`
+    : `Layer 4、ヘッダー、フッターは参照専用です。無視して構いませんが、出力には絶対に含めないでください（Memorhizaが別管理します）。`;
   const keepLabel = L
     ? `Do not delete information that should be kept — mark it with the (keep) label instead.`
     : `維持すべき情報は削除せず（維持）ラベルで残してください。`;
@@ -289,8 +289,8 @@ export function buildRedistributeUserMsg(a: RedistributeScaffoldArgs): string {
     : [];
 
   const outputSpec = [
-    L ? `=== Output specification (NEXUS parses this mechanically) ===`
-      : `=== 出力仕様（NEXUSが機械的に解析します） ===`,
+    L ? `=== Output specification (Memorhiza parses this mechanically) ===`
+      : `=== 出力仕様（Memorhizaが機械的に解析します） ===`,
     ...(a.resumeText
       ? [L ? `Output ONLY the continuation of the "already-generated output" above. Do not rewrite from the start.`
            : `上記「すでに生成済みの出力」の**続きのみ**を出力してください。最初から書き直さないこと。`, ``]
@@ -320,8 +320,8 @@ export function buildRedistributeUserMsg(a: RedistributeScaffoldArgs): string {
     L ? `Subject: ${a.subjectName}` : `対象：${a.subjectName}`,
     L ? `Operation mode: inter-layer redistribution (no conversation log)` : `操作モード：階層間情報再配分（会話ログなし）`,
     ``,
-    L ? `Follow your own protocol for the work itself. Below are the materials and NEXUS's output specification.`
-      : `作業内容はあなた自身のプロトコルに従ってください。以下は材料と、NEXUS側の出力仕様です。`,
+    L ? `Follow your own protocol for the work itself. Below are the materials and Memorhiza's output specification.`
+      : `作業内容はあなた自身のプロトコルに従ってください。以下は材料と、Memorhiza側の出力仕様です。`,
     ...(a.focus ? [``, (L ? `IMPORTANT: ${a.focus}` : `重要：${a.focus}`)] : []),
     ``,
     ...headerBlock,
@@ -399,8 +399,8 @@ export function buildIndexUserMsg(a: IndexScaffoldArgs): string {
     : `この対象自身のワークスペース（フォルダ：「${a.folderName}」）に対する、読み取り専用の Read/Glob/Grep ツールアクセスが与えられています。対象自身のツールと同じ相対パスの起点で参照できます。新しいファイルを提案する前に、机に既に何があるかを確認するために使ってください。書き込み権限はありません — 実際の書き込みはすべてこのターンの後、あなたが出力する「移設対象ファイル一覧」から行われます。`;
 
   const outputSpec = [
-    L ? `=== Output specification (NEXUS parses this mechanically) ===`
-      : `=== 出力仕様（NEXUSが機械的に解析します） ===`,
+    L ? `=== Output specification (Memorhiza parses this mechanically) ===`
+      : `=== 出力仕様（Memorhizaが機械的に解析します） ===`,
     ...(a.resumeText
       ? [L ? `Output ONLY the continuation of the "already-generated output" above. Do not rewrite from the start.`
            : `上記「すでに生成済みの出力」の**続きのみ**を出力してください。最初から書き直さないこと。`, ``]
@@ -422,8 +422,8 @@ export function buildIndexUserMsg(a: IndexScaffoldArgs): string {
     L ? `Subject: ${a.subjectName}` : `対象：${a.subjectName}`,
     L ? `Operation mode: externalization & indexing (no conversation log)` : `操作モード：外部化・索引化（会話ログなし）`,
     ``,
-    L ? `Follow your own protocol for the work itself. Below are the materials and NEXUS's output specification.`
-      : `作業内容はあなた自身のプロトコルに従ってください。以下は材料と、NEXUS側の出力仕様です。`,
+    L ? `Follow your own protocol for the work itself. Below are the materials and Memorhiza's output specification.`
+      : `作業内容はあなた自身のプロトコルに従ってください。以下は材料と、Memorhiza側の出力仕様です。`,
     ...(a.focus ? [``, (L ? `IMPORTANT: ${a.focus}` : `重要：${a.focus}`)] : []),
     ``,
     toolsNote,

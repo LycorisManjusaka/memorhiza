@@ -39,7 +39,7 @@ test('decorated token (bold / backticks) is still the token', () => {
 test('a full layer that MENTIONS the token in prose is not thrown away', () => {
   // A soul that documents this mechanism contains the literal. Treating
   // "contains" as "unchanged" would discard that layer's moves.
-  const l3 = `## **Layer 3: Protocols**\n\n* **δ contract** [moved]: an untouched layer is emitted as \`${UNCHANGED_TOKEN}\` and NEXUS restores it; this item is long enough to be a real layer body.\n* **Other** [preserved]: kept.`;
+  const l3 = `## **Layer 3: Protocols**\n\n* **δ contract** [moved]: an untouched layer is emitted as \`${UNCHANGED_TOKEN}\` and Memorhiza restores it; this item is long enough to be a real layer body.\n* **Other** [preserved]: kept.`;
   const out = `${L1}\n\n${L2}\n\n${l3}`;
   const r = inheritUnchangedLayers(ORIGINAL, out);
   assert.deepEqual(r.inherited, []);

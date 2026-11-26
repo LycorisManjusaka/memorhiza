@@ -158,7 +158,7 @@ const L = {
     toolsNone: '0件',
     partner: '対話相手',
     turnKind: 'この返答のきっかけ',
-    kindNexus: '[NEXUS] が開いたターン（対話相手の発言ではない）',
+    kindNexus: '[MEMORHIZA] が開いたターン（対話相手の発言ではない）',
     kindPartner: '対話相手の発言',
     kindUnknown: '不明（直前に相手のターンが無い）',
   },
@@ -171,7 +171,7 @@ const L = {
     toolsNone: '0',
     partner: 'partner',
     turnKind: 'What started this reply',
-    kindNexus: 'a turn opened by [NEXUS] (not something the partner said)',
+    kindNexus: 'a turn opened by [MEMORHIZA] (not something the partner said)',
     kindPartner: 'something the partner said',
     kindUnknown: 'unknown (no preceding turn from the other side)',
   },
@@ -200,7 +200,7 @@ export function buildAnchorUserMsg(a: {
   const prior = a.messages.slice(Math.max(0, idx - win), idx);
 
   const label = (m: AnchorMessage): string =>
-    m.role === 'user' ? (m.nexus ? '[NEXUS]' : `[${s.partner}]`) : `[${a.beingName}]`;
+    m.role === 'user' ? (m.nexus ? '[MEMORHIZA]' : `[${s.partner}]`) : `[${a.beingName}]`;
   const render = (m: AnchorMessage): string =>
     `${label(m)}\n${clipMiddle(String(m.content ?? '').trim(), ANCHOR_PRIOR_MAX_CHARS)}`;
 

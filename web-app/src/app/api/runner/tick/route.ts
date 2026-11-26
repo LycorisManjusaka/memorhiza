@@ -713,7 +713,7 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
             const wake = sys.every(isWakeItem);
             setTimeout(() => {
               void runPass({ ...opts, auto: false, wake, oneBeing: t.being, oneConvo: t.convoId, assistantMsgId: '', proposedTurnId: '', relayConvoId: null })
-                .catch((e) => console.warn('[runner] follow-up NEXUS pass failed:', e));
+                .catch((e) => console.warn('[runner] follow-up Memorhiza pass failed:', e));
             }, 0);
           } else if (left.some((it) => accept(it))) {
             // Something arrived in the stock WHILE this turn ran (another being's

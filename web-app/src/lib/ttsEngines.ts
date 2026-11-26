@@ -415,7 +415,7 @@ export async function stopEngine(engine: number): Promise<EngineActionResult> {
   const def = ENGINES[engine];
   if (!def) return { ok: false, message: `Unknown engine ${engine}` };
   if (!isLocalEngine(engine)) {
-    return { ok: false, message: `${def.name} is configured at ${def.base}. Nexus only stops engines running on this machine.` };
+    return { ok: false, message: `${def.name} is configured at ${def.base}. Memorhiza only stops engines running on this machine.` };
   }
 
   // Drop the positive health cache FIRST. Otherwise synthesis could still treat

@@ -48,7 +48,7 @@ export interface CharacterMap {
 export const CHAR_MAP_PATH = path.resolve(process.cwd(), '..', 'local_data', 'character_map.json');
 
 export const DEFAULT_COMMENT =
-  'Human identities Nexus can attribute a message to. `name` is the only required field; ' +
+  'Human identities Memorhiza can attribute a message to. `name` is the only required field; ' +
   'engine/character/defaultStyle are the OPTIONAL voice a voice changer should speak this ' +
   'identity in, stored by name (never by slot index — engines renumber their speaker lists ' +
   'when voices are installed). Edit via Preferences → User Identity, or by hand.';

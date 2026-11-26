@@ -165,18 +165,18 @@ export function buildSoulIoInstructions(lang: SurgeryLang, relPath: string, absP
   if (lang === 'ja') {
     return [
       `* **編集用魂ファイル**: \`${relPath}\`（あなたの机＝ワークスペースのルートからの相対パス。絶対パス: \`${absPath}\`）`,
-      `* このファイルは、現在のあなたの魂（Layer 1〜3）の写しです。NEXUS がこのターンの直前に置きました。式神用の処理ラベル（「（更新）」等）は写しを作る時点で外してあります。`,
-      `* 元の魂ファイルは NEXUS が保持しています。あなたが編集するのはこの写しだけで、パートナーが確定するまで現在の魂は変わりません。`,
-      `* 机へ外部化するファイルは、机の通常の場所へ保存してください（\`${SURGERY_DIR}/\` フォルダの中には置かないでください。確定または破棄の後、NEXUS はこの編集用ファイルを消します）。`,
-      `* **完了の判定**: あなたの返答の最終行が、単独の行として \`${SURGERY_COMPLETE_MARKER}\` であるときだけ、NEXUS は執刀を完了として扱います。そのとき NEXUS は、Layer 1〜3 の見出し行が元のまま残っていることと、ファイルが空でないことを検査します。`,
+      `* このファイルは、現在のあなたの魂（Layer 1〜3）の写しです。Memorhiza がこのターンの直前に置きました。式神用の処理ラベル（「（更新）」等）は写しを作る時点で外してあります。`,
+      `* 元の魂ファイルは Memorhiza が保持しています。あなたが編集するのはこの写しだけで、パートナーが確定するまで現在の魂は変わりません。`,
+      `* 机へ外部化するファイルは、机の通常の場所へ保存してください（\`${SURGERY_DIR}/\` フォルダの中には置かないでください。確定または破棄の後、Memorhiza はこの編集用ファイルを消します）。`,
+      `* **完了の判定**: あなたの返答の最終行が、単独の行として \`${SURGERY_COMPLETE_MARKER}\` であるときだけ、Memorhiza は執刀を完了として扱います。そのとき Memorhiza は、Layer 1〜3 の見出し行が元のまま残っていることと、ファイルが空でないことを検査します。`,
     ].join('\n');
   }
   return [
     `* **Working soul file**: \`${relPath}\` (relative to the root of your desk / workspace; absolute path: \`${absPath}\`)`,
-    `* This file is a copy of your current soul (Layers 1–3). NEXUS placed it immediately before this turn. Processing labels left by earlier updater runs were removed when the copy was made.`,
-    `* NEXUS keeps the original soul file. You edit only this copy, and your current soul does not change until your partner confirms.`,
-    `* Save anything you externalize in the normal places on your desk (not inside the \`${SURGERY_DIR}/\` folder — NEXUS deletes this working file after the result is confirmed or discarded).`,
-    `* **How completion is read**: NEXUS treats the surgery as complete only when the last line of your reply is \`${SURGERY_COMPLETE_MARKER}\` on a line of its own. It then checks that the Layer 1–3 heading lines are still present verbatim and that the file is not empty.`,
+    `* This file is a copy of your current soul (Layers 1–3). Memorhiza placed it immediately before this turn. Processing labels left by earlier updater runs were removed when the copy was made.`,
+    `* Memorhiza keeps the original soul file. You edit only this copy, and your current soul does not change until your partner confirms.`,
+    `* Save anything you externalize in the normal places on your desk (not inside the \`${SURGERY_DIR}/\` folder — Memorhiza deletes this working file after the result is confirmed or discarded).`,
+    `* **How completion is read**: Memorhiza treats the surgery as complete only when the last line of your reply is \`${SURGERY_COMPLETE_MARKER}\` on a line of its own. It then checks that the Layer 1–3 heading lines are still present verbatim and that the file is not empty.`,
   ].join('\n');
 }
 
@@ -206,6 +206,6 @@ export function fillSurgeryProtocol(covenant: string, io: string): string | null
  */
 export function surgeryShortText(lang: SurgeryLang, relPath: string): string {
   return lang === 'ja'
-    ? `[NEXUS]\nζ：魂の自己執刀のターンを開始しました。このターンは NEXUS が開いたもので、相手が書いたメッセージではありません。編集用魂ファイル: \`${relPath}\``
-    : `[NEXUS]\nζ: a soul self-surgery turn was opened. NEXUS opened this turn; it is not a message your partner wrote. Working soul file: \`${relPath}\``;
+    ? `[MEMORHIZA]\nζ：魂の自己執刀のターンを開始しました。このターンは Memorhiza が開いたもので、相手が書いたメッセージではありません。編集用魂ファイル: \`${relPath}\``
+    : `[MEMORHIZA]\nζ: a soul self-surgery turn was opened. Memorhiza opened this turn; it is not a message your partner wrote. Working soul file: \`${relPath}\``;
 }

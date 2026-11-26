@@ -1597,13 +1597,13 @@ if ($cx -ge 0 -and $cy -ge 0 -and $cx -lt ${mon.width} -and $cy -lt ${mon.height
             // caption that names the wrong one is a caption that lies.
             ? `Screenshot of monitor ${idx}, shown to you at ${shownW}x${shownH}px (scaled down from this monitor's native ` +
               `${mon.width}x${mon.height}). To act on something you see here, call computer_input with ` +
-              `"screen_index": ${idx} and the x,y pixel EXACTLY as you read it off THIS image — NEXUS converts it to the real ` +
+              `"screen_index": ${idx} and the x,y pixel EXACTLY as you read it off THIS image — Memorhiza converts it to the real ` +
               `screen position for you. Do not add any offset or multiply by anything yourself. (Coordinates passed WITHOUT ` +
               `screen_index are treated as raw absolute virtual-desktop pixels, which will NOT match this scaled image — use ` +
               `screen_index here.)`
             : `Screenshot of monitor ${idx} — ${mon.width}x${mon.height} pixels (native, not scaled), top-left at absolute ` +
               `virtual-desktop coordinate (${mon.x}, ${mon.y}). To act on something you see here, call computer_input with ` +
-              `"screen_index": ${idx} and the x,y pixel as you read it off this image — NEXUS adds the monitor offset for you. ` +
+              `"screen_index": ${idx} and the x,y pixel as you read it off this image — Memorhiza adds the monitor offset for you. ` +
               `(Or omit screen_index and pass absolute virtual-desktop coordinates: add (${mon.x}, ${mon.y}) yourself.)`;
 
         return {
@@ -1657,7 +1657,7 @@ if ($cx -ge 0 -and $cy -ge 0 -and $cx -lt ${mon.width} -and $cy -lt ${mon.height
         // model (Claude / Gemini / DeepSeek), which this branch never reaches.
         // The single local-engine call in the whole corpus passed the index.
         if (normalized && placesSomething && !Number.isFinite(args?.screen_index)) {
-          return { text: 'Error: this model reports positions in a 0–1000 normalized space, which NEXUS can only place once it knows the monitor. Call computer_screenshot (it reports the monitor it captured), then pass that number as "screen_index" alongside the same x/y. No input was sent.' };
+          return { text: 'Error: this model reports positions in a 0–1000 normalized space, which Memorhiza can only place once it knows the monitor. Call computer_screenshot (it reports the monitor it captured), then pass that number as "screen_index" alongside the same x/y. No input was sent.' };
         }
         if (Number.isFinite(args?.screen_index)) {
           const sIdx = Math.trunc(args.screen_index);
@@ -1808,7 +1808,7 @@ if ($cx -ge 0 -and $cy -ge 0 -and $cx -lt ${mon.width} -and $cy -lt ${mon.height
               `vs this tool ${lvl(sRid, sElev)}) — Windows UIPI drops synthesized input across that boundary ` +
               'silently: SendInput can still report success even though nothing was delivered. If input to this ' +
               'app is not visibly working, this is very likely why; it cannot be fixed from inside this tool. ' +
-              'Ask the human to either run the target app without elevation, or run Nexus itself elevated to match.',
+              'Ask the human to either run the target app without elevation, or run Memorhiza itself elevated to match.',
             );
           }
         }

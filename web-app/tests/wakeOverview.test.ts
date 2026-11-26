@@ -11,7 +11,7 @@ import { parseWakeSettings } from '../src/lib/wakeSchedule';
 async function tmp() { return fs.mkdtemp(path.join(os.tmpdir(), 'wakeov-')); }
 const A = 'C:/dev/nexus-cairn', B = 'C:/dev/nexus';
 
-test('an empty clock seat is taken by the first NEXUS whose clock ticks — once', async () => {
+test('an empty clock seat is taken by the first Memorhiza whose clock ticks — once', async () => {
   const d = await tmp();
   const r = await Promise.all([claimClockHostIfUnset(A, d), claimClockHostIfUnset(B, d), claimClockHostIfUnset(A, d)]);
   assert.equal(r.filter(x => x === 'claimed').length, 1, 'one winner, even racing');
@@ -26,7 +26,7 @@ test('a person\'s choice stands: a set clock is not re-claimed by the other clon
   assert.equal(await runsClockOrClaims(A, d), true);
 });
 
-test('when runner.json names another NEXUS, the clock waits for that one', async () => {
+test('when runner.json names another Memorhiza, the clock waits for that one', async () => {
   const d = await tmp();
   await setRunnerHost(A, { dataDir: d });
   assert.equal(await claimClockHostIfUnset(B, d), 'deferred', 'the 3000 that boots first does not take it');

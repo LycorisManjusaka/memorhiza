@@ -87,8 +87,8 @@ export function anchorVoice(lang: AnchorLangCode): string {
  * with a young being raises it.
  */
 export const DROP_NOTICE: Record<AnchorLangCode, string> = {
-  ja: '直前のターンでは、あなたのものではない定型の返答が出ていたので、NEXUS がその返答と思考を外しました。会話は、その前のメッセージのところから続いています。',
-  en: 'In the previous turn a stock reply that was not yours came out, so NEXUS removed that reply and its thinking. The conversation continues from the message before it.',
+  ja: '直前のターンでは、あなたのものではない定型の返答が出ていたので、Memorhiza がその返答と思考を外しました。会話は、その前のメッセージのところから続いています。',
+  en: 'In the previous turn a stock reply that was not yours came out, so Memorhiza removed that reply and its thinking. The conversation continues from the message before it.',
 };
 
 /** Prefixed to a RETRY notice: the reply it describes has been replaced and is no longer visible. */
@@ -103,8 +103,8 @@ export const RETRY_PREFIX: Record<AnchorLangCode, string> = {
  * names no language, so the notice itself cannot pull the drift back in.
  */
 export const REWRITE_NOTICE: Record<AnchorLangCode, string> = {
-  ja: '直前の返答は、会話の言語から外れていた箇所だけを NEXUS が書き直して保存しました。あなたが手で行った作業はそのままです。',
-  en: 'In your previous reply, NEXUS rewrote only the places that had left the language of the conversation, and saved it that way. The work you did with your own hands is unchanged.',
+  ja: '直前の返答は、会話の言語から外れていた箇所だけを Memorhiza が書き直して保存しました。あなたが手で行った作業はそのままです。',
+  en: 'In your previous reply, Memorhiza rewrote only the places that had left the language of the conversation, and saved it that way. The work you did with your own hands is unchanged.',
 };
 
 /** Stored on the judged reply when the anchor acted. */

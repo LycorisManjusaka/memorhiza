@@ -73,7 +73,7 @@ test('runner: two messages stocked an hour apart keep their own times, the wake 
   const items = [
     { id: 'q1', at: T, kind: 'user_message', from: 'つよ', payload: { text: 'first', attachments: [] } },
     { id: 'q2', at: T + 3_000_000, kind: 'user_message', from: 'つよ', payload: { text: 'second', attachments: [] } },
-    { id: 'q3', at: now, kind: 'system', from: 'NEXUS', payload: { text: '[NEXUS]\n定刻', attachments: [], fullText: 'FULL', purpose: 'wake' } },
+    { id: 'q3', at: now, kind: 'system', from: 'MEMORHIZA', payload: { text: '[MEMORHIZA]\n定刻', attachments: [], fullText: 'FULL', purpose: 'wake' } },
   ] as unknown as QueueItem[];
 
   const res = await runTurnForQueue('Default', 'c1', items, deps);
