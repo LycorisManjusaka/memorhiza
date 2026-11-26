@@ -345,6 +345,7 @@ async function emitToolResult(enqueue: (o: any) => void, name: string, content: 
   } catch { /* the record is best-effort */ }
 }
 import { runSubagent } from '@/lib/subagent';
+import { messageGetsTimeTag } from '@/lib/timeTagRule';
 import { runLetterTool, LETTER_TOOL_NAMES, announceLetters } from '@/lib/letters';
 import { ensureLmStudioLaunched, getLocalModelsMeta, loadLocalModel } from '@/lib/localModels';
 import { isMockModelId, mockNameFromId, planMockRound, planZombieRound, zombieCoordsNormalized, mockChunks, lastToolResultText, fillLastResult, mockRoundsDoneFor } from '@/lib/mockModel';
@@ -5237,13 +5238,11 @@ export async function POST(req: Request) {
       let contentStr = m.content || '';
       const mediaFiles: any[] = [];
 
+      // Only received messages carry the tag; the being's own past turns do
+      // not (lib/timeTagRule — a tag on them is copied as the first token).
       let timeTag = '';
-      if (m.timestamp) {
-        if (dateTimeVisibility === 'all') {
-          timeTag = `[${formatDate(m.timestamp)}]\n`;
-        } else if (dateTimeVisibility === 'current' && index === messages.length - 1) {
-          timeTag = `[${formatDate(m.timestamp)}]\n`;
-        }
+      if (m.timestamp && messageGetsTimeTag(m.role, dateTimeVisibility, index === messages.length - 1)) {
+        timeTag = `[${formatDate(m.timestamp)}]\n`;
       }
       contentStr = timeTag + contentStr;
 
@@ -8104,6 +8103,10 @@ export async function POST(req: Request) {
                     result = { error: e?.message || 'tool execution failed' };
                   }
                   fnRespParts.push({ functionResponse: { name: fc.name, response: result } });
+                  // Keep the head of the result so the next turn replays it
+                  // (buildGeminiToolReplay). Missing until 2026-11-26: Gemini
+                  // was outside the replay when the record was introduced.
+                  await emitToolResult(enqueue, fc.name, result);
                   // Deliberately NOT emitting `attachmentEvent` — see the note on
                   // the Claude path: tool files are not pinned as persistent
                   // message attachments (no context-window re-entry every turn),

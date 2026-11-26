@@ -37,6 +37,7 @@ import AudioSessionModal from './AudioSessionModal';
 import { v4 as uuidv4 } from 'uuid';
 import { exportToMarkdown } from '@/lib/markdownLogic';
 import { stripAllTimestamps } from '@/lib/timestampStrip';
+import { messageGetsTimeTag } from '@/lib/timeTagRule';
 import { messageCost, resolvePrice, fmtUSD } from '@/lib/modelPricing';
 import { attachmentByteSize, uploadAttachment, dataUrlToBlob } from '@/lib/attachmentUrl';
 import { appendLayer4Index, appendLayer5Footer, prependIdentityPreamble, hasLayerStructure } from '@/lib/layer4';
@@ -6152,11 +6153,8 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
         const body = m.content || '';
         // Timestamp tag prepended in the same situations as route.ts does
         let withTs = body;
-        if (m.timestamp) {
-          if (dateTimeVisibility === 'all' ||
-              (dateTimeVisibility === 'current' && i === messages.length - 1)) {
-            withTs = `${fmtDate(m.timestamp)}\n${body}`;
-          }
+        if (m.timestamp && messageGetsTimeTag(m.role, dateTimeVisibility, i === messages.length - 1)) {
+          withTs = `${fmtDate(m.timestamp)}\n${body}`;
         }
         const tk = await fetchTokensForText(withTs, localAiName);
         return { id: m.id, tokens: tk };
