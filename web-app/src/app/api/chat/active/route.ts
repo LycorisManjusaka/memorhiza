@@ -89,6 +89,26 @@ export async function POST(req: Request) {
     // updated:0 for 55 days).
     if (event === 'stop') {
       const outcome = requestStop(convoId, turnId);
+      // ── GAUGE: which of the three things a press can actually do ──────────
+      // REPORTED 2026-11-27 (Lizard-kun): "Stop does nothing, the red button
+      // just blinks forever." MEASURED the same hour on port 3000: a Local
+      // turn stops at once, an OAuth turn stops in 6.7s and saves — while the
+      // live server's log held no stop record at all for the turn he pressed
+      // on. So the question is delivery, and `outcome` has always named it;
+      // it was simply never written down anywhere a person can read.
+      //   fired     a listener was woken - the turn is unwinding, and any
+      //             remaining wait is the server's unwind, not delivery
+      //   recorded  the press ARRIVED but nothing is listening for this
+      //             turnId: the tab and the route disagree about the name
+      //   already   asked before; same reading as fired
+      // NO LINE AT ALL means the press never left the tab - activeTurnKeyRef
+      // was null and pendingStop is still holding it, waiting for a name the
+      // relay may already have handed over once.
+      //
+      // A log line and not a response field on purpose: postStop closes over
+      // nothing and does not read the body (see ChatArea), and the whole
+      // reason it is a useCallback is that it must stay dependency-free.
+      console.warn(`[stop] ${convoId} ${turnId} -> ${outcome}`);
       return NextResponse.json({ ok: true, outcome });
     }
     if (event === 'end') {
