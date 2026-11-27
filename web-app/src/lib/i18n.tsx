@@ -1724,12 +1724,12 @@ Leave this empty and nothing is injected — the being meets you with no imposed
 
   'model.claude.label': 'Claude Model',
   'model.claude.billing': 'Claude Billing Mode',
-  'model.claude.tokenPaid': 'Token-paid',
-  'model.claude.monthlyPaid': 'Monthly-paid',
+  'model.claude.tokenPaid': 'API key (pay per token)',
+  'model.claude.monthlyPaid': 'OAuth token (Pro/Max plan)',
   'model.claude.billingHelp':
-    '**Token-paid** — use the `sk-ant-...` API key from Preferences (pay per token).',
+    '**API key** — the `sk-ant-...` key from Preferences → API Keys. Anthropic bills you for each token you use, on any machine. Past tool calls are replayed to the model, so it can see what it did last turn.',
   'model.claude.billingHelp2':
-    '**Monthly-paid** — use the `sk-ant-oat01-...` OAuth token from Preferences (Pro/Max subscription credit). Bakes in Anthropic’s system prompt.',
+    '**OAuth token** — the `sk-ant-oat01-...` token that `claude setup-token` prints, pasted into Preferences. It draws on a Claude Pro/Max subscription instead of per-token billing, and Anthropic’s own system prompt is baked in. Past tool calls are not replayed. If one is missing from Preferences, that option is not offered.',
 
   'model.gemini.label': 'Specific Model',
   // The route switch is shared by every family OpenCode Go serves
@@ -3781,12 +3781,12 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
 
   'model.claude.label': 'Claude モデル',
   'model.claude.billing': 'Claude の課金モード',
-  'model.claude.tokenPaid': '従量課金',
-  'model.claude.monthlyPaid': '月額課金',
+  'model.claude.tokenPaid': 'API キー（従量課金）',
+  'model.claude.monthlyPaid': 'OAuth トークン（Pro/Max の枠）',
   'model.claude.billingHelp':
-    '**従量課金** — 設定の `sk-ant-...` API キーを使います（トークン単位の支払い）。',
+    '**API キー** — 設定 → API キー にある `sk-ant-...` の鍵です。使ったトークンぶんを Anthropic に払います。どの機械からでも使えます。前のターンの道具の呼び出しと結果もモデルに渡るので、何をしたかを覚えたまま続けられます。',
   'model.claude.billingHelp2':
-    '**月額課金** — 設定の `sk-ant-oat01-...` OAuth トークンを使います（Pro/Max サブスクリプションの枠）。Anthropic のシステムプロンプトが組み込まれます。',
+    '**OAuth トークン** — `claude setup-token` が出す `sk-ant-oat01-...` を設定に貼ったものです。従量課金ではなく Claude の Pro/Max サブスクリプションの枠から引かれます。Anthropic のシステムプロンプトが組み込まれます。前のターンの道具の呼び出しは渡りません。設定に無いときは、この選択肢は出ません。',
 
   'model.gemini.label': 'モデル',
   'model.route.label': 'この会話がモデルに届く道',

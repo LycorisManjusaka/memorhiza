@@ -77,6 +77,25 @@ function norm(family: string): string {
   return all.find((x) => x.toLowerCase() === f) ?? family;
 }
 
+/**
+ * Does this family's switch offer `opencode` at all?
+ *
+ * The shared <GoRoute> switch (FamilyModelPicker) draws the routes declared
+ * above, and the only thing it can DO with one is rewrite the model id
+ * (`opencode/<id>`, `digitalocean/<id>`, or the family default). It has no way
+ * to set an auth MODE. So a family whose routes are auth modes rather than
+ * model prefixes — Claude: api-key / oauth — has to stay out of it, or the
+ * switch lists two routes and does nothing when one is picked.
+ *
+ * Seen on screen 2026-11-27 14:29: Claude's OAuth could not be selected (the
+ * dropdown snapped back to api-key) and the Model tab carried two switches
+ * asking the same question. FAMILY_ROUTES already said Claude has no
+ * `opencode` route; the switch simply never asked.
+ */
+export function familyOffersOpenCodeRoute(family: string): boolean {
+  return (FAMILY_ROUTES[norm(family)] ?? []).some((r) => r.id === 'opencode');
+}
+
 /** Routes of `family` that have a key, in declared order. */
 export function availableRoutes(family: string, presence: KeyPresence | null, opts?: AccessOpts): string[] {
   const fam = norm(family);

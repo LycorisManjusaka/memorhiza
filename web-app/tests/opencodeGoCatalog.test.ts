@@ -15,7 +15,7 @@ import {
   OPENCODE_GO_GEMINI_MODELS, OPENCODE_PREFIX,
   openCodeGoModel, openCodeGoModelsFor, openCodeGoUsesGeminiWire,
 } from '@/lib/opencodeGo';
-import { FAMILY_ROUTES, routeChoice, familyAvailable } from '@/lib/providerAccess';
+import { FAMILY_ROUTES, routeChoice, familyAvailable, familyOffersOpenCodeRoute } from '@/lib/providerAccess';
 import { isVisionCapable } from '@/lib/modelVision';
 
 const ROUTE = () => fs.readFileSync(path.join(process.cwd(), 'src/app/api/chat/route.ts'), 'utf8');
@@ -155,6 +155,14 @@ test('the route switch exists once, not once per family', () => {
   assert.equal(picker.split('<GoRoute\n').length - 1, 1);
   assert.equal(picker.split('<GoModelSelect family=').length - 1, 1);
   assert.doesNotMatch(picker, /model\.gemini\.provider/);
+  // A family whose routes are an auth MODE rather than a model-id prefix must
+  // not be drawn by this switch: it can only rewrite the id, so picking one
+  // would do nothing and snap back (2026-11-27: Claude's OAuth unselectable).
+  assert.match(picker, /if \(!familyOffersOpenCodeRoute\(family\)\) return null;/);
+  assert.equal(familyOffersOpenCodeRoute('Claude'), false);
+  assert.equal(familyOffersOpenCodeRoute('Gemini'), true);
+  assert.equal(familyOffersOpenCodeRoute('glm'), true); // case-insensitive, as norm() is
+  assert.equal(familyOffersOpenCodeRoute('Local'), false);
   assert.doesNotMatch(picker, /model\.glm\.providerLabel/);
   // Leaving the Go route hands back the family default from the one table the
   // conversation loader and the sidebar already read.

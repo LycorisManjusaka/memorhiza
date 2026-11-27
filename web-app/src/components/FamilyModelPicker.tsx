@@ -22,7 +22,7 @@ import { retiredModelLabel } from '@/lib/retiredModels';
 import { isOpenCodeModel, OPENCODE_PREFIX, openCodeGoModel, openCodeGoModelsFor } from '@/lib/opencodeGo';
 import { defaultModelForFamily } from '@/lib/beingVessel';
 import { useT, renderRich } from '@/lib/i18n';
-import { routeChoice, FAMILY_ROUTES, type AccessOpts } from '@/lib/providerAccess';
+import { routeChoice, FAMILY_ROUTES, familyOffersOpenCodeRoute, type AccessOpts } from '@/lib/providerAccess';
 import { useKeyPresence } from '@/lib/useKeyPresence';
 
 // A provider with no alternative on this install: named, not offered as a
@@ -96,6 +96,12 @@ function GoRoute({
 }) {
   const goModels = openCodeGoModelsFor(family);
   if (!goModels.length) return null;
+  // Go serves claude-haiku-5-5, but Claude's routes are an auth MODE held in
+  // state, not a model-id prefix — and this switch can only rewrite the id. It
+  // listed api-key / oauth raw and did nothing when one was picked (2026-11-27
+  // 14:29: OAuth unselectable, two switches for one question on the Model tab).
+  // Claude keeps its own billing switch below, which is the one that can set it.
+  if (!familyOffersOpenCodeRoute(family)) return null;
   const onGo = isOpenCodeModel(model);
   // The route in use is read off the model id — one field, nothing to drift.
   const current = onGo ? 'opencode'
@@ -118,7 +124,12 @@ function GoRoute({
   };
   const pick = (r: string) => {
     if (r === 'opencode') { onModel(OPENCODE_PREFIX + goModels[0].id); return; }
-    if (onGo) onModel(r === 'digitalocean' ? 'digitalocean/glm-5.2' : defaultModelForFamily(family));
+    if (r === current) return;
+    // Native -> native has to move the model id as well, or the <select> snaps
+    // back to whatever is stored. GLM's own switch did this rewrite before this
+    // component took it over; without it Z.AI <-> DigitalOcean stopped
+    // switching (same 2026-11-27 report, same shape as Claude's OAuth).
+    onModel(r === 'digitalocean' ? 'digitalocean/glm-5.2' : defaultModelForFamily(family));
   };
   return (
     <div className="mb-3">
