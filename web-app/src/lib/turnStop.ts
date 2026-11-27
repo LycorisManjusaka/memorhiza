@@ -62,6 +62,14 @@ interface StopRecord {
   convoId: string;
   turnId: string;
   at: number;
+  /**
+   * Set when a listener actually ran for this record. Only forgetStop reads
+   * it, and only to stay quiet: erasing a CONSUMED record is the ordinary end
+   * of a stopped turn, while erasing an unconsumed one is the 2026-11-27
+   * defect (a press thrown away before any turn could see it) and is the one
+   * thing here worth a log line.
+   */
+  consumed?: boolean;
 }
 
 type Listener = () => void;
@@ -80,14 +88,14 @@ interface ListenerSet {
 const _g = globalThis as unknown as {
   __nx_stop_requests?: Map<string, StopRecord>;
   __nx_stop_listeners?: Map<string, ListenerSet>;
-  /** GAUGE 2026-11-27: identifies the globalThis these maps live on. */
+  /** Identifies the globalThis these maps live on; printed by the discard warning. */
   __nx_stop_realm?: string;
 };
 if (!_g.__nx_stop_requests) _g.__nx_stop_requests = new Map<string, StopRecord>();
 if (!_g.__nx_stop_listeners) _g.__nx_stop_listeners = new Map<string, ListenerSet>();
 const requests: Map<string, StopRecord> = _g.__nx_stop_requests;
 const listeners: Map<string, ListenerSet> = _g.__nx_stop_listeners;
-// GAUGE 2026-11-27. Stamped once per globalThis, so two callers that
+// Stamped once per globalThis (2026-11-27), so two callers that
 // print different realms are provably looking at different maps - the
 // shape this house has already paid for once (the relay in turnBus.ts,
 // where a dev-server route got its own module instance and the watcher
@@ -178,9 +186,10 @@ export function requestStop(convoId: string, turnId: string): StopOutcome {
     for (const cb of entry.set) {
       try { cb(); } catch { /* one broken listener must not swallow the others */ }
     }
+    const fired = requests.get(key);
+    if (fired) fired.consumed = true;
     return 'fired';
   }
-  console.warn(`[stop] MISS: ${turnId} realm=${realm} listeners=${listeners.size} requests=${requests.size}`);
   return had ? 'already' : 'recorded';
 }
 
@@ -198,21 +207,21 @@ export function onStop(convoId: string, turnId: string, cb: Listener): () => voi
   if (!convoId || !turnId) return () => {};
   const key = stopKey(convoId, turnId);
 
-  if (requests.has(key)) {
-    // ── GAUGE 2026-11-27 ─────────────────────────────────────────────────
-    // Reported by Lizard-kun: Stop does nothing, the red button blinks for
-    // ever. The press DID arrive (`[stop] ... -> recorded`) and every
-    // turnId on the wire matched, so the only remaining readings are
-    // "the rendezvous never ran" and "the record was gone by then".
-    // These three lines separate them. Diagnostic: remove once the cause
-    // is named, or keep if they turn out to be the cheapest witness.
-    console.warn(`[stop] rendezvous: listener for ${turnId} found a pending request -> firing now`);
+  const waiting = requests.get(key);
+  if (waiting) {
+    // KEPT WITNESS (2026-11-27). Pressing Stop the instant you notice a typo
+    // is the normal case, and in it the route has already printed
+    // `-> recorded`, which on its own reads like a press that did nothing.
+    // This line is what turns that into "it fired, a moment later" — and its
+    // ABSENCE after a `recorded` is the exact signature of the defect fixed
+    // today. One line per press, never per turn.
+    waiting.consumed = true;
+    console.warn(`[stop] ${turnId}: the waiting stop fired as the turn registered`);
     try { cb(); } catch { /* same reason as above */ }
     return () => {};
   }
 
   prune(Date.now());
-  console.warn(`[stop] armed: ${turnId} realm=${realm} listeners=${listeners.size} requests=${requests.size}`);
 
   let entry = listeners.get(key);
   if (!entry) { entry = { at: Date.now(), set: new Set<Listener>() }; listeners.set(key, entry); }
@@ -251,9 +260,16 @@ export function forgetStop(convoId: string, turnId: string): void {
   // was this one. Which CALLER did it is the last unknown, and a stack is
   // the only witness that names it. Print only when something was really
   // pending, so an ordinary end-of-turn cleanup stays silent.
-  if (requests.has(key)) {
-    console.warn(`[stop] forgetStop ERASED a pending request for ${turnId}`);
-    console.warn(new Error('forgetStop caller').stack || '(no stack)');
+  const doomed = requests.get(key);
+  if (doomed && !doomed.consumed) {
+    // Measured 2026-11-27: the `end` event used to call this 7ms after a
+    // press, so a stop recorded at T+0.000 was already gone when the turn
+    // registered at T+0.104 — four presses in a row did nothing at all.
+    // That caller no longer touches this channel. The line stays because the
+    // defect was invisible without it, and it names the realm: these maps
+    // live on globalThis, so two different realms mean two different maps
+    // (the shape this house already paid for once in turnBus.ts).
+    console.warn(`[stop] discarded an unconsumed stop request for ${turnId} (realm=${realm})`);
   }
   requests.delete(key);
   listeners.delete(key);

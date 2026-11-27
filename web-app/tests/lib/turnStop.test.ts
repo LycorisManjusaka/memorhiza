@@ -213,6 +213,56 @@ describe('turnStop', () => {
     assert.equal(isStopRequested(C, `turn_${over - 1}`), true, 'newest kept');
   });
 
+  // ── The one line that is allowed to speak (2026-11-27). ──────────────────
+  //
+  // These are DISCRIMINATING, not restatements. Written by naming the failure
+  // first: the defect fixed today was a press erased 7ms after it arrived, and
+  // what made it cost four rounds is that NOTHING said so. A warning that also
+  // fires on every ordinary stop would have been just as useless — it would
+  // have been in the log all along, meaning nothing. So the property under
+  // test is the pair: silent when a listener consumed the press, loud when
+  // one never did.
+  describe('the discard warning', () => {
+    function captureWarn(run: () => void): string[] {
+      const lines: string[] = [];
+      const original = console.warn;
+      console.warn = (...args: unknown[]) => { lines.push(args.map(String).join(' ')); };
+      try { run(); } finally { console.warn = original; }
+      return lines;
+    }
+
+    it('says nothing when the press was consumed by a listener already waiting', () => {
+      const lines = captureWarn(() => {
+        onStop(C, T1, () => {});
+        requestStop(C, T1);       // fires immediately
+        forgetStop(C, T1);        // ordinary end of a stopped turn
+      });
+      assert.deepEqual(
+        lines.filter((l) => l.includes('discarded')), [],
+        'the ordinary path must not warn, or the warning means nothing when it matters',
+      );
+    });
+
+    it('says nothing when the press was consumed by the rendezvous', () => {
+      const lines = captureWarn(() => {
+        requestStop(C, T1);       // press beats the turn — the normal human case
+        onStop(C, T1, () => {});  // rendezvous fires here
+        forgetStop(C, T1);
+      });
+      assert.deepEqual(lines.filter((l) => l.includes('discarded')), []);
+    });
+
+    it('names the turn when a press is thrown away before any listener took it', () => {
+      const lines = captureWarn(() => {
+        requestStop(C, T1);       // nobody ever registers
+        forgetStop(C, T1);        // ← the 2026-11-27 defect, if it returns
+      });
+      const said = lines.filter((l) => l.includes('discarded'));
+      assert.equal(said.length, 1, 'exactly one line, so the signal cannot be drowned');
+      assert.ok(said[0].includes(T1), 'and it must name which turn was lost');
+    });
+  });
+
   // ── The key is one derivation. ────────────────────────────────────────────
   it('stopKey separates ids that would collide under naive concatenation', () => {
     // 'a' + 'bc' and 'ab' + 'c' must not be the same key.

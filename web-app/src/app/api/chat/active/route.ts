@@ -116,15 +116,19 @@ export async function POST(req: Request) {
       //   recorded (live turn ...: turn_B)  the tab and the runner disagree
       //                                     about the NAME - the press can
       //                                     never arrive, however long you wait
-      //   recorded (no live turn)           the press simply beat registration;
-      //                                     the rendezvous should still fire
+      //   recorded (beat the turn)          the press simply beat registration
+      //                                     and the rendezvous fires when it
+      //                                     happens - the NORMAL case for
+      //                                     "press Stop the instant you see
+      //                                     the typo", and turnStop prints a
+      //                                     second line when it fires
       const liveHere = outcome === 'recorded' ? getActiveTurn(convoId) : null;
       const liveNote =
         outcome !== 'recorded'
           ? ''
           : liveHere
             ? ` (live turn on this conversation: ${liveHere.turnId})`
-            : ' (no live turn registered)';
+            : ' (beat the turn; the rendezvous fires when it registers)';
       console.warn(`[stop] ${convoId} ${turnId} -> ${outcome}${liveNote}`);
       return NextResponse.json({ ok: true, outcome });
     }
