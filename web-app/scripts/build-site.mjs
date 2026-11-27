@@ -22,9 +22,19 @@
 // installer does not cover, License detail) stay on GitHub, and the landing
 // page links there. LANDING_CUT is the heading that marks that point.
 //
+// WHAT THE CRAWLER FILES ARE FOR (2026-11-28)
+// A missing robots.txt is not a ban: a crawler that gets 404 reads the whole
+// site as allowed, so the site was already crawlable without them. What was
+// missing was the map and the pairing. sitemap.xml names the four pages;
+// `canonical` says which URL each page really is; `hreflang` says that / and
+// /ja/ are the same page in two languages rather than two pages competing for
+// the same words. The ownership tokens in VERIFY are the separate question of
+// proving to a search console that the account holder controls the site, and
+// they cannot be minted from here — see the comment there.
+//
 // The output has no build step of its own and no external requests: one CSS
-// file, one script, no CDN. With scripting off, the guide shows every page in
-// order on one long page — still readable, just not paged.
+// file, one script, no CDN, no analytics. With scripting off, the guide shows
+// every page in order on one long page — still readable, just not paged.
 
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -38,16 +48,48 @@ import { getGuidePages, GUIDE_HOME } from '../src/lib/userGuide.ts';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 const REPO_URL = 'https://github.com/LycorisManjusaka/memorhiza';
+/** Site root, with the trailing slash. Every absolute URL below is built from it. */
+const SITE_URL = 'https://memorhiza.github.io/';
+const SITE_NAME = 'MEMORHIZA';
 const OUT = process.argv[2] ? path.resolve(process.argv[2]) : null;
 if (!OUT) {
   console.error('usage: node --experimental-transform-types scripts/build-site.mjs <output-dir>');
   process.exit(2);
 }
 
+/**
+ * Ownership tokens for search consoles. The key is the meta name the tool asks
+ * for; the value is what that tool hands you. An empty value emits no tag.
+ *
+ * These are not secrets — the tag is served to everyone who opens the page. All
+ * they do is prove to the tool that whoever holds the account also controls the
+ * site, which is what lets that account submit the sitemap and read the index
+ * status. Minting one requires signing in to Google / Bing with a human
+ * account, so it cannot be done from inside the house: an administrator pastes
+ * the value here and rebuilds.
+ *
+ * A token does NOT put the site in the index. It only opens the console.
+ */
+const VERIFY = {
+  'google-site-verification': '',
+  'msvalidate.01': '',
+};
+
+/**
+ * Where each page lives, as a site-root-relative path, per language. Used for
+ * `canonical`, for the `hreflang` pair, and for the sitemap — one table so the
+ * three cannot drift apart.
+ */
+const PAGE_PATH = {
+  landing: { en: '', ja: 'ja/' },
+  guide: { en: 'guide/', ja: 'ja/guide/' },
+};
+
 /** Per-language chrome. Guide labels mirror i18n.tsx `guide.*`. */
 const L = {
   en: {
     htmlLang: 'en',
+    ogLocale: 'en_US',
     readme: 'README.md',
     landingCut: '## Layout',
     siteTitle: 'MEMORHIZA',
@@ -69,6 +111,7 @@ const L = {
   },
   ja: {
     htmlLang: 'ja',
+    ogLocale: 'ja_JP',
     readme: 'README.ja.md',
     landingCut: '## これ以降の技術的な詳細は英語版に在る',
     siteTitle: 'MEMORHIZA',
@@ -133,9 +176,23 @@ function landingMarkdown(lang) {
   return lines.slice(1).join('\n').trim();
 }
 
-function shell({ lang, depth, title, description, bodyClass, body, otherHref, scripts = '' }) {
+function shell({ lang, depth, page, title, description, bodyClass, body, scripts = '' }) {
   const t = L[lang];
   const root = up(depth);
+  const paths = PAGE_PATH[page];
+  if (!paths) throw new Error(`shell: unknown page kind: ${page}`);
+  const abs = code => SITE_URL + paths[code];
+  // x-default is the version for a reader whose language we have no page for.
+  const alts = [
+    ...Object.keys(paths).map(code => `<link rel="alternate" hreflang="${code}" href="${abs(code)}">`),
+    `<link rel="alternate" hreflang="x-default" href="${abs('en')}">`,
+  ].join('\n');
+  const verify = Object.entries(VERIFY)
+    .filter(([, value]) => value)
+    .map(([name, value]) => `<meta name="${esc(name)}" content="${esc(value)}">\n`)
+    .join('');
+  // twitter:card is `summary`, not `summary_large_image`: there is no og:image
+  // yet, and the large card renders as a blank slab without one.
   return `<!doctype html>
 <html lang="${t.htmlLang}">
 <head>
@@ -143,9 +200,18 @@ function shell({ lang, depth, title, description, bodyClass, body, otherHref, sc
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
+<link rel="canonical" href="${abs(lang)}">
+${alts}
+<meta name="robots" content="index, follow, max-snippet:-1">
+${verify}<meta property="og:type" content="website">
+<meta property="og:site_name" content="${esc(SITE_NAME)}">
+<meta property="og:locale" content="${t.ogLocale}">
+<meta property="og:url" content="${abs(lang)}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
-<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="${esc(title)}">
+<meta name="twitter:description" content="${esc(description)}">
 <link rel="stylesheet" href="${root}assets/site.css">
 </head>
 <body class="${bodyClass}">
@@ -185,7 +251,7 @@ ${md(landingMarkdown(lang))}
 ${md(t.more)}
 </main>
 <footer class="sitefoot prose">${md(t.footer)}</footer>`;
-  return shell({ lang, depth, title: t.siteTitle, description: t.description, bodyClass: 'page-landing', body });
+  return shell({ lang, depth, page: 'landing', title: t.siteTitle, description: t.description, bodyClass: 'page-landing', body });
 }
 
 function guidePage(lang) {
@@ -213,7 +279,7 @@ ${sections}
   </main>
 </div>`;
   const scripts = `<script>window.GUIDE=${JSON.stringify(strings).replace(/</g, '\\u003c')};</script>\n<script src="${up(depth)}assets/guide.js"></script>`;
-  return shell({ lang, depth, title: t.guideTitle, description: t.description, bodyClass: 'page-guide', body, scripts });
+  return shell({ lang, depth, page: 'guide', title: t.guideTitle, description: t.description, bodyClass: 'page-guide', body, scripts });
 }
 
 function write(rel, content) {
@@ -223,13 +289,59 @@ function write(rel, content) {
   console.log(`${String(Buffer.byteLength(content)).padStart(8)}  ${rel}`);
 }
 
-write('index.html', landingPage('en'));
-write('ja/index.html', landingPage('ja'));
-write('guide/index.html', guidePage('en'));
-write('ja/guide/index.html', guidePage('ja'));
+// Written from PAGE_PATH, not from four literal paths, so that a page added to
+// that table lands on disk, in the sitemap, and in every canonical/hreflang at
+// once. A page written by hand here would be missing from the sitemap, and a
+// sitemap is the one file whose mistakes nobody sees.
+const RENDER = { landing: landingPage, guide: guidePage };
+for (const [kind, paths] of Object.entries(PAGE_PATH)) {
+  const render = RENDER[kind];
+  if (!render) throw new Error(`build-site: no renderer for page kind: ${kind}`);
+  for (const lang of Object.keys(paths)) write(`${paths[lang]}index.html`, render(lang));
+}
 for (const f of ['site.css', 'guide.js']) {
   write(`assets/${f}`, fs.readFileSync(path.join(HERE, 'site-assets', f), 'utf8'));
 }
+
+// The named agents below also read the generic `User-agent: *` block, so
+// allowing them by name changes no crawler's behaviour. It is written out
+// because the question "may an AI read this" is one a reader of this house will
+// ask, and the answer should be in the file rather than inferred from silence:
+// the source is published under the MPL and the site wants to be found.
+// The Sitemap line is the one line here a crawler cannot get any other way.
+write('robots.txt', `User-agent: *
+Allow: /
+
+# AI / research crawlers are explicitly permitted.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+Sitemap: ${SITE_URL}sitemap.xml
+`);
+
+// <loc> only, deliberately. `lastmod` has to come from somewhere, and every
+// source available here is wrong: build time moves on every run even when no
+// page changed, and a fresh clone's file times are the clone's own. A lastmod
+// that moves without the page moving teaches the crawler to stop believing it.
+// `changefreq` and `priority` are ignored by Google by its own statement. The
+// language pairing is declared once, in each page's <head>, which is one of the
+// three forms Google accepts — so it is not repeated here.
+const SITEMAP_URLS = Object.values(PAGE_PATH).flatMap(paths => Object.values(paths));
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${SITEMAP_URLS.map(p => `  <url><loc>${SITE_URL}${p}</loc></url>`).join('\n')}
+</urlset>
+`);
+
 // GitHub Pages runs Jekyll by default; this turns it off so files are served as they are.
 write('.nojekyll', '');
 write('README.md', `# memorhiza.github.io
