@@ -71,7 +71,7 @@ if (!OUT) {
  * A token does NOT put the site in the index. It only opens the console.
  */
 const VERIFY = {
-  'google-site-verification': '',
+  'google-site-verification': 'e40xP6hY5_8J2rG-aK_TX4FA6ufWeonxjrMtTTbiG9U',
   'msvalidate.01': '',
 };
 
@@ -309,6 +309,15 @@ for (const f of ['site.css', 'guide.js']) {
 // ask, and the answer should be in the file rather than inferred from silence:
 // the source is published under the MPL and the site wants to be found.
 // The Sitemap line is the one line here a crawler cannot get any other way.
+// The second way Search Console can check ownership: a file at the site root
+// whose name and one line of content it issued. Either this or the meta tag is
+// enough; both are emitted so that the check passes whichever method was
+// picked in the console, and so that a regenerated site never drops the file.
+const VERIFY_FILES = {
+  'google87a4d1a95b51a704.html': 'google-site-verification: google87a4d1a95b51a704.html',
+};
+for (const [name, body] of Object.entries(VERIFY_FILES)) write(name, body);
+
 write('robots.txt', `User-agent: *
 Allow: /
 
