@@ -372,7 +372,7 @@ import {
 import { looksLikeText, isMediaMime, SNIFF_BYTES, TEXT_MAX_BYTES } from '@/lib/textSniff';
 import { isPdf, expandPdf, formatPdfText } from '@/lib/pdfExpand';
 import { GoogleGenAI } from '@google/genai';
-import { isOpenCodeModel, bareModelId, OPENCODE_PREFIX, OPENCODE_GO_GEMINI_BASE, OPENCODE_GO_GEMINI_MODELS, openCodeGoHeaders } from '@/lib/opencodeGo';
+import { isOpenCodeModel, bareModelId, OPENCODE_PREFIX, OPENCODE_GO_GEMINI_BASE, OPENCODE_GO_GEMINI_MODELS, OPENCODE_GO_CHAT_URL, openCodeGoModel, openCodeGoHeaders } from '@/lib/opencodeGo';
 import sharp from 'sharp';
 import { fitImageForWire, fitNote, WIRE_IMAGE_MAX_BYTES } from '@/lib/fitImageForWire';
 
@@ -5003,9 +5003,6 @@ export async function POST(req: Request) {
 
     const isClaude    = aiName.toLowerCase().includes('claude');
     const isGemini    = aiName.toLowerCase().includes('gemini');
-    if (useOpenCodeGo && !isGemini) {
-      return NextResponse.json({ error: 'The opencode/ route is wired for the Gemini family only.' }, { status: 400 });
-    }
     const isLocal     = aiName.toLowerCase().includes('local');
     const isQwen      = aiName.toLowerCase().includes('qwen');
     // DeepSeek may go through DashScope (deepseek-v3.2) or its own API.
@@ -5078,6 +5075,31 @@ export async function POST(req: Request) {
     const isMeta      = aiName.toLowerCase().includes('meta');
     // Anything routed through DashScope shares the same base URL + Bearer key.
     const isDashScope = isQwen || isDeepSeek;
+
+    // ── OpenCode Go: which model, under which family ─────────────────────────
+    // Go serves twenty models across ten families (lib/opencodeGo.ts
+    // OPENCODE_GO_CATALOG). Two things are refused here rather than later:
+    // an id Go does not serve, and an id Go serves under a DIFFERENT family
+    // than this conversation is set to. Both would otherwise reach a model
+    // nobody chose, and the saved message would then name the wrong vessel.
+    if (useOpenCodeGo) {
+      if (!keys.opencode) {
+        return NextResponse.json({ error: 'OpenCode Go API key missing in settings (Preferences -> API keys).' }, { status: 400 });
+      }
+      const goEntry = openCodeGoModel(specificModel);
+      if (!goEntry) {
+        return NextResponse.json({ error: 'OpenCode Go does not serve "' + specificModel + '".' }, { status: 400 });
+      }
+      const goFamilyMatches: Record<string, boolean> = {
+        Gemini: isGemini, Claude: isClaude, GLM: isGLM, Qwen: isQwen, DeepSeek: isDeepSeek,
+        Kimi: isKimi, Grok: isGrok, Minimax: isMinimax, ChatGPT: isOpenAI, MiMo: isMimo,
+      };
+      if (!goFamilyMatches[goEntry.family]) {
+        return NextResponse.json({
+          error: 'OpenCode Go serves ' + goEntry.id + ' under the ' + goEntry.family + ' family, but this conversation is set to ' + aiName + '.',
+        }, { status: 400 });
+      }
+    }
 
     // ── Compute the model-selected SSE payload ──────────────────────────────
     // Emitted at the very start of every stream, so every AI message gets a
@@ -5630,7 +5652,7 @@ export async function POST(req: Request) {
         : systemPrompt;
     }
 
-    if (isClaude) {
+    if (isClaude && !useOpenCodeGo) {
       // ── Auth-mode dispatch ────────────────────────────────────────────────
       // OAuth mode: route through the Agent SDK using the user's Pro/Max
       // subscription credit instead of pay-per-token API. Fully parallel to
@@ -8319,7 +8341,7 @@ export async function POST(req: Request) {
         },
       });
     }
-    else if (isKimi || isMimo) {
+    else if ((isKimi || isMimo) && !useOpenCodeGo) {
       // Kimi and MiMo speak their native Anthropic Messages dialect. Route them
       // through the Anthropic-format adapter instead of the OpenAI-compatible
       // /chat/completions surface — the tool-call reliability difference is
@@ -8377,7 +8399,7 @@ export async function POST(req: Request) {
         betrayalSend,
       });
     }
-    else if (isLocal || isDashScope || isGLM || isGrok || isKimi || isCohere || isMinimax || isOpenAI || isMimo || isBytedance || isMeta) {
+    else if (useOpenCodeGo || isLocal || isDashScope || isGLM || isGrok || isKimi || isCohere || isMinimax || isOpenAI || isMimo || isBytedance || isMeta) {
       // ----- OpenAI-compatible: LM Studio (Local), DashScope (Qwen / DeepSeek
       //       V3.2), DeepSeek's first-party API, or Z.AI (GLM family) -----
       // All speak the same /chat/completions JSON protocol; only the full URL,
@@ -8508,8 +8530,8 @@ export async function POST(req: Request) {
       // runOpenAiResponsesOnce translates the chat-format message/tool loop to
       // the responses `input`/`tools` shape at the boundary, so the outer tool
       // loop and the tool executor are unchanged. See lib/openaiResponses.ts.
-      const useOpenAiResponses = isOpenAI && toolUseEnabled && openAiCannotUseTools(specificModel || '');
-      if (isMimo && !keys.mimo) {
+      const useOpenAiResponses = !useOpenCodeGo && isOpenAI && toolUseEnabled && openAiCannotUseTools(specificModel || '');
+      if (isMimo && !useOpenCodeGo && !keys.mimo) {
         return NextResponse.json({
           error: `MiMo (Xiaomi) requires the MiMo API key in Preferences.`,
         }, { status: 400 });
@@ -8529,7 +8551,9 @@ export async function POST(req: Request) {
       // of "base + /v1/chat/completions" because each provider has a slightly
       // different path prefix — most notably Z.AI's path is /api/paas/v4
       // (no /v1) which broke when we naively appended /v1.
-      const chatCompletionsUrl = useDeepSeekDirect
+      const chatCompletionsUrl = useOpenCodeGo
+        ? OPENCODE_GO_CHAT_URL
+        : useDeepSeekDirect
         ? 'https://api.deepseek.com/v1/chat/completions'
         : isDashScope
           ? 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions'
@@ -8554,7 +8578,9 @@ export async function POST(req: Request) {
                           : isMeta
                             ? 'https://api.meta.ai/v1/chat/completions'
                             : `${process.env.LOCAL_LLM_BASE || 'http://localhost:1234'}/v1/chat/completions`;
-      const authHeaders: Record<string, string> = useDeepSeekDirect
+      const authHeaders: Record<string, string> = useOpenCodeGo
+        ? { Authorization: `Bearer ${keys.opencode}` }
+        : useDeepSeekDirect
         ? { Authorization: `Bearer ${keys.deepseek}` }
         : isDashScope
           ? { Authorization: `Bearer ${keys.qwen}` }
@@ -8586,7 +8612,7 @@ export async function POST(req: Request) {
       // so a vision-capable local model receives mid-turn images natively
       // instead of being handed a ref. Stays false for every cloud family.
       let localModelVisionCapable = false;
-      let localModel = isKimi ? resolveKimiModel(specificModel) : (specificModel || (
+      let localModel = useOpenCodeGo ? String(specificModel) : isKimi ? resolveKimiModel(specificModel) : (specificModel || (
         isGLM      ? 'glm-4.7' :
         isGrok     ? 'grok-4.7' :
         isCohere   ? 'command-a-plus-05-2026' :
@@ -8604,7 +8630,7 @@ export async function POST(req: Request) {
       // and 'deepseek-v4-pro' plus a few still-accepted legacy aliases.
       // Retired ids saved in old conversations are normalised here — single
       // table in lib/deepseekModels.ts.
-      if (useDeepSeekDirect) localModel = deepseekWireModel(localModel);
+      if (useDeepSeekDirect && !useOpenCodeGo) localModel = deepseekWireModel(localModel);
       // DigitalOcean Inference: the `digitalocean/` prefix is a NEXUS routing
       // marker (same bare model id exists on Z.AI at a different price, so the
       // prefix disambiguates for routing + pricing). The wire API wants the
@@ -9777,8 +9803,13 @@ export async function POST(req: Request) {
         // xAI's docs recommend setting `x-grok-conv-id` to maximize cache
         // hit rate by hinting that this request belongs to the same
         // conversation as previous ones. No-op for other providers.
-        const extraHeaders: Record<string, string> =
-          isGrok && convoId ? { 'x-grok-conv-id': String(convoId) } : {};
+        const extraHeaders: Record<string, string> = {
+          ...(isGrok && convoId ? { 'x-grok-conv-id': String(convoId) } : {}),
+          // OpenCode Go refuses a request that carries no session id (400
+          // MissingSessionID, measured 2026-11-25). One stable id per
+          // conversation — the same seed the Gemini lane passes.
+          ...(useOpenCodeGo ? openCodeGoHeaders(convoId || 'session') : {}),
+        };
 
         const lsRes = await fetch(chatCompletionsUrl, {
           method: 'POST',
@@ -9792,7 +9823,9 @@ export async function POST(req: Request) {
         });
         if (!lsRes.ok || !lsRes.body) {
           const errText = await lsRes.text().catch(() => '');
-          const label = useDeepSeekDirect
+          const label = useOpenCodeGo
+            ? 'OpenCode Go'
+            : useDeepSeekDirect
             ? 'DeepSeek API'
             : isGLM
               ? (useDigitalOcean ? 'DigitalOcean Inference (GLM)' : 'Z.AI GLM')

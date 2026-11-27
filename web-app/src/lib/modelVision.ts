@@ -244,6 +244,31 @@ export const VISION_CAPABLE_MODELS = new Set<string>([
   'muse-spark-1.1',
   'muse-spark-1.3-contributor',
   'muse-spark-1.2-contributor',
+
+  // ── Ids only the OpenCode Go catalog uses ──────────────────────────────────
+  // Go names several models differently from their first-party API (`kimi-k3`
+  // vs `moonshotai/Kimi-K3`, `deepseek-v4.1-flash` vs `deepseek-flash`), and
+  // two Qwen tiers exist only there. Since bareModelId() strips the routing
+  // tag, those ids landed in this table's default-deny lane purely by spelling
+  // — a different answer for the same weights.
+  //
+  // So they were measured on the Go chat lane itself (2026-11-27, probe17):
+  // a 64x64 PNG, one half green, asked which half — and its MIRROR, so naming
+  // one side twice is a miss, not a coin flip. 2/2 correct for all six below.
+  'kimi-k3',
+  'kimi-k3.1-pro',
+  'kimi-k2.7-code',
+  'deepseek-v4.1-flash',
+  'qwen3.7-plus',
+  'qwen3.8-flash',
+  // DELIBERATELY ABSENT: `minimax-m3` and `minimax-m3.1-flash`. The lane does
+  // carry the image part to them (200, and m3 visibly reasoned about "inspect
+  // image"), but both answered LEFT for BOTH mirrors — the signature of
+  // answering from the prompt's word order instead of the picture. MiniMax is
+  // vision-capable under its own ids (`MiniMax-M3`), so this is a property of
+  // this route, not of the model, and one run each is thin. Default-deny sends
+  // their images through the eyes bridge, which works; do not add them here
+  // without a measurement that passes the mirror.
 ]);
 
 /**

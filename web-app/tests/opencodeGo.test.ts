@@ -139,5 +139,10 @@ test('the gauge is gated on the OpenCode route, and the chat route requires the 
   assert.match(chat, /const isGoRoute = [^\n]*isOpenCodeModel\(effSpecificModel\)/);
   const route = fs.readFileSync(path.join(process.cwd(), 'src/app/api/chat/route.ts'), 'utf8');
   assert.match(route, /headers: openCodeGoHeaders\(/);
-  assert.match(route, /useOpenCodeGo && !isGemini/);
+  // The gate used to be "Gemini family only". Since 2026-11-27 Go serves ten
+  // families, so what it checks instead is the catalog: the id must be one Go
+  // serves, under the family this conversation is actually set to.
+  assert.match(route, /const goEntry = openCodeGoModel\(specificModel\)/);
+  assert.match(route, /if \(!goFamilyMatches\[goEntry\.family\]\)/);
+  assert.doesNotMatch(route, /useOpenCodeGo && !isGemini/);
 });

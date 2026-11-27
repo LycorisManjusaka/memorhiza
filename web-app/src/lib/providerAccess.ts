@@ -35,15 +35,31 @@ export type ProviderRoute = { id: string; key: string };
  * Gemini (opencode/) and GLM (digitalocean/).
  */
 export const FAMILY_ROUTES: Record<string, ProviderRoute[]> = {
+  // The OpenCode Go monthly allowance serves ten of these families
+  // (lib/opencodeGo.ts OPENCODE_GO_CATALOG), so for each of them `opencode` is
+  // a second (or third) way in, on the same `opencode/<id>` model-prefix rule
+  // Gemini and GLM already use. Declared order is the order the switch shows.
+  // Claude is deliberately NOT given an `opencode` route yet, even though Go
+  // serves claude-haiku-5-5: its two routes are an AUTH MODE held in state, not
+  // a model-id prefix, so a third option here would put two switches for the
+  // same question on one screen (its own billing switch, and the shared route
+  // switch). The chat route accepts `opencode/claude-haiku-5-5` — only the
+  // picker does not offer it.
   Claude: [{ id: 'api-key', key: 'claude' }, { id: 'oauth', key: 'claudeOAuthToken' }],
   Gemini: [{ id: 'google', key: 'gemini' }, { id: 'opencode', key: 'opencode' }],
-  GLM: [{ id: 'zai', key: 'glm' }, { id: 'digitalocean', key: 'digitalocean' }],
+  GLM: [{ id: 'zai', key: 'glm' }, { id: 'digitalocean', key: 'digitalocean' }, { id: 'opencode', key: 'opencode' }],
+  Qwen: [{ id: 'dashscope', key: 'qwen' }, { id: 'opencode', key: 'opencode' }],
+  DeepSeek: [{ id: 'deepseek', key: 'deepseek' }, { id: 'opencode', key: 'opencode' }],
+  Kimi: [{ id: 'moonshot', key: 'kimi' }, { id: 'opencode', key: 'opencode' }],
+  Grok: [{ id: 'xai', key: 'grok' }, { id: 'opencode', key: 'opencode' }],
+  Minimax: [{ id: 'minimax', key: 'minimax' }, { id: 'opencode', key: 'opencode' }],
+  ChatGPT: [{ id: 'openai', key: 'openai' }, { id: 'opencode', key: 'opencode' }],
+  MiMo: [{ id: 'xiaomi', key: 'mimo' }, { id: 'opencode', key: 'opencode' }],
 };
 
 /** Single-route families -> their keys.json field. Local needs no key. */
 const FAMILY_KEY: Record<string, string> = {
-  Qwen: 'qwen', DeepSeek: 'deepseek', Kimi: 'kimi', Grok: 'grok', Cohere: 'cohere',
-  Minimax: 'minimax', ChatGPT: 'openai', MiMo: 'mimo', ByteDance: 'bytedance', Meta: 'meta',
+  Cohere: 'cohere', ByteDance: 'bytedance', Meta: 'meta',
 };
 
 export type AccessOpts = {

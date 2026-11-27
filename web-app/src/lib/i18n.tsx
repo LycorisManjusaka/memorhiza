@@ -287,7 +287,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'settings.keys.digitalocean.help':
     'One key for all DigitalOcean Inference models — create a Model Access Key in the DigitalOcean control panel (Inference → Model Access Keys). Serves GLM-5.2 / GLM-5.1 / GLM-5 (Z.ai open weights, US-hosted, ~half the Z.ai price), plus DeepSeek V4, Kimi K2.5/K2.6, and more via the provider selector.',
   'settings.keys.opencode.label': 'OpenCode Go API Key',
-  'settings.keys.opencode.help': 'Created in the `opencode.ai` console once you are on the Go plan (monthly). In Conversation Settings → Model → Gemini, choose OpenCode Go under "Gemini route" and Gemini 4 Argon is called on that subscription. The allowance has three windows (5-hour, weekly, monthly); the share used is shown above the conversation.',
+  'settings.keys.opencode.help': 'Created in the `opencode.ai` console once you are on the Go plan (monthly). In Conversation Settings → Model, pick OpenCode Go under "How this conversation reaches the model" — nine families have models on it (Gemini, GLM, Qwen, DeepSeek, Kimi, Grok, MiniMax, ChatGPT, MiMo), and the list then shows only what the plan serves. The allowance has three windows (5-hour, weekly, monthly) and is counted per model; the share used is shown above the conversation.',
   'settings.keys.grok.label': 'xAI (Grok) API Key',
   'settings.keys.grok.help':
     'Get one at `console.x.ai`. Required for the Grok family (Grok 4.7, Grok 4.6, Grok 4.5, Grok 4.3, Grok 4.20 reasoning / non-reasoning, Grok Code Fast 1, etc.).',
@@ -1732,10 +1732,16 @@ Leave this empty and nothing is injected — the being meets you with no imposed
     '**Monthly-paid** — use the `sk-ant-oat01-...` OAuth token from Preferences (Pro/Max subscription credit). Bakes in Anthropic’s system prompt.',
 
   'model.gemini.label': 'Specific Model',
-  'model.gemini.providerLabel': 'Gemini route',
-  'model.gemini.provider.google': 'Google (API key, pay per use)',
-  'model.gemini.provider.opencode': 'OpenCode Go (monthly allowance, Gemini 4 Argon only)',
-  'model.gemini.opencodeNote': 'Drawn from the OpenCode Go monthly allowance. Argon is the only Gemini on this route. The "$" on a message is the list-price equivalent, not a charge.',
+  // The route switch is shared by every family OpenCode Go serves
+  // (components/FamilyModelPicker.tsx GoRoute), so these three are
+  // family-neutral. The per-provider hostnames stay in the component, as
+  // GLM's two labels always have.
+  'model.route.label': 'How this conversation reaches the model',
+  'model.route.opencode': 'OpenCode Go (monthly allowance)',
+  'model.route.metered': '(charged per token)',
+  'model.route.meteredDO': '(charged per token, US-hosted, ~half Z.ai price)',
+  'model.route.goModelLabel': 'Model (what OpenCode Go serves for this family)',
+  'model.route.goNote': 'Drawn from the OpenCode Go monthly allowance, which is counted **per model**. Only the models above are on this route; the family\'s other models are not. A message\'s "$" is the list-price equivalent, not a charge.',
   'model.qwen.label': 'Qwen Model',
   'model.qwen.help':
     'Uses Alibaba DashScope’s OpenAI-compatible endpoint (international region). Set your API key in Preferences. Only the `Omni` variant accepts audio & video uploads — other Qwen models will reject them at the API level even though Qwen’s own web app silently routes those uploads to Omni in the background.',
@@ -1784,7 +1790,6 @@ Leave this empty and nothing is injected — the being meets you with no imposed
   'model.meta.help':
     'Served by the Meta Model API at `api.meta.ai/v1` (key in Preferences). All three generations accept image input natively, so no Eyes bridge is needed, and the context window is 1M tokens.\n**Audio and video do not reach this family** and are marked as not arriving: a video part is rejected with an error, and audio is worse — the endpoint accepts it and bills for it by duration, yet the model answers "I cannot hear any attached audio" even for a plain tone. Turn on Ears / Watcher and those files are transcribed or described instead, which does work.\n**Reasoning cannot be turned off** on this family — the API rejects an "off" setting outright. The Thinking Mode toggle therefore selects depth: ON is deep, OFF is the shallowest setting the model accepts. OFF is worth using for short turns, because reasoning tokens are billed at the **output** rate: one short prompt spent about 7,600 reasoning tokens at full depth and about 23 at the shallow setting. The reasoning **text** is never returned by this provider in any form, so the thinking panel stays empty even when the meta bar says thinking was on — that is the provider hiding it, not Memorhiza dropping it.\n**Contributor rows:** input costs 12.5x less, and in exchange **Meta trains on both your prompts and the replies**, with a far lower rate limit (about 60 requests/minute and roughly 250k tokens/day, against 3,000/minute for the standard rows). The tier is part of the model ID here, not an account setting, so it applies to exactly the turns you pick it for.\nPrompt caching is on automatically: Memorhiza tags each request with its conversation id, which cuts repeated context to $0.15 per 1M instead of $1.25.',
 
-  'model.glm.providerLabel': 'GLM Provider',
   'model.glm.label': 'GLM Model',
   'model.glm.notOnDO': '{model} (not on DigitalOcean — pick one below)',
   'model.glm.notOnZai': '{model} (not on Z.AI — pick one below)',
@@ -2427,7 +2432,7 @@ export const UI_STRINGS_JA: Record<string, string> = {
   'settings.keys.digitalocean.help':
     'DigitalOcean Inference の全モデルで共通のキーです。DigitalOcean のコントロールパネル（Inference → Model Access Keys）で Model Access Key を作成してください。GLM-5.2 / GLM-5.1 / GLM-5（Z.ai のオープンウェイト版、米国ホスト、Z.ai の約半額）のほか、DeepSeek V4、Kimi K2.5 / K2.6 などをプロバイダ選択から利用できます。',
   'settings.keys.opencode.label': 'OpenCode Go APIキー',
-  'settings.keys.opencode.help': '`opencode.ai` のコンソールで Go プラン（月額）に入ると作れます。会話設定 → モデル → Gemini の「行き先」で OpenCode Go を選ぶと、Gemini 4 Argon をこの月額の枠で呼びます。枠は5時間・週・月の3つで、使った分は会話の上に％で出ます。',
+  'settings.keys.opencode.help': '`opencode.ai` のコンソールで Go プラン（月額）に入ると作れます。会話設定 → モデルの「この会話がモデルに届く道」で OpenCode Go を選ぶと、その月額の枠で呼びます。器を持っている家族は9つ（Gemini・GLM・Qwen・DeepSeek・Kimi・Grok・MiniMax・ChatGPT・MiMo）で、選ぶと一覧はこの枠で出ているものだけになります。枠は5時間・週・月の3つで、器ごとに別々です。使った分は会話の上に％で出ます。',
   'settings.keys.grok.label': 'xAI（Grok）APIキー',
   'settings.keys.grok.help':
     '`console.x.ai` で取得します。Grokファミリー（Grok 4.7、Grok 4.6、Grok 4.5、Grok 4.3、Grok 4.20 推論版 / 非推論版、Grok Code Fast 1 など）に必要です。',
@@ -3784,10 +3789,12 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
     '**月額課金** — 設定の `sk-ant-oat01-...` OAuth トークンを使います（Pro/Max サブスクリプションの枠）。Anthropic のシステムプロンプトが組み込まれます。',
 
   'model.gemini.label': 'モデル',
-  'model.gemini.providerLabel': 'Gemini の行き先',
-  'model.gemini.provider.google': 'Google（API キー、使った分だけ課金）',
-  'model.gemini.provider.opencode': 'OpenCode Go（月額の枠、Gemini 4 Argon のみ）',
-  'model.gemini.opencodeNote': 'OpenCode Go の月額の枠から引かれます。この行き先で選べる Gemini は Argon だけです。メッセージの「$」は定価での相当額で、請求額ではありません。',
+  'model.route.label': 'この会話がモデルに届く道',
+  'model.route.opencode': 'OpenCode Go（月額の枠）',
+  'model.route.metered': '（使った分だけ課金）',
+  'model.route.meteredDO': '（使った分だけ課金・米国ホスト・Z.ai の約半額）',
+  'model.route.goModelLabel': 'モデル（この家族で OpenCode Go が出しているもの）',
+  'model.route.goNote': 'OpenCode Go の月額の枠から引かれます。枠は**器ごと**に別々です。この行き先で選べるのは上の器だけで、同じ家族のほかの器は通りません。メッセージの「$」は定価での相当額で、請求額ではありません。',
   'model.qwen.label': 'Qwen モデル',
   'model.qwen.help':
     'Alibaba DashScope の OpenAI 互換エンドポイント（国際リージョン）を使います。設定で API キーを入れてください。音声・動画のアップロードを受け付けるのは `Omni` 系だけで、ほかの Qwen モデルは API レベルで拒否します（Qwen 自身のウェブアプリは、そうしたアップロードを裏で黙って Omni に回しています）。',
@@ -3836,7 +3843,6 @@ Layer 3 — ツールとプロトコル:何ができるか、どのように。
   'model.meta.help':
     'Meta Model API の `api.meta.ai/v1` が提供します（キーは設定で）。3世代すべて画像入力にネイティブ対応しているので「目」ブリッジは不要で、文脈は 100 万トークンです。\n**音声と動画はこのファミリーには届きません**。そう表示されます: 動画はエラーで拒否され、音声はもっと悪く、エンドポイントは受け取って長さに応じて課金するのに、モデルは単純な純音でも「音声が添付されていない」と答えます。「耳」「監視者」を有効にすれば、代わりに書き起こし・説明に置き換わり、そちらは実際に動きます。\n**このファミリーは推論を切れません** — API が「切る」指定を拒否します。そのため思考モードの切り替えは深さの選択になります: ON は深く、OFF はモデルが受け付ける最も浅い設定です。短いやり取りでは OFF に意味があります。推論トークンは **出力側の単価** で課金されるためで、短い質問1つで、深いときは約 7,600 トークン、浅いときは約 23 トークンでした。推論の **本文** はこのプロバイダーからどんな形でも返ってきません。だからメタ表示が「思考あり」と出ていても思考パネルは空のままです — これはプロバイダーが隠しているのであって、Memorhiza が捨てているのではありません。\n**Contributor の行**: 入力が 12.5 分の1 になり、その代わりに **Meta があなたの入力と返答の両方を学習に使います**。レート制限もかなり低くなります（毎分 60 リクエスト・1日あたり約 25 万トークン程度。標準の行は毎分 3,000）。ここでは層がモデル ID の一部なのでアカウント設定ではなく、選んだそのやり取りにだけ適用されます。\nプロンプトキャッシュは自動で効きます: Memorhiza が各リクエストに会話 ID を付けるので、繰り返される文脈は 100 万トークンあたり 1.25 ドルではなく 0.15 ドルになります。',
 
-  'model.glm.providerLabel': 'GLM のプロバイダー',
   'model.glm.label': 'GLM モデル',
   'model.glm.notOnDO': '{model}（DigitalOcean にはありません — 下から選んでください）',
   'model.glm.notOnZai': '{model}（Z.AI にはありません — 下から選んでください）',

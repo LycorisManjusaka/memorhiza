@@ -18,7 +18,9 @@ test('keyPresence keeps booleans only; blank and non-string values are "no key"'
 
 test('unknown presence (null) hides nothing and offers every route', () => {
   assert.deepEqual(visibleFamilies(BASE_MODEL_FAMILIES, null), BASE_MODEL_FAMILIES);
-  assert.deepEqual(routeChoice('GLM', null, 'zai'), { mode: 'choose', routes: ['zai', 'digitalocean'] });
+  // GLM has three ways in since 2026-11-27 (OpenCode Go serves glm-5.3 and
+  // glm-5.3-flash), and an unknown presence offers all of them.
+  assert.deepEqual(routeChoice('GLM', null, 'zai'), { mode: 'choose', routes: ['zai', 'digitalocean', 'opencode'] });
 });
 
 test('a family with no key is not offered; Local needs none', () => {

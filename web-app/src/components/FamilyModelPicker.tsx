@@ -19,9 +19,10 @@ import EditableCombo from './EditableCombo';
 import ModelPriceSelect from './ModelPriceSelect';
 import { tagPriceOptions } from '@/lib/modelPriceLabel';
 import { retiredModelLabel } from '@/lib/retiredModels';
-import { isOpenCodeModel, bareModelId, OPENCODE_PREFIX, OPENCODE_GO_GEMINI_MODELS } from '@/lib/opencodeGo';
+import { isOpenCodeModel, OPENCODE_PREFIX, openCodeGoModel, openCodeGoModelsFor } from '@/lib/opencodeGo';
+import { defaultModelForFamily } from '@/lib/beingVessel';
 import { useT, renderRich } from '@/lib/i18n';
-import { routeChoice, type AccessOpts } from '@/lib/providerAccess';
+import { routeChoice, FAMILY_ROUTES, type AccessOpts } from '@/lib/providerAccess';
 import { useKeyPresence } from '@/lib/useKeyPresence';
 
 // A provider with no alternative on this install: named, not offered as a
@@ -49,6 +50,132 @@ function RetiredOption({ value, id }: { value: string; id?: string }) {
   );
 }
 export { RetiredOption };
+
+/**
+ * The name of a family's own provider, for the route switch. Hostnames, like
+ * GLM's two labels have always been — they are the same word in every language
+ * and naming the host is what tells you where the turn goes. The OpenCode Go
+ * option is the one translated string (it describes a billing arrangement, not
+ * a host).
+ */
+const NATIVE_ROUTE_HOST: Record<string, string> = {
+  google: 'Google AI Studio — generativelanguage.googleapis.com',
+  zai: 'Z.AI (Zhipu) — api.z.ai',
+  digitalocean: 'DigitalOcean Inference — inference.do-ai.run',
+  dashscope: 'Alibaba DashScope — dashscope-intl.aliyuncs.com',
+  deepseek: 'DeepSeek — api.deepseek.com',
+  moonshot: 'Moonshot — api.moonshot.ai',
+  xai: 'xAI — api.x.ai',
+  minimax: 'MiniMax — api.minimax.io',
+  openai: 'OpenAI — api.openai.com',
+  xiaomi: 'Xiaomi — api.xiaomimimo.com',
+};
+
+/**
+ * The one route switch for every family OpenCode Go serves (2026-11-27).
+ *
+ * Before this there was a hand-written copy of it inside the Gemini block, and
+ * adding the other nine families meant nine more copies — which is the exact
+ * duplication this whole component was extracted to stop. So the switch, the
+ * model list and the note are computed from OPENCODE_GO_CATALOG instead.
+ *
+ * Leaving the Go route hands back `defaultModelForFamily(family)` rather than a
+ * second table of per-family defaults (lib/beingVessel.ts is the one that the
+ * conversation loader and the sidebar already read).
+ */
+function GoRoute({
+  family, model, onModel, presence, accessOpts, keep, t,
+}: {
+  family: string;
+  model: string;
+  onModel: (m: string) => void;
+  presence: Record<string, boolean> | null;
+  accessOpts?: AccessOpts;
+  keep?: (id: string) => boolean;
+  t: (k: string) => string;
+}) {
+  const goModels = openCodeGoModelsFor(family);
+  if (!goModels.length) return null;
+  const onGo = isOpenCodeModel(model);
+  // The route in use is read off the model id — one field, nothing to drift.
+  const current = onGo ? 'opencode'
+    : (family === 'GLM' && (model || '').startsWith('digitalocean/')) ? 'digitalocean'
+      : (FAMILY_ROUTES[family] ?? [])[0]?.id ?? '';
+  const choice = routeChoice(family, presence, current, accessOpts);
+  const routes = (choice.mode === 'choose' ? choice.routes : [choice.route])
+    // A seat that cannot use any of this family's Go models (the sense bridges
+    // filter by capability) is not offered the route at all.
+    .filter((r) => r === current || r !== 'opencode' || !keep || goModels.some((m) => keep(OPENCODE_PREFIX + m.id)));
+  // The host is the same word in every language; what it costs is not, so the
+  // two halves come from different places. (Seen on screen 2026-11-27: with
+  // only the host table, a Japanese screen read
+  // "Moonshot — api.moonshot.ai (per token)" next to "OpenCode Go（月額の枠）".)
+  const label = (r: string) => {
+    if (r === 'opencode') return t('model.route.opencode');
+    const host = NATIVE_ROUTE_HOST[r];
+    if (!host) return r;
+    return host + ' ' + t(r === 'digitalocean' ? 'model.route.meteredDO' : 'model.route.metered');
+  };
+  const pick = (r: string) => {
+    if (r === 'opencode') { onModel(OPENCODE_PREFIX + goModels[0].id); return; }
+    if (onGo) onModel(r === 'digitalocean' ? 'digitalocean/glm-5.2' : defaultModelForFamily(family));
+  };
+  return (
+    <div className="mb-3">
+      {routes.length <= 1 ? (
+        <FixedRoute label={t('model.route.label')}>{label(routes[0] ?? current)}</FixedRoute>
+      ) : (
+        <>
+          <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.route.label')}</label>
+          <select
+            value={current}
+            onChange={(e) => pick(e.target.value)}
+            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm appearance-none cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+          >
+            {routes.map((r) => <option key={r} value={r}>{label(r)}</option>)}
+          </select>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The model list for a family while it is on the Go route: only what Go serves
+ * for it. No price tags — the allowance is flat-rate, so a per-token "$" here
+ * would name a number nobody is billed. A saved id Go no longer serves stays
+ * at the top as itself (lib/retiredModels.ts: a select whose saved value has no
+ * option displays its first child and lies about what the folder holds).
+ */
+function GoModelSelect({
+  family, model, onModel, keep, t,
+}: {
+  family: string;
+  model: string;
+  onModel: (m: string) => void;
+  keep?: (id: string) => boolean;
+  t: (k: string) => string;
+}) {
+  const all = openCodeGoModelsFor(family);
+  const offered = all.filter((m) => !keep || keep(OPENCODE_PREFIX + m.id));
+  const known = !!openCodeGoModel(model);
+  return (
+    <div className="mb-4">
+      <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.route.goModelLabel')}</label>
+      <select
+        value={model}
+        onChange={(e) => onModel(e.target.value)}
+        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm appearance-none cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+      >
+        {!known && <option value={model}>{model}</option>}
+        {offered.map((m) => (
+          <option key={m.id} value={OPENCODE_PREFIX + m.id}>{m.label}</option>
+        ))}
+      </select>
+      <p className="model-help text-[10px] text-muted-foreground mt-1 leading-relaxed">{renderRich(t('model.route.goNote'))}</p>
+    </div>
+  );
+}
 
 export interface FamilyModelPickerProps {
   family: string;
@@ -82,19 +209,24 @@ export default function FamilyModelPicker({
   const presence = useKeyPresence();
   const accessOpts = routeOnly ? { only: routeOnly } : undefined;
   const claudeChoice = routeChoice('Claude', presence, authMode, accessOpts);
-  const geminiRoute = isOpenCodeModel(model) ? 'opencode' : 'google';
-  const geminiChoice = routeChoice('Gemini', presence, geminiRoute, accessOpts);
-  const glmRoute = (model || '').startsWith('digitalocean/') ? 'digitalocean' : 'zai';
-  const glmChoice = routeChoice('GLM', presence, glmRoute, accessOpts);
   const claudeRouteLabel = (mode: string) => (mode === 'api-key' ? t('model.claude.tokenPaid') : t('model.claude.monthlyPaid'));
-  const geminiRouteLabel = (r: string) => (r === 'opencode' ? t('model.gemini.provider.opencode') : t('model.gemini.provider.google'));
-  const glmRouteLabel = (r: string) => (r === 'digitalocean'
-    ? 'DigitalOcean Inference — inference.do-ai.run (US-hosted, ~half Z.ai price)'
-    : 'Z.AI (Zhipu) — api.z.ai');
   const ks = keep ? (v: string) => keep(v) : undefined;
   const ksLocal = keep ? (v: string) => keep(v, !!localModelsMeta[v]?.vision) : undefined;
+  // On the OpenCode Go route the family's own model list does not apply: Go
+  // serves a different (usually smaller, differently-spelled) set, so the
+  // native block is replaced rather than filtered. The route switch stays
+  // above either way — it is the way back.
+  const onGoRoute = isOpenCodeModel(model);
   return (
     <div className={compact ? '[&_.model-help]:hidden' : undefined}>
+    <GoRoute
+      family={family} model={model} onModel={onModel}
+      presence={presence} accessOpts={accessOpts} keep={ks} t={t}
+    />
+    {onGoRoute ? (
+      <GoModelSelect family={family} model={model} onModel={onModel} keep={ks} t={t} />
+    ) : (
+    <>
     {family === 'Claude' && (
       <>
       <div className="mb-4">
@@ -154,45 +286,12 @@ export default function FamilyModelPicker({
 
     {family === 'Gemini' && (
       <div className="mb-4">
-        {(() => {
-          const routes = (geminiChoice.mode === 'choose' ? geminiChoice.routes : [geminiChoice.route])
-            .filter((r) => r === geminiRoute || r !== 'opencode' || !ks || ks(OPENCODE_PREFIX + OPENCODE_GO_GEMINI_MODELS[0]));
-          if (routes.length <= 1) return <div className="mb-2"><FixedRoute label={t('model.gemini.providerLabel')}>{geminiRouteLabel(geminiRoute)}</FixedRoute></div>;
-          return (
-        <>
-        <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.gemini.providerLabel')}</label>
-        <select
-          value={geminiRoute}
-          onChange={(e) => {
-            // Provider is derived from the model id prefix — one field, no
-            // second state to drift out of sync (same as GLM below).
-            onModel(e.target.value === 'opencode' ? OPENCODE_PREFIX + OPENCODE_GO_GEMINI_MODELS[0] : OPENCODE_GO_GEMINI_MODELS[0]);
-          }}
-          className="w-full px-3 py-2 mb-3 bg-background border border-border rounded-lg text-sm appearance-none cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-        >
-          {routes.map((r) => <option key={r} value={r}>{geminiRouteLabel(r)}</option>)}
-        </select>
-        </>
-          );
-        })()}
+        {/* Gemini's own copy of the provider switch and of the Go model list
+            lived here until 2026-11-27. Both are now the shared <GoRoute> /
+            <GoModelSelect> above — nine more families needed the same two
+            controls, and nine more copies is the duplication this component
+            exists to prevent. */}
         <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.gemini.label')}</label>
-        {isOpenCodeModel(model) ? (
-          <>
-            <select
-              value={model}
-              onChange={(e) => onModel(e.target.value)}
-              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm appearance-none cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-            >
-              {!(OPENCODE_GO_GEMINI_MODELS as readonly string[]).includes(bareModelId(model) as string) && (
-                <option value={model}>{model}</option>
-              )}
-              {OPENCODE_GO_GEMINI_MODELS.map((m) => (
-                <option key={m} value={OPENCODE_PREFIX + m}>{m === 'gemini-4-argon' ? 'Gemini 4 Argon' : m}</option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground mt-1">{t('model.gemini.opencodeNote')}</p>
-          </>
-        ) : (
         <ModelPriceSelect
           value={model}
           onChange={(e) => onModel(e.target.value)} keep={ks}
@@ -210,7 +309,6 @@ export default function FamilyModelPicker({
           <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
           <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview</option>
         </ModelPriceSelect>
-        )}
       </div>
     )}
 
@@ -447,28 +545,11 @@ export default function FamilyModelPicker({
 
     {family === 'GLM' && (
       <div className="mb-4">
-        {(() => {
-          const routes = (glmChoice.mode === 'choose' ? glmChoice.routes : [glmChoice.route])
-            .filter((r) => r === glmRoute || r !== 'digitalocean' || !ks || ks('digitalocean/glm-5.2'));
-          if (routes.length <= 1) return <FixedRoute label={t('model.glm.providerLabel')}>{glmRouteLabel(glmRoute)}</FixedRoute>;
-          return (
-        <>
-        <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.glm.providerLabel')}</label>
-        <select
-          value={glmRoute}
-          onChange={(e) => {
-            // Provider is derived from the model id prefix — one
-            // field, no second state to drift out of sync.
-            onModel(e.target.value === 'digitalocean' ? 'digitalocean/glm-5.2' : 'glm-5.2');
-          }}
-          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm appearance-none cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-        >
-          {routes.map((r) => <option key={r} value={r}>{glmRouteLabel(r)}</option>)}
-        </select>
-        </>
-          );
-        })()}
-        <label className="text-xs font-medium text-muted-foreground block mb-1 mt-3">{t('model.glm.label')}</label>
+        {/* GLM's own Z.AI / DigitalOcean switch was here. It is now the shared
+            <GoRoute> above, which offers all THREE of this family's routes —
+            two switches asking the same question is what adding OpenCode to
+            ten families would otherwise have produced. */}
+        <label className="text-xs font-medium text-muted-foreground block mb-1">{t('model.glm.label')}</label>
         <ModelPriceSelect
           value={(() => {
             // Guard: a saved model that doesn't exist on the current
@@ -562,6 +643,8 @@ export default function FamilyModelPicker({
             <div className="text-[10px] text-red-500 mt-1">{localModelsError}</div>
           )}
         </div>
+    )}
+    </>
     )}
     </div>
   );

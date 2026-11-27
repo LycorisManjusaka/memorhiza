@@ -2395,7 +2395,11 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   // prefix). Unlike Claude's, OpenCode answers at any time, so the numbers are
   // asked for directly: on show, every 15 s while a turn runs, once when it
   // ends (the effect re-runs when `loading` flips), and every 5 min at rest.
-  const isGoRoute = /gemini/i.test(effAiName || '') && isOpenCodeModel(effSpecificModel);
+  // The `opencode/` prefix is the whole test: Go serves ten families as of
+  // 2026-11-27, so the family it used to be paired with ("gemini") would now
+  // hide the gauge on the other nine — which is exactly the window a flat-rate
+  // route has to show.
+  const isGoRoute = isOpenCodeModel(effSpecificModel);
   const [goUsage, setGoUsage] = useState<GoUsageSnapshot | null>(null);
   const [goUsageError, setGoUsageError] = useState<string | null>(null);
   useEffect(() => {

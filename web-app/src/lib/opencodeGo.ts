@@ -27,8 +27,98 @@ export const OPENCODE_GO_BASE = 'https://opencode.ai/inference/go';
 /** What @google/genai needs as `httpOptions.baseUrl` (it appends /v1beta). */
 export const OPENCODE_GO_GEMINI_BASE = `${OPENCODE_GO_BASE}/google`;
 export const OPENCODE_GO_USAGE_URL = `${OPENCODE_GO_BASE}/v1/usage`;
+/**
+ * The one wire every non-Gemini Go model is reached on.
+ *
+ * The catalog's own `recommended_api` splits the 19 into three shapes
+ * (chat-completions 10, anthropic messages 6, openai responses 3) — and that
+ * split does NOT follow each family's native wire: Kimi and MiMo, which NEXUS
+ * deliberately moved ONTO the Anthropic surface, are chat-completions here;
+ * Qwen and MiniMax M3, which are OpenAI-compatible natively, are messages here.
+ *
+ * MEASURED 2026-11-27 (probe11/12/13, one call each, `workspace/opencode_probe`)
+ * before designing around that split: all 19 answer 200 on chat-completions,
+ * and all 19 emitted a well-formed `tool_calls` entry with correct arguments
+ * when handed one function tool (19/19 — including the six the catalog puts on
+ * `messages` and the three it puts on `responses`). So NEXUS reaches every one
+ * of them on the single lane it already has, and no second adapter is wired.
+ * "Recommended" is not "only"; what is not measured is whether the recommended
+ * wire would be better (streaming parity, long context, media).
+ */
+export const OPENCODE_GO_CHAT_URL = `${OPENCODE_GO_BASE}/openai/v1/chat/completions`;
 /** The Gemini models Go serves for chat. One, as of the measured catalog. */
 export const OPENCODE_GO_GEMINI_MODELS = ['gemini-4-argon'] as const;
+
+export interface GoModel {
+  /** The id Go answers to — sent on the wire, and the `opencode/` suffix. */
+  id: string;
+  /** The NEXUS family whose picker offers it (drives the lane and the labels). */
+  family: string;
+  label: string;
+  /**
+   * Max output tokens, from the catalog's own `limit.output`
+   * (models_2026-11-27.json). Only consulted where NEXUS sends a cap.
+   */
+  maxOutput: number;
+}
+
+/**
+ * What the Go plan serves for chat, as of the catalog read 2026-11-27
+ * (`workspace/opencode_probe/models_2026-11-27.json`, 37 entries; these are the
+ * 20 Lizard-kun picked — the ones Memorhiza already has a family for).
+ *
+ * The allowance is PER MODEL (`go.monthly_usage`, list dollars), so the one
+ * percentage the gauge shows is not a single shared pool of tokens; it is each
+ * window's spend measured against that model's own ceiling.
+ */
+export const OPENCODE_GO_CATALOG: readonly GoModel[] = [
+  { id: 'gemini-4-argon',      family: 'Gemini',   label: 'Gemini 4 Argon',       maxOutput: 65536 },
+  { id: 'claude-haiku-5-5',    family: 'Claude',   label: 'Claude Haiku 5.5',     maxOutput: 128000 },
+  { id: 'deepseek-v4-pro',     family: 'DeepSeek', label: 'DeepSeek V4 Pro',      maxOutput: 384000 },
+  { id: 'deepseek-v4.1-flash', family: 'DeepSeek', label: 'DeepSeek V4.1 Flash',  maxOutput: 384000 },
+  { id: 'glm-5.3',             family: 'GLM',      label: 'GLM-5.3',              maxOutput: 131072 },
+  { id: 'glm-5.3-flash',       family: 'GLM',      label: 'GLM-5.3 Flash',        maxOutput: 131072 },
+  { id: 'gpt-5.6-luna',        family: 'ChatGPT',  label: 'GPT-5.6 Luna',         maxOutput: 128000 },
+  { id: 'gpt-6-luna',          family: 'ChatGPT',  label: 'GPT-6 Luna',           maxOutput: 128000 },
+  { id: 'grok-4.7',            family: 'Grok',     label: 'Grok 4.7',             maxOutput: 500000 },
+  { id: 'kimi-k2.7-code',      family: 'Kimi',     label: 'Kimi K2.7 Code',       maxOutput: 262144 },
+  { id: 'kimi-k3',             family: 'Kimi',     label: 'Kimi K3',              maxOutput: 1048576 },
+  { id: 'kimi-k3.1-pro',       family: 'Kimi',     label: 'Kimi K3.1 Pro',        maxOutput: 1048576 },
+  { id: 'mimo-v2.6-flash',     family: 'MiMo',     label: 'MiMo V2.6 Flash',      maxOutput: 131072 },
+  { id: 'mimo-v2.6-pro',       family: 'MiMo',     label: 'MiMo V2.6 Pro',        maxOutput: 131072 },
+  { id: 'minimax-m3',          family: 'Minimax',  label: 'MiniMax M3',           maxOutput: 131072 },
+  { id: 'minimax-m3.1-flash',  family: 'Minimax',  label: 'MiniMax M3.1 Flash',   maxOutput: 512000 },
+  { id: 'qwen3.7-plus',        family: 'Qwen',     label: 'Qwen 3.7 Plus',        maxOutput: 65536 },
+  { id: 'qwen3.8-flash',       family: 'Qwen',     label: 'Qwen 3.8 Flash',       maxOutput: 131072 },
+  { id: 'qwen3.8-max',         family: 'Qwen',     label: 'Qwen 3.8 Max',         maxOutput: 131072 },
+  { id: 'qwen4-max',           family: 'Qwen',     label: 'Qwen 4 Max',           maxOutput: 262144 },
+] as const;
+
+/** The families Go serves, in catalog order, each once. */
+export const OPENCODE_GO_FAMILIES: readonly string[] =
+  OPENCODE_GO_CATALOG.reduce<string[]>((acc, m) => (acc.includes(m.family) ? acc : [...acc, m.family]), []);
+
+/** Go's entry for a bare (prefix-stripped) id, or undefined. */
+export function openCodeGoModel(id: string | undefined | null): GoModel | undefined {
+  const bare = String(bareModelId(id) || '').toLowerCase().trim();
+  if (!bare) return undefined;
+  return OPENCODE_GO_CATALOG.find((m) => m.id === bare);
+}
+
+/** What Go serves for one family, in catalog order. Empty for a family it has none of. */
+export function openCodeGoModelsFor(family: string | undefined | null): GoModel[] {
+  const f = String(family || '').toLowerCase().trim();
+  return OPENCODE_GO_CATALOG.filter((m) => m.family.toLowerCase() === f);
+}
+
+/**
+ * Whether Argon's native-Gemini lane is the one to use. Every other Go model
+ * goes down the OpenAI-compatible lane (OPENCODE_GO_CHAT_URL).
+ */
+export function openCodeGoUsesGeminiWire(id: string | undefined | null): boolean {
+  return (OPENCODE_GO_GEMINI_MODELS as readonly string[])
+    .includes(String(bareModelId(id) || '').toLowerCase().trim());
+}
 
 export function isOpenCodeModel(id: string | undefined | null): boolean {
   return (id || '').toLowerCase().startsWith(OPENCODE_PREFIX);
