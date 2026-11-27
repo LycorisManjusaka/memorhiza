@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getActiveTurn, touchTurn, endTurn, HEARTBEAT_MS, resolveActiveTurn } from '@/lib/turnRegistry';
 import { liveTurnStatus } from '@/lib/turnBus';
 import { readLogUpdatedAt } from '@/lib/fsStorage';
-import { requestStop, forgetStop } from '@/lib/turnStop';
+import { requestStop } from '@/lib/turnStop';
 
 // Read/refresh "is a turn running for this conversation, and is it mine".
 //
@@ -130,10 +130,30 @@ export async function POST(req: Request) {
     }
     if (event === 'end') {
       endTurn(convoId, turnId);
-      // A finished turn can no longer be stopped, so nothing about it should
-      // stay reachable. This is one of the two cleanups turnStop's TTL exists
-      // to back up — see LISTENER_TTL_MS.
-      forgetStop(convoId, turnId);
+      // ── Deliberately does NOT touch the stop channel ────────────────────
+      // It used to call forgetStop(convoId, turnId) here. MEASURED on 3001
+      // 2026-11-27 (three presses by Lizard-kun, caller named by a stack
+      // trace): that one line is what made "press Stop the instant you
+      // notice a typo" do nothing at all.
+      //
+      //   T+0.000  requestStop -> no listener yet -> 'recorded'
+      //   T+0.007  this route, event 'end' -> forgetStop ERASED the record
+      //   T+0.104  the turn registers its listener -> finds nothing -> runs on
+      //
+      // The press is destroyed by the press itself: Stop aborts the tab's own
+      // fetch, that fetch's cleanup posts 'end', and the server-side runner
+      // then starts the turn with no fetch attached. So a tab's 'end' does not
+      // mean "the turn finished" — it means "this tab stopped watching", and
+      // those stopped being the same thing when the runner took the tab off
+      // the critical path. The only caller that knows a turn is really over is
+      // the chat route's turnAbort listener, which already calls forgetStop.
+      //
+      // Leaving the record costs close to nothing, and turnStop.ts already
+      // argues why: STOP_TTL_MS bounds it, turnIds are unique per turn so a
+      // leftover record cannot match a future one, and a listener outliving
+      // its turn only ever calls an idempotent abort. Erring toward "a stop
+      // that still fires" — pressing Stop right after sending is the normal
+      // use, not an edge case.
       return NextResponse.json({ ok: true });
     }
     // Anything else is a heartbeat. ok:false means there was nothing to keep
