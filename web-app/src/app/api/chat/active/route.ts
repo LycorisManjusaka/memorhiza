@@ -108,7 +108,24 @@ export async function POST(req: Request) {
       // A log line and not a response field on purpose: postStop closes over
       // nothing and does not read the body (see ChatArea), and the whole
       // reason it is a useCallback is that it must stay dependency-free.
-      console.warn(`[stop] ${convoId} ${turnId} -> ${outcome}`);
+      // A `recorded` press is only HALF an answer: turnStop's rendezvous fires a
+      // late listener the instant it registers (see onStop), so a press that
+      // stayed recorded means the listener never used this key. Print the turn
+      // id the registry has live on this same conversation, which splits the
+      // two readings that otherwise look identical:
+      //   recorded (live turn ...: turn_B)  the tab and the runner disagree
+      //                                     about the NAME - the press can
+      //                                     never arrive, however long you wait
+      //   recorded (no live turn)           the press simply beat registration;
+      //                                     the rendezvous should still fire
+      const liveHere = outcome === 'recorded' ? getActiveTurn(convoId) : null;
+      const liveNote =
+        outcome !== 'recorded'
+          ? ''
+          : liveHere
+            ? ` (live turn on this conversation: ${liveHere.turnId})`
+            : ' (no live turn registered)';
+      console.warn(`[stop] ${convoId} ${turnId} -> ${outcome}${liveNote}`);
       return NextResponse.json({ ok: true, outcome });
     }
     if (event === 'end') {
