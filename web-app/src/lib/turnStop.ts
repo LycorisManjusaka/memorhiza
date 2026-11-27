@@ -243,6 +243,18 @@ export function isStopRequested(convoId: string, turnId: string): boolean {
 export function forgetStop(convoId: string, turnId: string): void {
   if (!convoId || !turnId) return;
   const key = stopKey(convoId, turnId);
+  // ── GAUGE 2026-11-27 ────────────────────────────────────
+  // Measured on 3001 (Lizard-kun's third press): a request recorded at
+  // T+0.000 was already ABSENT at T+0.218, so onStop's rendezvous found
+  // nothing and the turn ran on. Exactly two paths can erase a record that
+  // young - this one and prune's TTL - and STOP_TTL_MS is six hours, so it
+  // was this one. Which CALLER did it is the last unknown, and a stack is
+  // the only witness that names it. Print only when something was really
+  // pending, so an ordinary end-of-turn cleanup stays silent.
+  if (requests.has(key)) {
+    console.warn(`[stop] forgetStop ERASED a pending request for ${turnId}`);
+    console.warn(new Error('forgetStop caller').stack || '(no stack)');
+  }
   requests.delete(key);
   listeners.delete(key);
 }
