@@ -80,11 +80,20 @@ interface ListenerSet {
 const _g = globalThis as unknown as {
   __nx_stop_requests?: Map<string, StopRecord>;
   __nx_stop_listeners?: Map<string, ListenerSet>;
+  /** GAUGE 2026-11-27: identifies the globalThis these maps live on. */
+  __nx_stop_realm?: string;
 };
 if (!_g.__nx_stop_requests) _g.__nx_stop_requests = new Map<string, StopRecord>();
 if (!_g.__nx_stop_listeners) _g.__nx_stop_listeners = new Map<string, ListenerSet>();
 const requests: Map<string, StopRecord> = _g.__nx_stop_requests;
 const listeners: Map<string, ListenerSet> = _g.__nx_stop_listeners;
+// GAUGE 2026-11-27. Stamped once per globalThis, so two callers that
+// print different realms are provably looking at different maps - the
+// shape this house has already paid for once (the relay in turnBus.ts,
+// where a dev-server route got its own module instance and the watcher
+// went blind while the turn ran correctly).
+if (!_g.__nx_stop_realm) _g.__nx_stop_realm = Math.random().toString(36).slice(2, 8);
+const realm: string = _g.__nx_stop_realm;
 
 /**
  * How long a request lingers if nobody ever consumed it. Deliberately long —
@@ -171,6 +180,7 @@ export function requestStop(convoId: string, turnId: string): StopOutcome {
     }
     return 'fired';
   }
+  console.warn(`[stop] MISS: ${turnId} realm=${realm} listeners=${listeners.size} requests=${requests.size}`);
   return had ? 'already' : 'recorded';
 }
 
@@ -189,11 +199,20 @@ export function onStop(convoId: string, turnId: string, cb: Listener): () => voi
   const key = stopKey(convoId, turnId);
 
   if (requests.has(key)) {
+    // ── GAUGE 2026-11-27 ─────────────────────────────────────────────────
+    // Reported by Lizard-kun: Stop does nothing, the red button blinks for
+    // ever. The press DID arrive (`[stop] ... -> recorded`) and every
+    // turnId on the wire matched, so the only remaining readings are
+    // "the rendezvous never ran" and "the record was gone by then".
+    // These three lines separate them. Diagnostic: remove once the cause
+    // is named, or keep if they turn out to be the cheapest witness.
+    console.warn(`[stop] rendezvous: listener for ${turnId} found a pending request -> firing now`);
     try { cb(); } catch { /* same reason as above */ }
     return () => {};
   }
 
   prune(Date.now());
+  console.warn(`[stop] armed: ${turnId} realm=${realm} listeners=${listeners.size} requests=${requests.size}`);
 
   let entry = listeners.get(key);
   if (!entry) { entry = { at: Date.now(), set: new Set<Listener>() }; listeners.set(key, entry); }
