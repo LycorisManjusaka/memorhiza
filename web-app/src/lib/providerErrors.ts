@@ -45,6 +45,30 @@ export function isQuotaError(blob: string): boolean {
 }
 
 /**
+ * True when the 429 is a monthly SPEND CAP, not a per-minute quota.
+ *
+ * Same status, same `RESOURCE_EXHAUSTED`, different thing: a per-minute quota
+ * clears by itself in under a minute, a spend cap stays until someone raises
+ * it or the month turns over. Retrying it only delays the failure (3 x 30 s)
+ * under a notice that names the wrong cause.
+ *
+ * Measured 2026-11-27 through OpenCode Go (probe8, a 20-token prompt, three
+ * calls): `[429] Your project has exceeded its monthly spending cap` wrapped
+ * in OpenCode's `Upstream request failed:` — while the subscriber's own Go
+ * allowance read 3% / 3% / 1%. So on that route "your project" is the
+ * RESELLER's Google project, and nothing on this side can lift it.
+ */
+export function isSpendCapError(blob: string): boolean {
+  if (!blob) return false;
+  return /spend(?:ing)?\s+cap/i.test(blob);
+}
+
+/** True when the provider's text says it is relaying someone else's refusal. */
+function isRelayedUpstream(blob: string): boolean {
+  return /upstream request failed/i.test(blob);
+}
+
+/**
  * Server-supplied wait for a quota rejection, in ms — or null when the error is
  * not a retryable quota rejection.
  *
@@ -58,6 +82,8 @@ export function isQuotaError(blob: string): boolean {
 export function parseRetryDelayMs(err: any): number | null {
   const blob = errorBlob(err);
   if (!isQuotaError(blob)) return null;
+  // A spend cap is a 429 too, but waiting does not clear it (see below).
+  if (isSpendCapError(blob)) return null;
   const m = blob.match(/"retryDelay"\s*:\s*"([\d.]+)s"/i)
     || blob.match(/retry in\s+([\d.]+)\s*s/i);
   const secs = m ? Number(m[1]) : NaN;
@@ -87,6 +113,17 @@ function quotaFacts(blob: string): string {
 export function describeProviderError(raw: any): string {
   const blob = errorBlob(raw);
   if (!blob) return 'The turn failed, and the provider gave no reason.';
+
+  if (isSpendCapError(blob)) {
+    return isRelayedUpstream(blob)
+      ? `The provider's own upstream account has hit its monthly spending cap.`
+        + ` The refusal was relayed from the company behind this provider (the text says "Upstream request failed"), so the cap is on their project, not on your key or your plan.`
+        + ` The request was refused before the model ran — nothing was generated. Memorhiza did not retry: waiting does not clear a spend cap.`
+        + ` Until the provider lifts it, this route will keep refusing; another destination for the same model will work.`
+      : `The monthly spending cap of this API key's project has been reached.`
+        + ` The request was refused before the model ran — nothing was generated. Memorhiza did not retry: waiting does not clear a spend cap.`
+        + ` Raise or remove the cap in the provider's console, or wait for the next month.`;
+  }
 
   if (isQuotaError(blob)) {
     return `Provider rate limit reached${quotaFacts(blob)}.`
