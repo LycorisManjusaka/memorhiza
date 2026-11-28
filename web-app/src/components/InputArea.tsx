@@ -732,9 +732,10 @@ const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenera
    */
   /*
    * A THIRD CHOICE 2026-11-28 (トカゲくん): 'quiet' — leave the message without
-   * waking them. It waits in the stock like a stocked message, but never
-   * starts a turn by itself even where "stocked messages" is ticked; it goes
-   * with whatever starts the next turn (lib/quietStock.ts). So the one bit
+   * waking them. It is added to the conversation log and no model is called
+   * (lib/quietLeave.ts). Only when that cannot be done right now (a turn is
+   * running) does it wait in the stock, where it never starts a turn by itself
+   * (lib/quietStock.ts). So the one bit
    * became "which of the two stock kinds, if any". Scope unchanged.
    */
   const [stockPicked, setStockPicked] = useState<false | 'stock' | 'quiet'>(false);

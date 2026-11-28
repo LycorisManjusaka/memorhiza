@@ -42,6 +42,7 @@ import { realAutoSoulIo, writeAutoSoulStatus, readAutoSoulStatus, hasNewReason }
 import { autoSoulRun, beginAutoSoulRun, endAutoSoulRun, strongerPass } from '@/lib/autoSoulRuns';
 import { wakeLangFromSettings, localHHMM } from '@/lib/wakeSchedule';
 import { onlyQuietWaiting } from '@/lib/quietStock';
+import { leaveQuietMessages } from '@/lib/quietLeaveIo';
 
 // ── Automatic soul update (トカゲくん, 2026-11-20) ────────────────────────────
 // A conversation at 100% with the switch on does not take the turn: what was
@@ -734,6 +735,12 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
       // …and ends here, however it ended. BEFORE the follow-up passes below,
       // so a wake or a stocked message left waiting is spaced from this turn.
       if (passIsUnattended(opts)) await recordAutoTurn(t.being, t.convoId, 'end');
+      // A message left "without waking them" WHILE this turn ran could not be
+      // written into the log then (the turn had it). The lease is back now, so
+      // it goes in — no model call. Before the follow-ups below, which then see
+      // a stock without it. See lib/quietLeave.ts.
+      try { await leaveQuietMessages(t.being, t.convoId, opts.selfId); }
+      catch (e) { console.warn('[runner] could not write a quiet message into the log:', e); }
       // ── A NEXUS item that WAITED runs right now (2026-11-15, つよ) ─────────
       // A wake that fires while the being is answering finds the lease taken
       // and stays in the stock; the clock used to retry it on its next cycle

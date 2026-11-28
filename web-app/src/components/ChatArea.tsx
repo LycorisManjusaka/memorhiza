@@ -3600,6 +3600,18 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
       // 'info': this fires when enqueue SUCCEEDED, and a normal send kicks
       // the runner in the same handler microseconds later. Nothing is wrong,
       // so outside debug nothing is said.
+      // Left "without waking them" and already written into the log: nothing
+      // is waiting, so nothing is said about the stock — the message appears in
+      // the conversation instead. With a save of this tab's own in flight the
+      // 10 s mirror takes it (same guard as the mirror itself).
+      if (quiet && d.left && d.left.written > 0) {
+        if (savesInFlightRef.current === 0) await reloadMessagesFromDisk({ keepBaseIfSettingsDiffer: true });
+        return true;
+      }
+      if (quiet && d.left && d.left.reason) {
+        setStockNote({ text: t(`chat.stock.quietWaits.${d.left.reason}`), kind: 'info' });
+        return true;
+      }
       setStockNote({ text: t('chat.stock.added').replace('{n}', String(d.position)), kind: 'info' });
       return true;
     } catch {

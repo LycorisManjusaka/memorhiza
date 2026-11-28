@@ -10,6 +10,7 @@ import { installationId, runnerHostStatus } from '@/lib/runnerHost';
 import { liveTurnStatus } from '@/lib/turnBus';
 import { beingIsBlockedHere, blockedResponseBody } from '@/lib/blockedBeings';
 import { soulUpdateRunning } from '@/lib/soulUpdateHold';
+import { leaveQuietMessages } from '@/lib/quietLeaveIo';
 import { autoSoulRun } from '@/lib/autoSoulRuns';
 import { readAutoSoulStatus } from '@/lib/autoSoulUpdateIo';
 import { pastConversationRefusalFor } from '@/lib/pastConversationGate';
@@ -352,6 +353,16 @@ export async function POST(req: Request) {
             }
           : {}),
       });
+      // Left "without waking them": written into the log right now, with no
+      // model call. When it cannot be (a turn has the log, something else waits
+      // ahead of it), it stays in the stock as a quiet item and `left.reason`
+      // says why. See lib/quietLeave.ts.
+      if (r.item.quiet === true) {
+        let left: Awaited<ReturnType<typeof leaveQuietMessages>> = { written: 0, reason: 'none' };
+        try { left = await leaveQuietMessages(being, convoId, await installationId()); }
+        catch (e) { console.warn('[turn-queue] could not write a quiet message into the log:', e); }
+        return NextResponse.json({ ok: true, id: r.item.id, position: r.position, left: { written: left.written, reason: left.reason ?? null } });
+      }
       return NextResponse.json({ ok: true, id: r.item.id, position: r.position });
     }
 
