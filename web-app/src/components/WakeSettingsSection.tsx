@@ -45,6 +45,34 @@ export default function WakeSettingsSection({ folder, convoId, value, onChange, 
   const [timesText, setTimesText] = useState(value.times.join(', '));
   const [status, setStatus] = useState<WakeStatus | null>(null);
   const [busy, setBusy] = useState(false);
+  const [nowBusy, setNowBusy] = useState(false);
+  const [nowNote, setNowNote] = useState<{ text: string; bad: boolean } | null>(null);
+  // Acts at once, like the clock buttons — not on the dialog's 完了.
+  const wakeNow = async () => {
+    setNowBusy(true);
+    setNowNote(null);
+    try {
+      const r = await fetch('/api/wake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'wake-now', folder }) });
+      const j = await r.json().catch(() => null);
+      if (j?.ok) {
+        setNowNote({
+          text: j.waitMs > 0 && j.readyAt
+            ? t('wake.now.waiting').replace('{at}', new Date(j.readyAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+            : t(j.here ? 'wake.now.started' : 'wake.now.elsewhere'),
+          bad: false,
+        });
+      } else {
+        const key = `wake.now.failed.${j?.reason || 'not-fired'}`;
+        const said = t(key);
+        setNowNote({ text: said === key ? t('wake.now.failed.not-fired') : said, bad: true });
+      }
+    } catch {
+      setNowNote({ text: t('wake.now.failed.not-fired'), bad: true });
+    } finally {
+      setNowBusy(false);
+      load();
+    }
+  };
 
   const load = () => {
     fetch(`/api/wake?folder=${encodeURIComponent(folder)}`).then(r => r.json()).then(setStatus).catch(() => {});
@@ -207,6 +235,19 @@ export default function WakeSettingsSection({ folder, convoId, value, onChange, 
         )}
       </div>
       <div className="text-[10px] text-muted-foreground leading-relaxed -mt-1">{t('wake.minGap.help')}</div>
+
+      {/* Start one now, by hand. Same item and same rules as a timed wake
+          (lib/wakeClock.ts wakeNow). */}
+      <div className="pt-3 border-t border-border flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+        <button type="button" onClick={wakeNow} disabled={nowBusy}
+          className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted disabled:opacity-40">
+          {nowBusy ? '…' : t('wake.now')}
+        </button>
+        {nowNote && (
+          <span className={`text-[11px] ${nowNote.bad ? 'text-amber-500' : 'text-muted-foreground'}`}>{nowNote.text}</span>
+        )}
+      </div>
+      <div className="text-[10px] text-muted-foreground leading-relaxed -mt-1">{t('wake.now.help')}</div>
 
       {/* Recent events */}
       {status?.state && status.state.history.length > 0 && (

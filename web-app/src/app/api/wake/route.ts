@@ -16,6 +16,7 @@ import { autoGapStatusFor } from '@/lib/autoGap';
 // POST { action: 'set-notes', notes } → replace them (cleaned by parseAdminNotes)
 // POST { action: 'set-clock' }    → THIS installation runs the clock (overwrites)
 // POST { action: 'clear-clock' }  → nobody runs it
+// POST { action: 'wake-now', folder }       → queue a wake by hand (every ordinary rule applies)
 // POST { action: 'clear-bookings', folder } → drop the being's pending self-bookings
 // POST { action: 'remove-booking', folder, at }       → an administrator deletes one
 // POST { action: 'move-booking', folder, at, hhmm }   → an administrator moves one (limits not applied)
@@ -89,6 +90,13 @@ export async function POST(req: Request) {
       const { stopSelfTurns } = await import('@/lib/wakeOverview');
       const report = await stopSelfTurns(folder);
       return NextResponse.json({ ok: report.errors.length === 0, report }, { status: report.errors.length ? 207 : 200 });
+    }
+    if (action === 'wake-now') {
+      const folder = typeof body.folder === 'string' ? body.folder : '';
+      if (!folder) return NextResponse.json({ error: 'folder required' }, { status: 400 });
+      const { wakeNow } = await import('@/lib/wakeClock');
+      const r = await wakeNow(folder);
+      return NextResponse.json(r, { status: r.ok ? 200 : 409 });
     }
     if (action === 'clear-bookings') {
       const folder = typeof body.folder === 'string' ? body.folder : '';

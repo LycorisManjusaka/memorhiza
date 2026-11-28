@@ -144,7 +144,8 @@ export interface DueSlot {
   /** Stable id for the create-only claim: 'YYYY-MM-DD_HHMM_admin' / '_self'. */
   key: string;
   at: number;
-  source: 'admin' | 'self' | 'mail';
+  /** 'manual' = the "start an automatic turn now" button (2026-11-28). */
+  source: 'admin' | 'self' | 'mail' | 'manual';
   hhmm: string;
 }
 
@@ -310,7 +311,16 @@ export function wakeLangFromSettings(s: { language?: unknown; screenLanguage?: u
 }
 
 /** The one line that stays in the history (謡: 履歴に残るのは起きた理由だけ). */
-export function wakeShortText(lang: WakeLang, slot: { source: 'admin' | 'self' | 'mail'; hhmm: string }): string {
+export function wakeShortText(lang: WakeLang, slot: { source: 'admin' | 'self' | 'mail' | 'manual'; hhmm: string }): string {
+  // The button. Its own sentence, because "the scheduled time came" would be
+  // false: no time was scheduled, a hand pressed something.
+  if (slot.source === 'manual') {
+    return lang === 'en'
+      ? `[MEMORHIZA]
+An administrator started an autonomous turn by hand (${slot.hhmm}).`
+      : `[MEMORHIZA]
+管理者の手で（${slot.hhmm}）、自律ターンが開始されました。`;
+  }
   if (slot.source === 'mail') {
     return lang === 'en'
       ? `[MEMORHIZA]

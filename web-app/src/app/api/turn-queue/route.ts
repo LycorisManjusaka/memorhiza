@@ -205,6 +205,8 @@ export async function GET(req: Request) {
         };
         return {
           id: i.id, at: i.at, from: i.from, kind: i.kind, claimed: claimedSet.has(i.id),
+          /** lib/quietStock.ts — absent unless true. */
+          ...(i.quiet === true ? { quiet: true } : {}),
           // Per-item so the panel can name the time and, with debug on, the
           // runner's own words.
           returned: i.returned,
@@ -346,6 +348,7 @@ export async function POST(req: Request) {
           ? {
               host: await installationId(),
               uiLang: typeof body.uiLang === 'string' ? body.uiLang : '',
+              quiet: body.quiet === true,
             }
           : {}),
       });

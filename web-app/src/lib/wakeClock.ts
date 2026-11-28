@@ -37,6 +37,7 @@ import { conversationToolsEnabled } from '@/lib/agentCapabilities';
 import { unreadFor } from '@/lib/letters';
 import { autoTurnsHeldForLog } from '@/lib/autoHold';
 import { autoSoulUpdateEnabled } from '@/lib/autoSoulUpdate';
+import { autoGapStatusFor } from '@/lib/autoGap';
 import {
   parseWakeSettings, dueAdminSlots, dueSelfSlots, pruneBookings, validateBooking, parseWakeupDirective,
   wakeShortText, buildCapabilityList, buildSelfWakeLine, describeRejection, fillWakeTemplate,
@@ -124,7 +125,7 @@ export interface WakeEvent {
   at: number;
   kind: 'fired' | 'booked' | 'rejected' | 'no-conversation' | 'no-letters' | 'context-full' | 'error' | 'admin-removed' | 'admin-moved';
   hhmm?: string;
-  source?: 'admin' | 'self' | 'mail';
+  source?: 'admin' | 'self' | 'mail' | 'manual';
   convoId?: string;
   reason?: WakeRejectReason | string;
   detail?: string;
@@ -353,17 +354,25 @@ async function kick(being: string, convoId: string, auto = false, wake = false) 
   }
 }
 
-/** Wake items still waiting (the being was busy). Re-kicked every cycle until they run. */
+/**
+ * Wake items still waiting (the being was busy, or inside the minimum
+ * interval). Re-kicked every cycle until they run.
+ *
+ * Reads the queue folders, not listLogs (2026-11-28): the "start now" button
+ * can queue a wake for a being with NO wake settings at all, so this has to
+ * run for every being every cycle — and only a conversation with something
+ * queued can be an answer. A leased one is skipped: its own turn end starts
+ * the follow-up pass.
+ */
 async function waitingWakeConversations(being: string, selfId: string): Promise<string[]> {
   const out: string[] = [];
-  const logs = await listLogs();
-  for (const l of logs as Array<{ id: string; folderName: string }>) {
-    if (l.folderName !== being) continue;
+  for (const q of await queuedConversations(being)) {
+    if (q.leased || q.count === 0) continue;
     let items;
-    try { items = await pending(being, l.id); } catch { continue; }
+    try { items = await pending(being, q.convoId); } catch { continue; }
     if (items.some(it => it.kind === 'system'
       && (it.payload as { purpose?: unknown })?.purpose === WAKE_PURPOSE
-      && normaliseInstallPath(it.host || '') === normaliseInstallPath(selfId))) out.push(l.id);
+      && normaliseInstallPath(it.host || '') === normaliseInstallPath(selfId))) out.push(q.convoId);
   }
   return out;
 }
@@ -431,6 +440,11 @@ export async function clockCycle(now = Date.now(), notBefore = 0): Promise<void>
     try {
       for (const convoId of await waitingRoutedConversations(f.name)) void kick(f.name, convoId, true);
     } catch {}
+    // Also before the skip: a wake queued by the "start now" button waits here
+    // through the minimum interval whether or not the being has wake settings.
+    try {
+      for (const convoId of await waitingWakeConversations(f.name, selfId)) void kick(f.name, convoId, false, true);
+    } catch {}
     const w = parseWakeSettings(f.settings?.wake);
     const s = await readWakeState(f.name);
     if (!w.enabled && !w.self.enabled && !w.mail && s.bookings.length === 0) { mailSeen().delete(f.name); continue; }
@@ -453,11 +467,48 @@ export async function clockCycle(now = Date.now(), notBefore = 0): Promise<void>
         console.warn(`[wake] firing ${f.name} ${slot.key} failed:`, e);
       }
     }
-    // Busy at the slot → the item waited. Try again now.
-    try {
-      for (const convoId of await waitingWakeConversations(f.name, selfId)) void kick(f.name, convoId, false, true);
-    } catch {}
   }
+}
+
+// ── "Start an automatic turn now" (トカゲくん, 2026-11-28) ───────────────────
+//
+// A button on the Behaviour tab. It queues the SAME item a timed wake queues
+// and lets the same pass run it, so every ordinary rule applies with no second
+// copy: the minimum interval, the hold at 100%, waiting while the being is
+// mid-turn, the administrator's note. The only thing of its own is the first
+// sentence (wakeShortText 'manual') — "the scheduled time came" would be false.
+//
+// The item is addressed to the installation that RUNS THE CLOCK, not to the
+// one whose button was pressed: a wake that has to wait is re-kicked by the
+// clock's cycle, and that cycle only looks at items addressed to itself.
+// Pressed elsewhere, it starts within one cycle (30 s) instead of at once.
+
+export type WakeNowResult =
+  | { ok: true; convoId: string; /** started (or waiting) on this installation */ here: boolean; /** >0 = held by the minimum interval */ waitMs: number; readyAt: number | null }
+  | { ok: false; reason: 'blocked-here' | 'no-being' | 'no-conversation' | 'context-full' | 'not-fired' };
+
+export async function wakeNow(being: string, now = Date.now()): Promise<WakeNowResult> {
+  if (beingIsBlockedHere(being)) return { ok: false, reason: 'blocked-here' };
+  const folders = await listFolders() as Array<{ name: string; settings?: Record<string, unknown> }>;
+  const f = folders.find(x => x.name === being);
+  if (!f) return { ok: false, reason: 'no-being' };
+  const selfId = await installationId();
+  await runsClockOrClaims(selfId);
+  const clockHost = (await readClockHost())?.host || selfId;
+  const here = normaliseInstallPath(clockHost) === normaliseInstallPath(selfId);
+  const lang = wakeLangFromSettings(((await loadUserSettings()) || {}) as Record<string, unknown>);
+  const hhmm = localHHMM(new Date(now));
+  const slot: DueSlot = { key: `${localDateKey(new Date(now))}_${hhmm.replace(':', '')}_manual_${now}`, at: now, source: 'manual', hhmm };
+  const convoId = await fireSlot(being, parseWakeSettings(f.settings?.wake), slot, clockHost, lang, now);
+  if (!convoId) {
+    // fireSlot wrote WHY into the history; say that rather than guess.
+    const last = (await readWakeState(being)).history.slice(-1)[0];
+    const kind = last && last.at === now ? last.kind : '';
+    return { ok: false, reason: kind === 'no-conversation' ? 'no-conversation' : kind === 'context-full' ? 'context-full' : 'not-fired' };
+  }
+  const gap = await autoGapStatusFor(being, f.settings, now);
+  if (here) void kick(being, convoId, false, true);
+  return { ok: true, convoId, here, waitMs: gap.remainingMs, readyAt: gap.readyAt };
 }
 
 type ClockGlobal = { __nexusWakeClock?: { timer: ReturnType<typeof setInterval>; startedAt: number } };

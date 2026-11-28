@@ -99,6 +99,7 @@ import { serverSpeechAction } from '@/lib/serverSpeechClient';
 import type { StockNote } from '@/lib/stockPanel';
 import CameraPanel from './CameraPanel';
 import LiveSession from './LiveSession';
+import { onlyQuietWaiting } from '@/lib/quietStock';
 
 // V8 refuses to materialize a single string longer than 2^29-24 characters
 // (536,870,888 ≈ 512 MiB). Because a conversation is persisted as ONE
@@ -3288,6 +3289,8 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
    */
   type StockItem = {
     id: string; at: number; from: string; kind: string; claimed?: boolean;
+    /** Left "without waking them" — never starts a turn by itself (lib/quietStock.ts). */
+    quiet?: boolean;
     /** F20: present when a pass ran this item and gave it back. */
     returned?: { at: number; kind: string; reason: string };
     /** The stored text VERBATIM, `[name]` label included. '' for a command. */
@@ -3568,13 +3571,14 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     };
   }, [refreshStock, injectTurnId]);
 
-  const enqueueToStock = async (text: string, attachments: unknown[], from: string) => {
+  const enqueueToStock = async (text: string, attachments: unknown[], from: string, quiet = false) => {
     try {
       const res = await fetch('/api/turn-queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'enqueue', being: folderName, convoId, from, text, attachments,
+          ...(quiet ? { quiet: true } : {}),
           // The language THIS screen is rendering in, so a notice about this
           // message comes back in it. `useLanguage()` and not
           // globalSettings.language: the context value is what the UI actually
@@ -4553,8 +4557,13 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   const autoTriedRef = useRef<string | null>(null);
   /** Bumped by the interval timer below, only to run the effect again. */
   const [gapRetry, setGapRetry] = useState(0);
-  const stockSig = stock && stock.waiting > 0
-    ? `${stock.waiting}:${stock.items.filter((i) => !i.claimed).map((i) => i.id).join(',')}`
+  const stockUnclaimed = stock ? stock.items.filter((i) => !i.claimed) : [];
+  // Everything waiting was left "without waking them" → no signature, so the
+  // effect below never starts for it. The same rule the runner's auto pass
+  // asks (lib/quietStock.ts); this half only spares a refused kick.
+  const stockQuietOnly = onlyQuietWaiting(stockUnclaimed);
+  const stockSig = stock && stock.waiting > 0 && !stockQuietOnly
+    ? `${stock.waiting}:${stockUnclaimed.map((i) => i.id).join(',')}`
     : null;
   useEffect(() => {
     if (!stockSig) return;
@@ -4599,7 +4608,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
   const handleSend = async (
     text: string,
     attachments: any[],
-    opts?: { mode?: 'interject' | 'send' | 'stock'; from?: string }
+    opts?: { mode?: 'interject' | 'send' | 'stock' | 'quiet'; from?: string }
   ) => {
     if (!text.trim() && attachments.length === 0) return;
 
@@ -4635,11 +4644,12 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     // to the stock (トカゲくん, 2026-11-20). Also covers the VRChat auto-send,
     // which never passes a mode. Read from a ref: this callback can be older
     // than the last stock poll.
-    if (soulUpdateRef.current) opts = { ...(opts || {}), mode: 'stock' };
+    // 'quiet' is left alone: it starts nothing either way.
+    if (soulUpdateRef.current && opts?.mode !== 'quiet') opts = { ...(opts || {}), mode: 'stock' };
 
     if (injectTurnId) {
-      if (opts?.mode === 'stock') {
-        await enqueueToStock(text, attachments, opts.from || '');
+      if (opts?.mode === 'stock' || opts?.mode === 'quiet') {
+        await enqueueToStock(text, attachments, opts.from || '', opts.mode === 'quiet');
         return;
       }
       await sendInterjection(text, attachments);
@@ -4660,7 +4670,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     // It sits above the cross-tab probe and the size pre-flight on purpose:
     // both guard a turn that is about to run, and this path runs none. The
     // queue is safe to add to while another tab works.
-    if (opts?.mode === 'stock') {
+    if (opts?.mode === 'stock' || opts?.mode === 'quiet') {
       // The runner loads the conversation from disk ('no-log' otherwise), so a
       // never-saved conversation gets its empty log written first — the same
       // write the first normal send does below. Once only: a second unguarded
@@ -4673,7 +4683,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           body: JSON.stringify({ id: convoId, clientId: TAB_CLIENT_ID, logData: buildLogData([]) }),
         });
       }
-      await enqueueToStock(text, attachments, opts.from || '');
+      await enqueueToStock(text, attachments, opts.from || '', opts.mode === 'quiet');
       return;
     }
 
@@ -7627,7 +7637,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                         on its own (the waiting ids are unchanged, so the
                         signature is unchanged, by design), so without this
                         the person is shown a failure with nothing to press. */}
-                    {(stockNote !== null || stock.returned > 0 || !autoRunStock) && !loading && !injectTurnId ? (
+                    {(stockNote !== null || stock.returned > 0 || !autoRunStock || stockQuietOnly) && !loading && !injectTurnId ? (
                       <button
                         onClick={drainStock}
                         disabled={stockBusy}
@@ -7711,6 +7721,11 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
                               letter) invisible among the ones that do not. */}
                           {it.kind && it.kind !== 'user_message' ? (
                             <span className="px-1 rounded bg-muted">{it.kind}</span>
+                          ) : null}
+                          {it.quiet ? (
+                            <span className="px-1 rounded bg-slate-500/15 text-slate-600 dark:text-slate-300" title={t('input.mode.quietHint')}>
+                              {t('chat.stock.quiet')}
+                            </span>
                           ) : null}
                           {it.attachmentCount ? (
                             <span>{t('chat.stock.attachments').replace('{n}', String(it.attachmentCount))}</span>

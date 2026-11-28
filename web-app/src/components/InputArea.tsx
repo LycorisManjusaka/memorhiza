@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Send, Paperclip, X, FileText, Image as ImageIcon, Music, Video, File, Square, MessageSquare, ChevronDown, ListPlus } from 'lucide-react';
+import { Send, Paperclip, X, FileText, Image as ImageIcon, Music, Video, File, Square, MessageSquare, ChevronDown, ListPlus, BellOff } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadAttachment, dataUrlToBlob } from '@/lib/attachmentUrl';
 import { SNIFF_BYTES, TEXT_MAX_BYTES, MEDIA_EXT, looksLikeText } from '@/lib/textSniff';
@@ -730,22 +730,30 @@ const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenera
    * stock. The default is derived from isGenerating and is never stored.
    * Scope is unchanged: it resets whenever the generating state flips.
    */
-  const [stockPicked, setStockPicked] = useState(false);
+  /*
+   * A THIRD CHOICE 2026-11-28 (トカゲくん): 'quiet' — leave the message without
+   * waking them. It waits in the stock like a stocked message, but never
+   * starts a turn by itself even where "stocked messages" is ticked; it goes
+   * with whatever starts the next turn (lib/quietStock.ts). So the one bit
+   * became "which of the two stock kinds, if any". Scope unchanged.
+   */
+  const [stockPicked, setStockPicked] = useState<false | 'stock' | 'quiet'>(false);
   const [modeMenuAt, setModeMenuAt] = useState<{ left: number; bottom: number } | null>(null);
   useEffect(() => {
     setStockPicked(false);
     setModeMenuAt(null);
   }, [isGenerating]);
-  type SendMode = 'interject' | 'send' | 'stock';
+  type SendMode = 'interject' | 'send' | 'stock' | 'quiet';
   const defaultMode: SendMode = isGenerating ? 'interject' : 'send';
   // A soul update is running (2026-11-20, トカゲくん): no turn may start, so the
   // only thing the button can do is stock — and the picker is hidden rather
   // than offering a choice the server would refuse.
-  const effectiveMode: SendMode = (stockOnly || stockPicked) ? 'stock' : defaultMode;
+  const effectiveMode: SendMode = stockPicked === 'quiet' ? 'quiet' : (stockOnly || stockPicked) ? 'stock' : defaultMode;
   const modeLabelKey = (m: SendMode) => `input.mode.${m}`;
   const modeIcon = (m: SendMode, size: number, tinted: boolean) =>
     m === 'interject' ? <MessageSquare size={size} className={tinted ? 'text-amber-500' : undefined} />
     : m === 'stock' ? <ListPlus size={size} className={tinted ? 'text-sky-500' : undefined} />
+    : m === 'quiet' ? <BellOff size={size} className={tinted ? 'text-slate-500' : undefined} />
     : <Send size={size} className={tinted ? 'text-indigo-500' : undefined} />;
 
   const handleSend = () => {
@@ -992,13 +1000,15 @@ const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenera
             // title saying "send as a message" would imply there is one. (This
             // button had no title at all before 2026-10-27; the mode label got
             // applied to both states by the same edit that added it.)
-            title={stockOnly ? t('input.mode.soulUpdating') : t(modeLabelKey(effectiveMode))}
+            title={stockOnly && effectiveMode !== 'quiet' ? t('input.mode.soulUpdating') : t(modeLabelKey(effectiveMode))}
             className={`p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity shadow-sm ${
               effectiveMode === 'interject'
                 ? 'bg-amber-500 text-white'
                 : effectiveMode === 'stock'
                   ? 'bg-sky-600 text-white'
-                  : 'bg-primary text-primary-foreground'
+                  : effectiveMode === 'quiet'
+                    ? 'bg-slate-600 text-white'
+                    : 'bg-primary text-primary-foreground'
             }`}
           >
             {/* MessageSquare is already this house's mark for an interjection
@@ -1019,10 +1029,10 @@ const InputArea = React.forwardRef(function InputArea({ onSend, onStop, isGenera
             className="fixed z-[91] -translate-x-1/2 bg-card border border-border rounded-xl shadow-xl overflow-hidden text-sm"
             style={{ left: modeMenuAt.left, bottom: modeMenuAt.bottom }}
           >
-            {([defaultMode, 'stock'] as SendMode[]).map((m) => (
+            {([defaultMode, 'stock', 'quiet'] as SendMode[]).map((m) => (
               <button
                 key={m}
-                onClick={() => { setStockPicked(m === 'stock'); setModeMenuAt(null); textareaRef.current?.focus(); }}
+                onClick={() => { setStockPicked(m === 'stock' || m === 'quiet' ? m : false); setModeMenuAt(null); textareaRef.current?.focus(); }}
                 className={`w-full text-left px-3 py-2 flex items-start gap-2 hover:bg-muted transition-colors ${
                   effectiveMode === m ? 'bg-muted/60' : ''
                 }`}

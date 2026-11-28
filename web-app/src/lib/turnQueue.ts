@@ -210,6 +210,13 @@ export interface QueueItem {
    * every item queued before this field existed, and the right one.
    */
   returned?: ReturnedMark;
+  /**
+   * "Leave it without waking them" (lib/quietStock.ts): this item never starts
+   * a turn by itself, whatever the stock checkbox says; it is delivered with
+   * whatever starts the next one. Written only when true, so every other item
+   * keeps the shape it had before the field existed.
+   */
+  quiet?: true;
 }
 
 /**
@@ -405,7 +412,7 @@ function isItemFile(name: string): boolean {
 export async function enqueue(
   being: string,
   convoId: string,
-  draft: { kind?: QueueItemKind; from: string; payload: unknown; host?: string; uiLang?: string },
+  draft: { kind?: QueueItemKind; from: string; payload: unknown; host?: string; uiLang?: string; quiet?: boolean },
   opts?: Opts
 ): Promise<{ item: QueueItem; position: number }> {
   if (!being || !convoId) throw new Error('turnQueue.enqueue: being and convoId are required');
@@ -429,6 +436,9 @@ export async function enqueue(
   // screen behind it keeps the shape it had before the field existed.
   const uiLang = (draft.uiLang || '').trim();
   if (uiLang) item.uiLang = uiLang;
+  // Only a plain message can be quiet: a command or a Memorhiza item exists to
+  // start something.
+  if (draft.quiet === true && item.kind === 'user_message') item.quiet = true;
 
   // `wx` so a repeated id (impossible in practice) fails loudly instead of
   // overwriting a queued message.

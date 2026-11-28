@@ -41,6 +41,7 @@ import { autoSoulUpdateDue, runAutoSoulUpdate, withDelayedStartNote, type AutoSo
 import { realAutoSoulIo, writeAutoSoulStatus, readAutoSoulStatus, hasNewReason } from '@/lib/autoSoulUpdateIo';
 import { autoSoulRun, beginAutoSoulRun, endAutoSoulRun, strongerPass } from '@/lib/autoSoulRuns';
 import { wakeLangFromSettings, localHHMM } from '@/lib/wakeSchedule';
+import { onlyQuietWaiting } from '@/lib/quietStock';
 
 // ── Automatic soul update (トカゲくん, 2026-11-20) ────────────────────────────
 // A conversation at 100% with the switch on does not take the turn: what was
@@ -240,7 +241,7 @@ type Outcome = {
   // installation CAN run it and this one should say so, while 'blocked-here'
   // means this installation is forbidden to, which is a property of the
   // launcher and not of the queue.
-  skipped?: 'busy' | 'empty' | 'elsewhere' | 'auto-trigger-off' | 'claim-failed' | 'blocked-here' | 'context-full' | 'soul-update' | 'min-gap';
+  skipped?: 'busy' | 'empty' | 'elsewhere' | 'auto-trigger-off' | 'claim-failed' | 'blocked-here' | 'context-full' | 'soul-update' | 'min-gap' | 'quiet-only';
   result?: RunTurnResult;
 };
 
@@ -368,6 +369,16 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
       if (opts.auto && !autoTriggerEnabled(log?.autoTriggers, 'stock')) {
         outcomes.push({ being: t.being, convoId: t.convoId, ran: false, skipped: 'auto-trigger-off' });
         closeRelay(t.convoId, { type: 'notice', content: 'This conversation does not start by itself.' });
+        continue;
+      }
+
+      // Everything waiting was left "without waking them" (lib/quietStock.ts):
+      // a stock that starts by itself has nothing to start FOR. Only an `auto`
+      // pass asks — a person's send, "run it now" and a wake take these items
+      // along, which is exactly how they are meant to be delivered.
+      if (opts.auto && onlyQuietWaiting((await pending(t.being, t.convoId)).filter((it) => accept(it)))) {
+        outcomes.push({ being: t.being, convoId: t.convoId, ran: false, skipped: 'quiet-only' });
+        closeRelay(t.convoId, { type: 'notice', content: 'Only messages left without waking are waiting; they go with the next turn.' });
         continue;
       }
 
