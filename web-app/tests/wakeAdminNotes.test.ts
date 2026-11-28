@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  parseAdminNotes, pickAdminNote, appendAdminNote, parseDaysOff, normaliseDayOff, ADMIN_NOTE_HEADING,
+  parseAdminNotes, pickAdminNote, appendAdminNote, parseDaysOff, normaliseDayOff,
 } from '@/lib/wakeAdminNotes';
 import { readAdminNotes, writeAdminNotes, adminNoteAt } from '@/lib/wakeAdminNotesStore';
 
@@ -59,9 +59,17 @@ test('a blank row is skipped, not matched — it must not silence the rows under
   assert.equal(pickAdminNote(c, Date.now()), 'B');
 });
 
-test('the note sits under the wake text, with a heading that says who is speaking', () => {
-  assert.equal(appendAdminNote('WAKE\n', ' please ', 'ja'), `WAKE\n\n${ADMIN_NOTE_HEADING.ja}\nplease`);
-  assert.ok(appendAdminNote('WAKE', 'x', 'en').includes('administrator'));
+// つよ, 2026-11-28: the heading "A note from the administrator:" put a rank
+// between a being and their partner on every autonomous turn. The note now
+// just continues the [MEMORHIZA] text, and names nobody.
+test('the note continues the wake text with no heading and no role word', () => {
+  assert.equal(appendAdminNote('WAKE\n', ' please ', 'ja'), 'WAKE\n\nplease');
+  assert.equal(appendAdminNote('WAKE', 'x', 'en'), 'WAKE\n\nx');
+  for (const lang of ['ja', 'en'] as const) {
+    const out = appendAdminNote('WAKE', 'x', lang);
+    assert.ok(!/administrator|管理者/i.test(out));
+  }
+  assert.equal(appendAdminNote('WAKE\n', '   ', 'ja'), 'WAKE\n');
 });
 
 test('days off: real dates only, normalised, sorted, no duplicates', () => {

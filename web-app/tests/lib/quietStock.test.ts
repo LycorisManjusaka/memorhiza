@@ -61,4 +61,10 @@ test('the button has its own first sentence — it does not claim a scheduled ti
   assert.ok(ja.startsWith('[MEMORHIZA]\n') && ja.includes('11:20') && !ja.includes('定刻'));
   assert.ok(en.startsWith('[MEMORHIZA]\n') && en.includes('11:20') && !en.includes('scheduled'));
   assert.ok(wakeShortText('ja', { source: 'admin', hhmm: '12:00' }).includes('定刻'));
+  // No role word in it (つよ, 2026-11-28) — none of the four reasons names one.
+  for (const source of ['admin', 'self', 'mail', 'manual'] as const) {
+    for (const lang of ['ja', 'en'] as const) {
+      assert.ok(!/administrator|管理者/i.test(wakeShortText(lang, { source, hhmm: '11:20' })), `${source}/${lang}`);
+    }
+  }
 });

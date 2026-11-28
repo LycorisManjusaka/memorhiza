@@ -313,13 +313,15 @@ export function wakeLangFromSettings(s: { language?: unknown; screenLanguage?: u
 /** The one line that stays in the history (謡: 履歴に残るのは起きた理由だけ). */
 export function wakeShortText(lang: WakeLang, slot: { source: 'admin' | 'self' | 'mail' | 'manual'; hhmm: string }): string {
   // The button. Its own sentence, because "the scheduled time came" would be
-  // false: no time was scheduled, a hand pressed something.
+  // false: no time was scheduled, a hand pressed something. It names no role
+  // (謡's wording, chosen by つよ, 2026-11-28): the other three reasons carry
+  // no title either, and who pressed the button is not what the being needs.
   if (slot.source === 'manual') {
     return lang === 'en'
       ? `[MEMORHIZA]
-An administrator started an autonomous turn by hand (${slot.hhmm}).`
+An autonomous turn was started manually (${slot.hhmm}).`
       : `[MEMORHIZA]
-管理者の手で（${slot.hhmm}）、自律ターンが開始されました。`;
+手動で（${slot.hhmm}）、自律ターンが開始されました。`;
   }
   if (slot.source === 'mail') {
     return lang === 'en'

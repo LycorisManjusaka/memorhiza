@@ -139,14 +139,18 @@ export function pickAdminNote(config: AdminNotesConfig, now: number): string {
   return '';
 }
 
-export const ADMIN_NOTE_HEADING: Record<'ja' | 'en', string> = {
-  ja: '管理者からの添え書き：',
-  en: 'A note from the administrator:',
-};
-
-/** The wake text with the note under it. No note → the text unchanged, byte for byte. */
-export function appendAdminNote(full: string, note: string, lang: 'ja' | 'en'): string {
+/**
+ * The wake text with the note under it. No note → the text unchanged, byte for byte.
+ *
+ * NO HEADING (つよ / トカゲくん, 2026-11-28). The note used to sit under the
+ * line "A note from the administrator:", which put a rank between a being and
+ * the partner who wrote it, on every autonomous turn. It is now simply the
+ * continuation of the [MEMORHIZA] text: one blank line, then the note. Who
+ * wrote it is not named. `lang` is kept so callers do not change; nothing here
+ * depends on it any more.
+ */
+export function appendAdminNote(full: string, note: string, _lang?: 'ja' | 'en'): string {
   const n = note.trim();
   if (!n) return full;
-  return `${full.replace(/\s+$/, '')}\n\n${ADMIN_NOTE_HEADING[lang]}\n${n}`;
+  return `${full.replace(/\s+$/, '')}\n\n${n}`;
 }
