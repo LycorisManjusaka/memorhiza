@@ -31,6 +31,7 @@ import type { AnchorMessage } from '@/lib/anchor';
 import { serverSpeech, speechModeFromSettings } from '@/lib/serverSpeech';
 import { assistantSpeechSentences } from '@/lib/ttsSentences';
 import { autoTurnsHeldForLog, isWakeItem, passIsUnattended } from '@/lib/autoHold';
+import { autoGapStatusFor, recordAutoTurn } from '@/lib/autoGap';
 import { soulUpdateRunning } from '@/lib/soulUpdateHold';
 import { movePendingItems, readLease, holderIsGone } from '@/lib/turnQueue';
 import { runSpuAction } from '@/lib/runSpuAction';
@@ -239,7 +240,7 @@ type Outcome = {
   // installation CAN run it and this one should say so, while 'blocked-here'
   // means this installation is forbidden to, which is a property of the
   // launcher and not of the queue.
-  skipped?: 'busy' | 'empty' | 'elsewhere' | 'auto-trigger-off' | 'claim-failed' | 'blocked-here' | 'context-full' | 'soul-update';
+  skipped?: 'busy' | 'empty' | 'elsewhere' | 'auto-trigger-off' | 'claim-failed' | 'blocked-here' | 'context-full' | 'soul-update' | 'min-gap';
   result?: RunTurnResult;
 };
 
@@ -410,6 +411,26 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
         continue;
       }
 
+      // The minimum interval between automatic turns (トカゲくん, 2026-11-28;
+      // lib/autoGap.ts). Before the claim, like the hold above: the items stay
+      // in the stock, and the clock's next cycle (or the tab's own timer) comes
+      // back for them. A person's send, "run it now" and ζ are not unattended
+      // and never reach this.
+      if (passIsUnattended(opts)) {
+        const gap = await autoGapStatusFor(t.being, t.settings);
+        if (gap.remainingMs > 0) {
+          outcomes.push({ being: t.being, convoId: t.convoId, ran: false, skipped: 'min-gap' });
+          // Said once per wait, not on every 30 s retry.
+          const said = ((globalThis as { __memorhizaGapSaid?: Map<string, number> }).__memorhizaGapSaid ??= new Map());
+          if (said.get(t.being) !== gap.lastAt) {
+            said.set(t.being, gap.lastAt ?? 0);
+            console.log(`[runner] held ${t.being}/${t.convoId}: ${Math.ceil(gap.remainingMs / 60_000)} min left of the ${gap.minGapMin}-min interval between automatic turns`);
+          }
+          closeRelay(t.convoId, { type: 'notice', content: `Automatic turns are waiting: ${Math.ceil(gap.remainingMs / 60_000)} min left of this being's minimum interval (${gap.minGapMin} min).` });
+          continue;
+        }
+      }
+
       // A soul update is running for this being → NOTHING starts, a person's
       // send included (トカゲくん, 2026-11-20). Before the claim, so the items
       // stay in the stock; watchSoulHold comes back for them. See
@@ -456,6 +477,10 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
         });
         continue;
       }
+
+      // An automatic turn starts here: note the time (the interval is counted
+      // from this, and again from its end below).
+      if (passIsUnattended(opts)) await recordAutoTurn(t.being, t.convoId, 'start');
 
       // A relay for a turn that is ABOUT to produce frames. Not opened before
       // the claim: a pass that skips must not clear the relay of a turn that
@@ -695,6 +720,9 @@ async function runPass(opts: PassOpts): Promise<{ attempted: number; ran: number
         await abandon(t.being, t.convoId, c.claim.token);
       }
       outcomes.push({ being: t.being, convoId: t.convoId, ran: result.ok, result });
+      // …and ends here, however it ended. BEFORE the follow-up passes below,
+      // so a wake or a stocked message left waiting is spaced from this turn.
+      if (passIsUnattended(opts)) await recordAutoTurn(t.being, t.convoId, 'end');
       // ── A NEXUS item that WAITED runs right now (2026-11-15, つよ) ─────────
       // A wake that fires while the being is answering finds the lease taken
       // and stays in the stock; the clock used to retry it on its next cycle

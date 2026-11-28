@@ -14,6 +14,7 @@ type WakeStatus = {
   thisRunsClock: boolean;
   testBed?: boolean;
   nextAdmin?: { at: number; hhmm: string } | null;
+  autoGap?: { minGapMin: number | null; lastAt: number | null; remainingMs: number; readyAt: number | null };
   state?: {
     bookings: Array<{ at: number; hhmm: string }>;
     rejection?: { hhmm: string; reason: string };
@@ -151,16 +152,6 @@ export default function WakeSettingsSection({ folder, convoId, value, onChange, 
             onChange={e => setSelf({ maxPerDay: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
             className="p-1.5 bg-background border border-border rounded" />
         </label>
-        <label className="flex flex-col gap-1">
-          <span className="flex items-center gap-1">
-            <input type="checkbox" checked={value.self.minGapMin !== null}
-              onChange={e => setSelf({ minGapMin: e.target.checked ? DEFAULT_MIN_GAP_MIN : null })} className="accent-indigo-500" />
-            {t('wake.self.minGap')}
-          </span>
-          <input type="number" min={0} disabled={value.self.minGapMin === null} value={value.self.minGapMin ?? ''}
-            onChange={e => setSelf({ minGapMin: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-            className="p-1.5 bg-background border border-border rounded disabled:opacity-40" />
-        </label>
         <label className="flex flex-col gap-1 col-span-2">
           <span>{t('wake.self.window')}</span>
           <div className="flex items-center gap-1">
@@ -198,6 +189,24 @@ export default function WakeSettingsSection({ folder, convoId, value, onChange, 
         {mailRowExtra}
       </div>
       <div className="text-[10px] text-muted-foreground leading-relaxed -mt-1">{t('wake.mail.help')}</div>
+
+      {/* The minimum interval between automatic turns — every reason above,
+          not only self-bookings (lib/autoGap.ts). Stored where it always was
+          (wake.self.minGapMin), so no install loses its value. */}
+      <div className="pt-3 border-t border-border flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={value.self.minGapMin !== null}
+            onChange={e => setSelf({ minGapMin: e.target.checked ? DEFAULT_MIN_GAP_MIN : null })} className="accent-indigo-500" />
+          <span>{t('wake.minGap')}</span>
+        </label>
+        <input type="number" min={0} disabled={value.self.minGapMin === null} value={value.self.minGapMin ?? ''}
+          onChange={e => setSelf({ minGapMin: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+          className="w-20 p-1.5 bg-background border border-border rounded text-xs disabled:opacity-40" />
+        {status?.autoGap?.readyAt && value.self.minGapMin !== null && (
+          <span className="text-[11px] text-amber-500">{t('wake.minGap.waiting').replace('{at}', fmt(status.autoGap.readyAt))}</span>
+        )}
+      </div>
+      <div className="text-[10px] text-muted-foreground leading-relaxed -mt-1">{t('wake.minGap.help')}</div>
 
       {/* Recent events */}
       {status?.state && status.state.history.length > 0 && (

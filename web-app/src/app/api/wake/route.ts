@@ -5,6 +5,7 @@ import {
 } from '@/lib/wakeClock';
 import { listFolders } from '@/lib/fsStorage';
 import { parseWakeSettings, nextAdminSlot, nextWake } from '@/lib/wakeSchedule';
+import { autoGapStatusFor } from '@/lib/autoGap';
 
 // The wake clock's screen side. Rules: lib/wakeSchedule.ts; plumbing: lib/wakeClock.ts.
 //
@@ -57,6 +58,8 @@ export async function GET(req: Request) {
       out.nextAdmin = nextAdminSlot(w, Date.now());
       // The header's "next wake" beside the title: one time, the sooner of the two.
       out.nextWake = nextWake(w, s.bookings, Date.now());
+      // The minimum interval between automatic turns: how long is still left.
+      out.autoGap = await autoGapStatusFor(folder, f?.settings);
     }
     return NextResponse.json(out);
   } catch (e: any) {

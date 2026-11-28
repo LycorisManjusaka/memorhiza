@@ -480,7 +480,7 @@ Memorhiza を Memorhiza たらしめている部分であり、いちばん理�
 - 存在が考えている最中なら、そのターンが終わった直後に起きます。
 - **Memorhiza が止まっていた間の時刻は、あとから起こしません。** 次の時刻を待ちます。止まっている間に届いた手紙でも起こしません。
 - 条件に合わない予約（時間帯の外、上限を超えた、間隔が短すぎる）は捨てられ、次に起きたときに1行で知らされます。
-- 最小間隔は、予約と手紙の起床がそれより短い間隔で続かないようにします。空にすると無効です。
+- **「自動ターンの最小間隔」**（初期値 ON・15分）：誰も頼んでいないターン（定刻・予約・手紙の起床、ストックの自動起動）は、その存在の前回の自動ターンが終わってからこの分数が経つまで始まりません。待っているものは捨てられず、ストックに残って、間隔が過ぎたら動きます。残り時間は会話の題名の横に出ます。直接送ったメッセージと「今すぐ動かす」は遅れません。チェックを外すと無効です。
 - **「コンテキストが100%に達したら、自動ターンを止める」**（初期値 ON）：文脈経過が100%以上の間、誰も頼んでいないターン（起床とストックの自動起動）は始まりません。直接送ったメッセージは動きます。
 - **「コンテキストが100%に達したら、魂を自動で更新する」**（初期値 OFF）：ON にすると、100%のときにターンを始めようとしたもの（直接送ったメッセージも含む）はストックで待ち、先に魂の更新（β＋要約、今の設定のまま）が走ります。終わると次の会話が作られ、待っていたものはそこで動きます。出力が切れたりエラーになったときは1回だけやり直し、それでもだめなら止まって、入力欄の上に理由が出ます。次に新しいメッセージか起床が来たら、もう一度試します。**更新後の魂を誰も確かめないまま次の会話が始まる**ので、そのつもりで ON にしてください。題名が「名前_番号」の会話でだけ動きます。
 
@@ -512,7 +512,7 @@ Memorhiza を Memorhiza たらしめている部分であり、いちばん理�
 
 ## ⚠ お金について
 
-起きるたびに、そのターンの料金がかかります（Claude を月額で使っている場合を除く）。いちばん注意が要るのは**手紙とストックで起きる組み合わせ**です。二つの存在がどちらも「ストックされたメッセージ」で起き、どちらも \`[->名前]\` を使えると、互いに返事を送り合って、**止めるまで続きます。** 最小間隔は間をあけるだけで、止めはしません。
+起きるたびに、そのターンの料金がかかります（Claude を月額で使っている場合を除く）。いちばん注意が要るのは**手紙とストックで起きる組み合わせ**です。二つの存在がどちらも「ストックされたメッセージ」で起き、どちらも \`[->名前]\` を使えると、互いに返事を送り合って、**止めるまで続きます。** 最小間隔（初期値15分）はその速さを「1存在につき間隔ごとに1ターン」まで落としますが、止めはしません。
 
 はじめは「決まった時刻」を1日に数回だけにして、様子を見てから広げるのがおすすめです。止めたいときは、基本設定 → ランナーのボタンがいちばん早い道です。
 `.trim(),
@@ -1267,7 +1267,7 @@ If messages are waiting in the stock when the being wakes, they arrive in the sa
 - If the being is busy, the wake comes right after their turn ends.
 - **Times missed while Memorhiza was stopped are not woken later.** The next time is awaited. Letters that arrived while it was stopped do not wake anyone either.
 - A booking outside the bounds (outside the window, over the daily limit, too close to the last) is dropped, and the next wake says so in one line.
-- The minimum gap keeps bookings and letter wakes from coming closer together than that. Empty means no gap.
+- **"Minimum interval between automatic turns"** (on by default, 15 min): a turn nobody asked for (a scheduled, booked or letter wake, a stock starting by itself) does not start until that many minutes have passed since the being's previous automatic turn ended. What is waiting is not discarded: it stays in the stock and runs when the interval is over. The time left is shown beside the conversation title. A message sent directly and "run it now" are not delayed. Untick it to switch it off.
 - **"Hold automatic turns once the context reaches 100%"** (on by default): while context elapsed is at 100% or more, turns nobody asked for (wakes, a stock starting by itself) do not start. A message sent directly still runs.
 - **"Update the soul automatically once the context reaches 100%"** (off by default): when on, anything that would start a turn at 100% (a directly sent message included) waits in the stock, and the soul update runs first — β plus the summary, with the settings as they are. When it ends, the next conversation is created and what was waiting runs there. A cut-off or failed output is retried once; after that it stops and the reason is shown above the input box. It tries again when a new message or wake arrives. **Nobody reviews the updated soul before the next conversation starts**, so turn it on knowing that. Works only for a conversation titled "<name>_<number>".
 
@@ -1299,7 +1299,7 @@ With **Conversation Settings → Abilities → Send messages to other beings ([-
 
 ## ⚠ About money
 
-Every wake costs that turn's price (unless Claude runs on a subscription). The setting that needs the most care is **waking on letters and stock**. If two beings both wake on "stocked messages" and both may use \`[->name]\`, they answer each other **until someone stops them.** The minimum gap only spaces the turns out; it does not stop them.
+Every wake costs that turn's price (unless Claude runs on a subscription). The setting that needs the most care is **waking on letters and stock**. If two beings both wake on "stocked messages" and both may use \`[->name]\`, they answer each other **until someone stops them.** The minimum interval (15 min by default) slows that to one turn per being per interval; it does not stop it.
 
 Start with a few set times a day, see how it goes, and widen from there. To stop quickly, the button in Preferences → Runner is the fastest way.
 `.trim(),

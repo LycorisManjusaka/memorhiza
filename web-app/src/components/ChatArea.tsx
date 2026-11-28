@@ -3835,6 +3835,13 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
      * normaliseTurnPlan in lib/turnEvents.
      */
     attach = false,
+    /**
+     * Nobody pressed anything: the stock is starting by itself. Sent to the
+     * runner as `auto: true`, which is what makes the server apply — and
+     * count — the minimum interval between automatic turns (lib/autoGap.ts).
+     * Until 2026-11-28 this path looked like a person's send to the server.
+     */
+    unattended = false,
   ): Promise<'ran' | 'idle' | 'failed' | 'stopped'> => {
     if (!folderName || !convoId) return 'failed';
 
@@ -3940,6 +3947,7 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
           convoId,
           detach: true,
           turnId: myTurnId,
+          ...(unattended ? { auto: true } : {}),
           ...(watch?.continueMsgId ? {} : { assistantMsgId: watchId }),
         }),
       });
@@ -4337,12 +4345,15 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
    * a closed tab survivable. What is left is the part that genuinely belongs
    * to a tab: the busy latch and the note the person reads.
    */
-  const drainStock = useCallback(async () => {
+  // `unattended` is compared with === true on purpose: the "run it now"
+  // button passes this function straight to onClick, so the first argument
+  // there is a click event — a hand, not an automatic start.
+  const drainStock = useCallback(async (unattended?: unknown) => {
     if (stockBusy || loading || !folderName || !convoId) return;
     setStockBusy(true);
     setStockNote(null);
     try {
-      const outcome = await runOnRunner();
+      const outcome = await runOnRunner(undefined, false, unattended === true);
       if (outcome === 'idle') setStockNote({ text: t('chat.stock.nothingRan'), kind: 'problem' });
     } finally {
       setStockBusy(false);
@@ -4540,6 +4551,8 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
    */
   const autoRunStock = autoTriggerEnabled(autoTriggers, 'stock');
   const autoTriedRef = useRef<string | null>(null);
+  /** Bumped by the interval timer below, only to run the effect again. */
+  const [gapRetry, setGapRetry] = useState(0);
   const stockSig = stock && stock.waiting > 0
     ? `${stock.waiting}:${stock.items.filter((i) => !i.claimed).map((i) => i.id).join(',')}`
     : null;
@@ -4555,9 +4568,32 @@ export default function ChatArea({ convoId, folderName, aiName, userName, defaul
     // exactly what starts the soul update (the runner decides, not this tab).
     if (!autoSoulUpdate && autoTurnsHeld(autoStopAtFull, contextElapsed)) return;
     if (autoTriedRef.current === stockSig) return;
-    autoTriedRef.current = stockSig;
-    void drainStock();
-  }, [stockSig, loading, stockBusy, injectTurnId, drainStock, autoRunStock, autoStopAtFull, autoSoulUpdate, contextElapsed]);
+    // The minimum interval between automatic turns (lib/autoGap.ts). Asked of
+    // the server BEFORE kicking: a kick opens a relay and paints a placeholder,
+    // and the runner would then have to refuse it. Inside the interval the
+    // signature is NOT remembered — a timer re-arms this effect when it ends.
+    // The runner checks again on its side; this is only the polite half.
+    let dead = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const sig = stockSig;
+    void (async () => {
+      let waitMs = 0;
+      try {
+        const r = await fetch(`/api/wake?folder=${encodeURIComponent(folderName)}`, { cache: 'no-store' });
+        const j = r.ok ? await r.json() : null;
+        if (typeof j?.autoGap?.remainingMs === 'number') waitMs = Math.max(0, j.autoGap.remainingMs);
+      } catch { /* cannot ask → go; the runner still decides */ }
+      if (dead) return;
+      if (waitMs > 0) {
+        timer = setTimeout(() => setGapRetry((n) => n + 1), Math.min(waitMs + 1000, 60_000));
+        return;
+      }
+      if (autoTriedRef.current === sig) return;
+      autoTriedRef.current = sig;
+      void drainStock(true);
+    })();
+    return () => { dead = true; if (timer) clearTimeout(timer); };
+  }, [stockSig, loading, stockBusy, injectTurnId, drainStock, autoRunStock, autoStopAtFull, autoSoulUpdate, contextElapsed, folderName, gapRetry]);
 
   const emptyLogWrittenRef = useRef<string | null>(null);
   const handleSend = async (
